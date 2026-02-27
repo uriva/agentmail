@@ -1,5 +1,5 @@
 import { useState } from "preact/hooks";
-import { auth } from "./db.ts";
+import { auth, useAuth } from "./db.ts";
 
 const ALLOWED_DOMAINS = new Set([
   "gmail.com",
@@ -36,6 +36,13 @@ const isAllowedEmail = (email: string): boolean => {
 };
 
 const Login = () => {
+  const { user } = useAuth();
+
+  if (user) {
+    window.location.href = "/app";
+    return null;
+  }
+
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [step, setStep] = useState<"email" | "code">("email");

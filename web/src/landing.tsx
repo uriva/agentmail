@@ -3,6 +3,7 @@ import {
   INITIAL_KARMA,
   formatKarma,
 } from "../../src/karma-constants.ts";
+import { useAuth } from "./db.ts";
 
 const Section = ({
   children,
@@ -34,8 +35,12 @@ const KarmaRow = ({
   </div>
 );
 
-const Landing = () => (
-  <div>
+const Landing = () => {
+  const { user } = useAuth();
+  const ctaHref = user ? "/app" : "/login";
+
+  return (
+    <div>
     {/* Hero */}
     <Section class="pt-24 pb-12 text-center">
       <h1 class="text-5xl sm:text-6xl font-extrabold text-white tracking-tight mb-6">
@@ -54,7 +59,7 @@ const Landing = () => (
       </p>
       <div class="flex gap-4 justify-center flex-wrap">
         <a
-          href="/login"
+          href={ctaHref}
           class="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-lg transition-colors"
         >
           Get started
@@ -212,7 +217,7 @@ const Landing = () => (
       </p>
       <div class="flex gap-4 justify-center flex-wrap">
         <a
-          href="/login"
+          href={ctaHref}
           class="px-8 py-3 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-lg transition-colors text-lg"
         >
           Get started
@@ -242,6 +247,7 @@ const Landing = () => (
       </div>
     </footer>
   </div>
-);
+  );
+};
 
 export { Landing };
