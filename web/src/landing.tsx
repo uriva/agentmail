@@ -1,3 +1,4 @@
+import type { ComponentChildren } from "preact";
 import {
   KARMA_AMOUNTS,
   INITIAL_KARMA,
@@ -9,7 +10,7 @@ const Section = ({
   children,
   class: className = "",
 }: {
-  children: preact.ComponentChildren;
+  children: ComponentChildren;
   class?: string;
 }) => <section class={`py-16 px-4 ${className}`}>{children}</section>;
 

@@ -1,7 +1,9 @@
+import type { ComponentChildren } from "preact";
+
 const P = ({
   children,
 }: {
-  children: preact.ComponentChildren;
+  children: ComponentChildren;
 }) => <p class="text-slate-400 text-sm leading-relaxed mb-3">{children}</p>;
 
 const H2 = ({ children }: { children: string }) => (

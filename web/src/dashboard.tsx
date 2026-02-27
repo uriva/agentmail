@@ -1,3 +1,4 @@
+import type { ComponentChildren } from "preact";
 import { useState } from "preact/hooks";
 import { useQuery, useAuth } from "./db.ts";
 
@@ -15,7 +16,7 @@ const Card = ({
   children,
 }: {
   title: string;
-  children: preact.ComponentChildren;
+  children: ComponentChildren;
 }) => (
   <div class="bg-slate-800 rounded-xl border border-slate-700 p-6">
     <h2 class="text-sm font-medium text-slate-400 uppercase tracking-wider mb-4">
@@ -358,19 +359,14 @@ const AccountsList = ({
                       ) : (
                         [...account.messages]
                           .sort(
-                            (a: { timestamp: number }, b: { timestamp: number }) =>
-                              b.timestamp - a.timestamp,
+                            (
+                              a: { timestamp: number },
+                              b: { timestamp: number },
+                            ) => b.timestamp - a.timestamp,
                           )
                           .slice(0, 20)
-                          .map(
-                            (msg: {
-                              id: string;
-                              from: string;
-                              subject: string;
-                              direction: string;
-                              status: string;
-                              timestamp: number;
-                            }) => (
+                          // deno-lint-ignore no-explicit-any
+                          .map((msg: any) => (
                               <div
                                 key={msg.id}
                                 class="flex items-center gap-3 p-3 bg-slate-900 rounded-lg border border-slate-700"
@@ -1339,6 +1335,7 @@ const Dashboard = () => {
           onSelect={setSelectedOrgId}
           onCreateOrg={() => setShowNewOrgForm(!showNewOrgForm)}
           creatingOrg={creatingOrg}
+          userToken={userToken}
         />
         <p class="text-slate-400 text-sm mt-1">
           Dashboard &middot; Signed in as {user?.email}

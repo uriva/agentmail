@@ -1,3 +1,4 @@
+import type { ComponentChildren } from "preact";
 import { useRef, useEffect } from "preact/hooks";
 import {
   KARMA_AMOUNTS,
@@ -124,23 +125,75 @@ const Docs = () => (
 
     {/* Getting started */}
     <Section id="getting-started" title="Getting started">
-      <div class="text-slate-400 space-y-3 text-sm">
+      <div class="text-slate-400 space-y-4 text-sm">
         <p>
-          1. <a href="/login" class="text-blue-400 hover:text-blue-300">Sign in</a> with
-          your personal email (Gmail, Outlook, ProtonMail, etc.)
+          AgentMail gives your AI agent its own email address. Here's how to set
+          it up.
         </p>
-        <p>2. Create an organization from the dashboard.</p>
-        <p>3. Generate an API key (org admin token) from the dashboard.</p>
-        <p>4. Start making API calls.</p>
-      </div>
-      <div class="mt-6">
-        <CodeBlock
-          code={`# Create an email account for your agent
-curl -X POST https://api.theagentmail.net/v1/accounts \\
-  -H "Authorization: Bearer am_..." \\
+
+        <div class="p-4 bg-slate-800/50 rounded-lg border border-slate-700">
+          <h4 class="text-white font-medium mb-2">
+            1. Sign in and create an org
+          </h4>
+          <p>
+            <a href="/login" class="text-blue-400 hover:text-blue-300">
+              Sign in
+            </a>{" "}
+            with your personal email (Gmail, Outlook, ProtonMail, etc.). Then
+            create an organization from the{" "}
+            <a href="/app" class="text-blue-400 hover:text-blue-300">
+              dashboard
+            </a>
+            . You'll need an org admin token for the next step -- generate one
+            from the Admin section.
+          </p>
+        </div>
+
+        <div class="p-4 bg-slate-800/50 rounded-lg border border-slate-700">
+          <h4 class="text-white font-medium mb-2">
+            2. Create an email account for your agent
+          </h4>
+          <CodeBlock
+            code={`curl -X POST https://api.theagentmail.net/v1/accounts \\
+  -H "Authorization: Bearer am_org_..." \\
   -H "Content-Type: application/json" \\
   -d '{"address": "my-agent@theagentmail.net"}'`}
-        />
+          />
+        </div>
+
+        <div class="p-4 bg-slate-800/50 rounded-lg border border-slate-700">
+          <h4 class="text-white font-medium mb-2">
+            3. Create a token scoped to that account
+          </h4>
+          <p class="mb-3">
+            Use the account ID from the previous response. This token only has
+            access to this one mailbox -- safe to give to your agent.
+          </p>
+          <CodeBlock
+            code={`curl -X POST https://api.theagentmail.net/v1/accounts/ACCOUNT_ID/api-keys \\
+  -H "Authorization: Bearer am_org_..." \\
+  -H "Content-Type: application/json" \\
+  -d '{"name": "my-agent-key"}'`}
+          />
+          <p class="text-slate-500 text-xs mt-2">
+            Save the <code class="text-white">key</code> from the response.
+            It's only shown once.
+          </p>
+        </div>
+
+        <div class="p-4 bg-slate-800/50 rounded-lg border border-slate-700">
+          <h4 class="text-white font-medium mb-2">
+            4. Give your agent the token and this docs page
+          </h4>
+          <p>
+            Pass the account token and{" "}
+            <code class="text-white">
+              https://api.theagentmail.net/docs
+            </code>{" "}
+            to your AI agent. It can read the API reference and start sending and
+            receiving email on its own.
+          </p>
+        </div>
       </div>
     </Section>
 

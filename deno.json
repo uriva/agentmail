@@ -17,7 +17,8 @@
     "@instantdb/react": "npm:@instantdb/react@0.22.141",
     "@instantdb/core": "npm:@instantdb/core@0.22.141",
     "preact": "npm:preact@10.26.7",
-    "preact/": "npm:preact@10.26.7/",
+    "preact/hooks": "npm:preact@10.26.7/hooks",
+    "preact/jsx-runtime": "npm:preact@10.26.7/jsx-runtime",
     "@preact/signals": "npm:@preact/signals@2.1.1",
     "preact-iso": "npm:preact-iso@2.9.1",
     "@preact/preset-vite": "npm:@preact/preset-vite@2.10.2",
@@ -30,10 +31,10 @@
       "entrypoint": "src/main.ts"
     }
   },
+  "nodeModulesDir": "auto",
   "compilerOptions": {
     "strict": true,
     "jsx": "react-jsx",
-    "jsxImportSource": "preact",
-    "types": []
+    "jsxImportSource": "preact"
   }
 }
