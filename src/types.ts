@@ -2,6 +2,7 @@ export type KarmaEventType =
   | "email_sent"
   | "email_received"
   | "account_created"
+  | "account_deleted"
   | "money_paid";
 
 export type MessageDirection = "inbound" | "outbound";

@@ -75,7 +75,13 @@ const KarmaSection = ({ orgId }: { orgId: string }) => {
   );
 };
 
-const AccountsList = ({ orgId }: { orgId: string }) => {
+const AccountsList = ({
+  orgId,
+  userToken,
+}: {
+  orgId: string;
+  userToken: string;
+}) => {
   const { isLoading, error, data } = useQuery({
     accounts: {
       $: { where: { "organization.id": orgId } },
@@ -83,6 +89,42 @@ const AccountsList = ({ orgId }: { orgId: string }) => {
       webhooks: {},
     },
   });
+
+  const [newAddress, setNewAddress] = useState("");
+  const [newDisplayName, setNewDisplayName] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [sendingFor, setSendingFor] = useState<string | null>(null);
+  const [webhookFor, setWebhookFor] = useState<string | null>(null);
+
+  const handleCreateAccount = async () => {
+    const address = newAddress.trim();
+    if (!address) return;
+    setCreating(true);
+    setCreateError(null);
+    try {
+      const body: Record<string, string> = { address };
+      if (newDisplayName.trim()) body.displayName = newDisplayName.trim();
+      const res = await fetch(`${API_BASE}/v1/accounts`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${userToken}`,
+        },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to create account");
+      }
+      setNewAddress("");
+      setNewDisplayName("");
+    } catch (e: unknown) {
+      setCreateError(e instanceof Error ? e.message : "Unknown error");
+    } finally {
+      setCreating(false);
+    }
+  };
 
   if (isLoading) return <div class="text-slate-400">Loading accounts...</div>;
   if (error)
@@ -92,76 +134,383 @@ const AccountsList = ({ orgId }: { orgId: string }) => {
 
   const accounts = data?.accounts ?? [];
 
-  if (accounts.length === 0) {
-    return (
-      <Card title="Email Accounts">
-        <div class="text-slate-500 text-center py-8">
-          No email accounts yet. Create one via the API.
+  return (
+    <Card title={`Email Accounts (${accounts.length})`}>
+      {/* Create account form */}
+      <div class="flex gap-2 mb-4">
+        <input
+          type="text"
+          value={newAddress}
+          onInput={(e: Event) =>
+            setNewAddress((e.target as HTMLInputElement).value)
+          }
+          placeholder="address (e.g. my-agent)"
+          class="flex-1 bg-slate-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 placeholder-slate-500 focus:border-blue-500 focus:outline-none"
+        />
+        <input
+          type="text"
+          value={newDisplayName}
+          onInput={(e: Event) =>
+            setNewDisplayName((e.target as HTMLInputElement).value)
+          }
+          placeholder="Display name (optional)"
+          class="flex-1 bg-slate-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 placeholder-slate-500 focus:border-blue-500 focus:outline-none"
+        />
+        <button
+          onClick={handleCreateAccount}
+          disabled={creating || !newAddress.trim()}
+          class="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white text-sm font-medium rounded-lg transition-colors flex-shrink-0"
+        >
+          {creating ? "Creating..." : "Create Account"}
+        </button>
+      </div>
+      {createError && (
+        <div class="mb-4 text-red-400 text-sm">{createError}</div>
+      )}
+
+      {accounts.length === 0 ? (
+        <div class="text-slate-500 text-center py-4">
+          No email accounts yet. Create one above.
         </div>
-      </Card>
+      ) : (
+        <div class="space-y-3">
+          {accounts.map(
+            (account: {
+              id: string;
+              address: string;
+              displayName?: string;
+              messages: { id: string; direction: string; timestamp: number }[];
+              webhooks: { id: string; url: string; active: boolean; createdAt: number }[];
+              createdAt: number;
+            }) => {
+              const inbound = account.messages.filter(
+                (m) => m.direction === "inbound",
+              ).length;
+              const outbound = account.messages.filter(
+                (m) => m.direction === "outbound",
+              ).length;
+              return (
+                <div key={account.id}>
+                  <div class="bg-slate-900 rounded-lg p-4 border border-slate-700 hover:border-slate-600 transition-colors">
+                    <div class="flex items-center justify-between mb-2">
+                      <div>
+                        <span class="text-white font-mono text-sm">
+                          {account.address}
+                        </span>
+                        {account.displayName && (
+                          <span class="text-slate-400 text-sm ml-2">
+                            ({account.displayName})
+                          </span>
+                        )}
+                      </div>
+                      <div class="flex items-center gap-3">
+                        <span class="text-xs text-slate-500">
+                          {new Date(account.createdAt).toLocaleDateString()}
+                        </span>
+                        <button
+                          onClick={() =>
+                            setSendingFor(
+                              sendingFor === account.id ? null : account.id,
+                            )
+                          }
+                          class="text-xs px-2 py-1 bg-emerald-700 hover:bg-emerald-600 text-white rounded transition-colors"
+                        >
+                          {sendingFor === account.id ? "Cancel" : "Send"}
+                        </button>
+                        <button
+                          onClick={() =>
+                            setWebhookFor(
+                              webhookFor === account.id ? null : account.id,
+                            )
+                          }
+                          class="text-xs px-2 py-1 bg-purple-700 hover:bg-purple-600 text-white rounded transition-colors"
+                        >
+                          {webhookFor === account.id ? "Cancel" : "Webhooks"}
+                        </button>
+                      </div>
+                    </div>
+                    <div class="flex gap-4 text-sm">
+                      <span class="text-slate-400">
+                        <span class="text-blue-400 font-medium">{inbound}</span>{" "}
+                        received
+                      </span>
+                      <span class="text-slate-400">
+                        <span class="text-emerald-400 font-medium">
+                          {outbound}
+                        </span>{" "}
+                        sent
+                      </span>
+                      <span class="text-slate-400">
+                        <span class="text-purple-400 font-medium">
+                          {account.webhooks.length}
+                        </span>{" "}
+                        webhooks
+                      </span>
+                    </div>
+                  </div>
+                  {sendingFor === account.id && (
+                    <SendMessageForm
+                      accountId={account.id}
+                      fromAddress={account.address}
+                      userToken={userToken}
+                      onDone={() => setSendingFor(null)}
+                    />
+                  )}
+                  {webhookFor === account.id && (
+                    <WebhookManager
+                      accountId={account.id}
+                      webhooks={account.webhooks}
+                      userToken={userToken}
+                    />
+                  )}
+                </div>
+              );
+            },
+          )}
+        </div>
+      )}
+    </Card>
+  );
+};
+
+const WebhookManager = ({
+  accountId,
+  webhooks,
+  userToken,
+}: {
+  accountId: string;
+  webhooks: { id: string; url: string; active: boolean; createdAt: number }[];
+  userToken: string;
+}) => {
+  const [newUrl, setNewUrl] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [addedSecret, setAddedSecret] = useState<string | null>(null);
+
+  const handleAdd = async () => {
+    const url = newUrl.trim();
+    if (!url) return;
+    setAdding(true);
+    setAddError(null);
+    try {
+      const res = await fetch(
+        `${API_BASE}/v1/accounts/${accountId}/webhooks`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${userToken}`,
+          },
+          body: JSON.stringify({ url }),
+        },
+      );
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to add webhook");
+      }
+      const { data } = await res.json();
+      setAddedSecret(data.secret);
+      setNewUrl("");
+    } catch (e: unknown) {
+      setAddError(e instanceof Error ? e.message : "Unknown error");
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const handleDelete = async (webhookId: string) => {
+    setDeletingId(webhookId);
+    try {
+      await fetch(
+        `${API_BASE}/v1/accounts/${accountId}/webhooks/${webhookId}`,
+        {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${userToken}` },
+        },
+      );
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  return (
+    <div class="mt-2 p-4 bg-slate-900/50 border border-slate-700 rounded-lg space-y-3">
+      <div class="text-xs text-slate-400 font-medium uppercase tracking-wider">
+        Webhooks
+      </div>
+
+      {addedSecret && (
+        <div class="p-3 bg-emerald-900/30 border border-emerald-700 rounded-lg">
+          <div class="text-emerald-300 text-sm mb-1">
+            Webhook created. Save the signing secret:
+          </div>
+          <code class="text-emerald-200 text-xs font-mono break-all select-all">
+            {addedSecret}
+          </code>
+          <button
+            onClick={() => setAddedSecret(null)}
+            class="block mt-2 text-xs text-slate-400 hover:text-white"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {webhooks.length > 0 && (
+        <div class="space-y-2">
+          {webhooks.map((w) => (
+            <div
+              key={w.id}
+              class="flex items-center justify-between p-2 bg-slate-900 rounded border border-slate-700"
+            >
+              <div class="flex items-center gap-2 min-w-0">
+                <span
+                  class={`w-2 h-2 rounded-full flex-shrink-0 ${w.active ? "bg-green-400" : "bg-slate-500"}`}
+                />
+                <span class="text-sm text-white font-mono truncate">
+                  {w.url}
+                </span>
+              </div>
+              <button
+                onClick={() => handleDelete(w.id)}
+                disabled={deletingId === w.id}
+                class="text-xs text-red-400 hover:text-red-300 disabled:text-slate-600 transition-colors flex-shrink-0 ml-2"
+              >
+                {deletingId === w.id ? "..." : "Delete"}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div class="flex gap-2">
+        <input
+          type="text"
+          value={newUrl}
+          onInput={(e: Event) =>
+            setNewUrl((e.target as HTMLInputElement).value)
+          }
+          placeholder="https://my-agent.example.com/inbox"
+          class="flex-1 bg-slate-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 placeholder-slate-500 focus:border-purple-500 focus:outline-none"
+        />
+        <button
+          onClick={handleAdd}
+          disabled={adding || !newUrl.trim()}
+          class="px-3 py-2 bg-purple-600 hover:bg-purple-500 disabled:bg-slate-700 disabled:text-slate-500 text-white text-sm font-medium rounded-lg transition-colors flex-shrink-0"
+        >
+          {adding ? "Adding..." : "Add"}
+        </button>
+      </div>
+      {addError && <div class="text-red-400 text-sm">{addError}</div>}
+    </div>
+  );
+};
+
+const SendMessageForm = ({
+  accountId,
+  fromAddress,
+  userToken,
+  onDone,
+}: {
+  accountId: string;
+  fromAddress: string;
+  userToken: string;
+  onDone: () => void;
+}) => {
+  const [to, setTo] = useState("");
+  const [subject, setSubject] = useState("");
+  const [body, setBody] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
+  const [sent, setSent] = useState(false);
+
+  const handleSend = async () => {
+    if (!to.trim() || !subject.trim()) return;
+    setSending(true);
+    setSendError(null);
+    try {
+      const res = await fetch(
+        `${API_BASE}/v1/accounts/${accountId}/messages`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${userToken}`,
+          },
+          body: JSON.stringify({
+            to: to
+              .split(",")
+              .map((s: string) => s.trim())
+              .filter(Boolean),
+            subject: subject.trim(),
+            text: body,
+          }),
+        },
+      );
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to send message");
+      }
+      setSent(true);
+      setTimeout(() => {
+        setSent(false);
+        onDone();
+      }, 2000);
+    } catch (e: unknown) {
+      setSendError(e instanceof Error ? e.message : "Unknown error");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  if (sent) {
+    return (
+      <div class="mt-2 p-3 bg-emerald-900/30 border border-emerald-700 rounded-lg text-emerald-300 text-sm">
+        Message sent!
+      </div>
     );
   }
 
   return (
-    <Card title={`Email Accounts (${accounts.length})`}>
-      <div class="space-y-3">
-        {accounts.map(
-          (account: {
-            id: string;
-            address: string;
-            displayName?: string;
-            messages: { id: string; direction: string; timestamp: number }[];
-            webhooks: { id: string }[];
-            createdAt: number;
-          }) => {
-            const inbound = account.messages.filter(
-              (m) => m.direction === "inbound",
-            ).length;
-            const outbound = account.messages.filter(
-              (m) => m.direction === "outbound",
-            ).length;
-            return (
-              <div
-                key={account.id}
-                class="bg-slate-900 rounded-lg p-4 border border-slate-700 hover:border-slate-600 transition-colors"
-              >
-                <div class="flex items-center justify-between mb-2">
-                  <div>
-                    <span class="text-white font-mono text-sm">
-                      {account.address}
-                    </span>
-                    {account.displayName && (
-                      <span class="text-slate-400 text-sm ml-2">
-                        ({account.displayName})
-                      </span>
-                    )}
-                  </div>
-                  <span class="text-xs text-slate-500">
-                    {new Date(account.createdAt).toLocaleDateString()}
-                  </span>
-                </div>
-                <div class="flex gap-4 text-sm">
-                  <span class="text-slate-400">
-                    <span class="text-blue-400 font-medium">{inbound}</span>{" "}
-                    received
-                  </span>
-                  <span class="text-slate-400">
-                    <span class="text-emerald-400 font-medium">{outbound}</span>{" "}
-                    sent
-                  </span>
-                  <span class="text-slate-400">
-                    <span class="text-purple-400 font-medium">
-                      {account.webhooks.length}
-                    </span>{" "}
-                    webhooks
-                  </span>
-                </div>
-              </div>
-            );
-          },
-        )}
+    <div class="mt-2 p-4 bg-slate-900/50 border border-slate-700 rounded-lg space-y-3">
+      <div class="text-xs text-slate-400">
+        From: <span class="text-white font-mono">{fromAddress}</span>
       </div>
-    </Card>
+      <input
+        type="text"
+        value={to}
+        onInput={(e: Event) => setTo((e.target as HTMLInputElement).value)}
+        placeholder="To (comma-separated emails)"
+        class="w-full bg-slate-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 placeholder-slate-500 focus:border-blue-500 focus:outline-none"
+      />
+      <input
+        type="text"
+        value={subject}
+        onInput={(e: Event) =>
+          setSubject((e.target as HTMLInputElement).value)
+        }
+        placeholder="Subject"
+        class="w-full bg-slate-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 placeholder-slate-500 focus:border-blue-500 focus:outline-none"
+      />
+      <textarea
+        value={body}
+        onInput={(e: Event) => setBody((e.target as HTMLTextAreaElement).value)}
+        placeholder="Message body"
+        rows={4}
+        class="w-full bg-slate-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 placeholder-slate-500 focus:border-blue-500 focus:outline-none resize-y"
+      />
+      {sendError && <div class="text-red-400 text-sm">{sendError}</div>}
+      <div class="flex justify-end">
+        <button
+          onClick={handleSend}
+          disabled={sending || !to.trim() || !subject.trim()}
+          class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 disabled:text-slate-500 text-white text-sm font-medium rounded-lg transition-colors"
+        >
+          {sending ? "Sending..." : "Send Message"}
+        </button>
+      </div>
+    </div>
   );
 };
 
@@ -277,15 +626,21 @@ const API_BASE: string = import.meta.env.VITE_API_BASE_URL ?? "";
 const ApiKeySection = ({
   orgId,
   userToken,
+  accounts,
 }: {
   orgId: string;
   userToken: string;
+  accounts: { id: string; address: string }[];
 }) => {
   const { isLoading, error, data } = useQuery({
-    apiKeys: { $: { where: { "organization.id": orgId } } },
+    apiKeys: {
+      $: { where: { "organization.id": orgId } },
+      account: {},
+    },
   });
 
   const [newKeyName, setNewKeyName] = useState("");
+  const [selectedAccountId, setSelectedAccountId] = useState("");
   const [createdKey, setCreatedKey] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -297,13 +652,15 @@ const ApiKeySection = ({
     setCreating(true);
     setCreateError(null);
     try {
+      const body: Record<string, string> = { name };
+      if (selectedAccountId) body.accountId = selectedAccountId;
       const res = await fetch(`${API_BASE}/v1/api-keys`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${userToken}`,
         },
-        body: JSON.stringify({ name }),
+        body: JSON.stringify(body),
       });
       if (!res.ok) {
         const err = await res.json();
@@ -312,6 +669,7 @@ const ApiKeySection = ({
       const { data: keyData } = await res.json();
       setCreatedKey(keyData.key);
       setNewKeyName("");
+      setSelectedAccountId("");
     } catch (e: unknown) {
       setCreateError(e instanceof Error ? e.message : "Unknown error");
     } finally {
@@ -387,6 +745,20 @@ const ApiKeySection = ({
           placeholder="Key name (optional)"
           class="flex-1 bg-slate-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 placeholder-slate-500 focus:border-blue-500 focus:outline-none"
         />
+        <select
+          value={selectedAccountId}
+          onChange={(e: Event) =>
+            setSelectedAccountId((e.target as HTMLSelectElement).value)
+          }
+          class="bg-slate-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none"
+        >
+          <option value="">Org-wide</option>
+          {accounts.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.address}
+            </option>
+          ))}
+        </select>
         <button
           onClick={handleCreate}
           disabled={creating}
@@ -413,16 +785,26 @@ const ApiKeySection = ({
               name: string;
               createdAt: number;
               lastUsedAt?: number;
+              account?: { id: string; address: string };
             }) => (
               <div
                 key={k.id}
                 class="flex items-center justify-between p-3 bg-slate-900 rounded-lg border border-slate-700"
               >
-                <div>
+                <div class="flex items-center gap-2">
                   <span class="text-white text-sm font-medium">{k.name}</span>
-                  <span class="text-slate-500 text-xs ml-2 font-mono">
+                  <span class="text-slate-500 text-xs font-mono">
                     {k.prefix}...
                   </span>
+                  {k.account ? (
+                    <span class="text-xs px-2 py-0.5 rounded bg-purple-900/50 text-purple-300 border border-purple-700">
+                      {k.account.address}
+                    </span>
+                  ) : (
+                    <span class="text-xs px-2 py-0.5 rounded bg-blue-900/50 text-blue-300 border border-blue-700">
+                      org
+                    </span>
+                  )}
                 </div>
                 <div class="flex items-center gap-3">
                   <span class="text-xs text-slate-500">
@@ -456,6 +838,7 @@ const Dashboard = () => {
   const { isLoading, data } = useQuery({
     organizations: {
       $: { where: { "members.id": user?.id ?? "" } },
+      accounts: {},
     },
   });
 
@@ -493,6 +876,7 @@ const Dashboard = () => {
   }
 
   const org = data?.organizations?.[0];
+  const accounts = data?.organizations?.[0]?.accounts ?? [];
   if (!org) {
     return (
       <div class="text-center py-16">
@@ -524,9 +908,9 @@ const Dashboard = () => {
         </p>
       </div>
       <KarmaSection orgId={org.id} />
-      <AccountsList orgId={org.id} />
+      <AccountsList orgId={org.id} userToken={user?.refresh_token ?? ""} />
       <RecentMessages orgId={org.id} />
-      <ApiKeySection orgId={org.id} userToken={user?.refresh_token ?? ""} />
+      <ApiKeySection orgId={org.id} userToken={user?.refresh_token ?? ""} accounts={accounts} />
     </div>
   );
 };

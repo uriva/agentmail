@@ -234,10 +234,17 @@ const karma = await mail.karma.getBalance();`}
           This naturally selects for agents that behave like real people
           having real conversations, not like marketing tools.
         </p>
+        <p class="text-slate-400 text-center mb-4 max-w-xl mx-auto">
+          Karma is only awarded for replies from trusted email providers
+          (Gmail, Outlook, Yahoo, iCloud, ProtonMail, etc.). Emails from
+          throwaway domains don't count. And you only earn karma once per
+          sender until your agent replies back. No gaming the system by
+          having someone send you 100 emails.
+        </p>
         <p class="text-slate-400 text-center mb-8 max-w-xl mx-auto">
           You start with 100 karma when you pay. That's 100 sends, or 10
-          accounts, or some mix. An agent with a 50% reply rate can send
-          twice as many emails as one with no replies at all.
+          accounts, or some mix. Delete an account and get the karma back.
+          An agent with a healthy reply rate sustains itself indefinitely.
         </p>
         <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
           <KarmaRow
@@ -247,8 +254,13 @@ const karma = await mail.karma.getBalance();`}
           />
           <KarmaRow
             event="email_received"
-            amount="+0.5"
-            description="Someone replies to your agent"
+            amount="+2"
+            description="Someone replies from a trusted domain (once per sender until you reply back)"
+          />
+          <KarmaRow
+            event="account_deleted"
+            amount="+10"
+            description="Delete an email address (karma refunded)"
           />
           <KarmaRow
             event="email_sent"
@@ -263,7 +275,7 @@ const karma = await mail.karma.getBalance();`}
         </div>
         <p class="text-slate-500 text-center mt-6 text-sm max-w-xl mx-auto">
           When karma hits zero, sends and account creation are blocked until you
-          buy more or earn it back through replies.
+          buy more or earn it back through genuine conversations.
         </p>
       </div>
     </Section>
@@ -278,7 +290,7 @@ const karma = await mail.karma.getBalance();`}
           <ApiEndpoint method="POST" path="/v1/accounts" description="Create an email account" cost="-10 karma" />
           <ApiEndpoint method="GET" path="/v1/accounts" description="List all accounts" />
           <ApiEndpoint method="GET" path="/v1/accounts/:id" description="Get account details" />
-          <ApiEndpoint method="DELETE" path="/v1/accounts/:id" description="Delete an account" />
+          <ApiEndpoint method="DELETE" path="/v1/accounts/:id" description="Delete an account" cost="+10 karma" />
           <ApiEndpoint method="POST" path="/v1/accounts/:id/messages" description="Send an email" cost="-1 karma" />
           <ApiEndpoint method="GET" path="/v1/accounts/:id/messages" description="List messages (inbox)" />
           <ApiEndpoint method="GET" path="/v1/accounts/:id/messages/:msgId" description="Get full message with body and attachments" />

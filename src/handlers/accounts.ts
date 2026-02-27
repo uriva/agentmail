@@ -122,6 +122,11 @@ const deleteAccount = async (
   }
 
   await db.transact([db.tx.accounts[account.id]!.delete()]);
+
+  await recordKarmaEvent(orgId, "account_deleted", {
+    accountId: account.id,
+    address: account.address,
+  });
   captureEvent(orgId, "account_deleted", { address: account.address });
 
   return new Response(null, { status: 204 });

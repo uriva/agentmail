@@ -103,6 +103,15 @@ const _schema = i.schema({
       },
       reverse: { on: "messages", has: "many", label: "attachments" },
     },
+    apiKeyAccount: {
+      forward: {
+        on: "apiKeys",
+        has: "one",
+        label: "account",
+        onDelete: "cascade",
+      },
+      reverse: { on: "accounts", has: "many", label: "apiKeys" },
+    },
     accountWebhooks: {
       forward: {
         on: "webhookSubscriptions",

@@ -81,7 +81,7 @@ export type KarmaBalance = {
 
 export type KarmaEvent = {
   readonly id: string;
-  readonly type: "email_sent" | "email_received" | "account_created" | "money_paid";
+  readonly type: "email_sent" | "email_received" | "account_created" | "account_deleted" | "money_paid";
   readonly amount: number;
   readonly timestamp: number;
   readonly metadata?: Record<string, unknown>;

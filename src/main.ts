@@ -19,6 +19,7 @@ import {
 import { handleInbound } from "./handlers/inbound.ts";
 import {
   createApiKey,
+  createAccountApiKey,
   listApiKeys,
   deleteApiKey,
 } from "./handlers/apiKeys.ts";
@@ -26,12 +27,13 @@ import { createOrganization } from "./handlers/organizations.ts";
 
 // --- Types ---
 
-type AuthType = "apiKey" | "userToken" | "userTokenOptionalOrg" | "none";
+type AuthType = "apiKey" | "apiKeyOrUserToken" | "userToken" | "userTokenOptionalOrg" | "none";
 
 type RouteHandler = (
   req: Request,
   params: Record<string, string>,
   orgId: string,
+  accountId?: string,
 ) => Promise<Response>;
 
 type Route = {
@@ -51,7 +53,9 @@ const hashApiKey = async (key: string): Promise<string> => {
     .join("");
 };
 
-const authenticateApiKey = async (req: Request): Promise<string | null> => {
+const authenticateApiKey = async (
+  req: Request,
+): Promise<{ orgId: string; accountId: string | null } | null> => {
   const authHeader = req.headers.get("authorization");
   if (!authHeader?.startsWith("Bearer ")) return null;
 
@@ -62,6 +66,7 @@ const authenticateApiKey = async (req: Request): Promise<string | null> => {
     apiKeys: {
       $: { where: { keyHash } },
       organization: {},
+      account: {},
     },
   });
 
@@ -73,7 +78,10 @@ const authenticateApiKey = async (req: Request): Promise<string | null> => {
     db.tx.apiKeys[apiKeyRecord.id]!.update({ lastUsedAt: Date.now() }),
   ]);
 
-  return apiKeyRecord.organization.id;
+  return {
+    orgId: apiKeyRecord.organization.id,
+    accountId: apiKeyRecord.account?.id ?? null,
+  };
 };
 
 const authenticateUserToken = async (
@@ -118,18 +126,19 @@ const route = (
 
 const routes: readonly Route[] = [
   // Accounts
-  route("POST", "/v1/accounts", createAccount),
-  route("GET", "/v1/accounts", listAccounts),
-  route("GET", "/v1/accounts/:accountId", getAccount),
-  route("DELETE", "/v1/accounts/:accountId", deleteAccount),
+  route("POST", "/v1/accounts", createAccount, "apiKeyOrUserToken"),
+  route("GET", "/v1/accounts", listAccounts, "apiKeyOrUserToken"),
+  route("GET", "/v1/accounts/:accountId", getAccount, "apiKeyOrUserToken"),
+  route("DELETE", "/v1/accounts/:accountId", deleteAccount, "apiKeyOrUserToken"),
 
   // Messages
-  route("POST", "/v1/accounts/:accountId/messages", sendMessage),
-  route("GET", "/v1/accounts/:accountId/messages", listMessages),
+  route("POST", "/v1/accounts/:accountId/messages", sendMessage, "apiKeyOrUserToken"),
+  route("GET", "/v1/accounts/:accountId/messages", listMessages, "apiKeyOrUserToken"),
   route(
     "GET",
     "/v1/accounts/:accountId/messages/:messageId",
     getMessage,
+    "apiKeyOrUserToken",
   ),
 
   // Attachments
@@ -137,24 +146,29 @@ const routes: readonly Route[] = [
     "GET",
     "/v1/accounts/:accountId/messages/:messageId/attachments/:attachmentId",
     getAttachmentUrl,
+    "apiKeyOrUserToken",
   ),
 
   // Webhooks
-  route("POST", "/v1/accounts/:accountId/webhooks", createWebhook),
-  route("GET", "/v1/accounts/:accountId/webhooks", listWebhooks),
+  route("POST", "/v1/accounts/:accountId/webhooks", createWebhook, "apiKeyOrUserToken"),
+  route("GET", "/v1/accounts/:accountId/webhooks", listWebhooks, "apiKeyOrUserToken"),
   route(
     "DELETE",
     "/v1/accounts/:accountId/webhooks/:webhookId",
     deleteWebhook,
+    "apiKeyOrUserToken",
   ),
 
   // Karma
-  route("GET", "/v1/karma", getKarmaBalance),
+  route("GET", "/v1/karma", getKarmaBalance, "apiKeyOrUserToken"),
 
   // API Keys (user-token auth — from dashboard)
   route("POST", "/v1/api-keys", createApiKey, "userToken"),
   route("GET", "/v1/api-keys", listApiKeys, "userToken"),
   route("DELETE", "/v1/api-keys/:apiKeyId", deleteApiKey, "userToken"),
+
+  // Account API Keys (org-level API key auth — programmatic)
+  route("POST", "/v1/accounts/:accountId/api-keys", createAccountApiKey),
 
   // Organizations (user-token auth — org may not exist yet)
   route("POST", "/v1/organizations", createOrganization, "userTokenOptionalOrg"),
@@ -174,7 +188,10 @@ const routes: readonly Route[] = [
 // --- Error handling ---
 
 const jsonError = (status: number, error: string, code: string): Response =>
-  Response.json({ error, code } satisfies ApiError, { status });
+  Response.json({ error, code } satisfies ApiError, {
+    status,
+    headers: corsHeaders,
+  });
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -204,25 +221,50 @@ const matchRoute = (
 const resolveAuth = async (
   req: Request,
   authType: AuthType,
-): Promise<{ orgId: string | null; error: Response | null }> => {
+): Promise<{
+  orgId: string | null;
+  accountId: string | null;
+  error: Response | null;
+}> => {
   switch (authType) {
     case "none":
-      return { orgId: "", error: null };
+      return { orgId: "", accountId: null, error: null };
     case "apiKey": {
-      const orgId = await authenticateApiKey(req);
-      return orgId
-        ? { orgId, error: null }
+      const result = await authenticateApiKey(req);
+      return result
+        ? { orgId: result.orgId, accountId: result.accountId, error: null }
         : {
             orgId: null,
+            accountId: null,
             error: jsonError(401, "Invalid or missing API key", "UNAUTHORIZED"),
+          };
+    }
+    case "apiKeyOrUserToken": {
+      // Try API key first, then user token
+      const apiKeyResult = await authenticateApiKey(req);
+      if (apiKeyResult) {
+        return {
+          orgId: apiKeyResult.orgId,
+          accountId: apiKeyResult.accountId,
+          error: null,
+        };
+      }
+      const orgId = await authenticateUserToken(req);
+      return orgId
+        ? { orgId, accountId: null, error: null }
+        : {
+            orgId: null,
+            accountId: null,
+            error: jsonError(401, "Invalid or missing credentials", "UNAUTHORIZED"),
           };
     }
     case "userToken": {
       const orgId = await authenticateUserToken(req);
       return orgId
-        ? { orgId, error: null }
+        ? { orgId, accountId: null, error: null }
         : {
             orgId: null,
+            accountId: null,
             error: jsonError(
               401,
               "Invalid or missing user token",
@@ -236,6 +278,7 @@ const resolveAuth = async (
       if (!authHeader?.startsWith("Bearer ")) {
         return {
           orgId: null,
+          accountId: null,
           error: jsonError(401, "Missing authorization", "UNAUTHORIZED"),
         };
       }
@@ -247,10 +290,15 @@ const resolveAuth = async (
         const { organizations } = await db.query({
           organizations: { $: { where: { "members.id": user.id } } },
         });
-        return { orgId: organizations[0]?.id ?? "", error: null };
+        return {
+          orgId: organizations[0]?.id ?? "",
+          accountId: null,
+          error: null,
+        };
       } catch {
         return {
           orgId: null,
+          accountId: null,
           error: jsonError(401, "Invalid user token", "UNAUTHORIZED"),
         };
       }
@@ -272,14 +320,34 @@ const handleRequest = async (req: Request): Promise<Response> => {
   const { route: matchedRoute, params } = matched;
 
   // Auth
-  const { orgId, error: authError } = await resolveAuth(
+  const { orgId, accountId, error: authError } = await resolveAuth(
     req,
     matchedRoute.authType,
   );
   if (authError) return authError;
 
+  // Account-scoped token enforcement
+  if (accountId) {
+    const routeAccountId = params.accountId;
+    if (!routeAccountId) {
+      // Account-scoped tokens can't access org-level routes
+      return jsonError(
+        403,
+        "Account-scoped token cannot access this endpoint",
+        "FORBIDDEN",
+      );
+    }
+    if (routeAccountId !== accountId) {
+      return jsonError(
+        403,
+        "Account-scoped token cannot access other accounts",
+        "FORBIDDEN",
+      );
+    }
+  }
+
   try {
-    const response = await matchedRoute.handler(req, params, orgId!);
+    const response = await matchedRoute.handler(req, params, orgId!, accountId ?? undefined);
     for (const [key, value] of Object.entries(corsHeaders)) {
       response.headers.set(key, value);
     }
