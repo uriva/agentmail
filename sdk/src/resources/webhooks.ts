@@ -6,30 +6,37 @@ import type {
 
 export type WebhooksResource = {
   readonly create: (
-    accountId: string,
-    params: CreateWebhookParams,
+    accountIdOrParams: string | CreateWebhookParams,
+    params?: CreateWebhookParams,
   ) => Promise<Webhook>;
-  readonly list: (accountId: string) => Promise<readonly Webhook[]>;
-  readonly delete: (accountId: string, webhookId: string) => Promise<void>;
+  readonly list: (accountId?: string) => Promise<readonly Webhook[]>;
+  readonly delete: (
+    accountIdOrWebhookId: string,
+    webhookId?: string,
+  ) => Promise<void>;
 };
 
 export const makeWebhooks = (
   request: <T>(method: string, path: string, body?: unknown) => Promise<T>,
 ): WebhooksResource => ({
-  create: (accountId, params) =>
-    request<ApiResponse<Webhook>>(
-      "POST",
-      `/v1/accounts/${accountId}/webhooks`,
-      params,
-    ).then((r) => r.data),
-  list: (accountId) =>
+  create: (accountIdOrParams, params?) => {
+    const [path, body] =
+      typeof accountIdOrParams === "string"
+        ? [`/v1/accounts/${accountIdOrParams}/webhooks`, params!]
+        : [`/v1/webhooks`, accountIdOrParams];
+    return request<ApiResponse<Webhook>>("POST", path, body).then(
+      (r) => r.data,
+    );
+  },
+  list: (accountId?) =>
     request<ApiResponse<readonly Webhook[]>>(
       "GET",
-      `/v1/accounts/${accountId}/webhooks`,
+      accountId ? `/v1/accounts/${accountId}/webhooks` : `/v1/webhooks`,
     ).then((r) => r.data),
-  delete: (accountId, webhookId) =>
-    request<void>(
-      "DELETE",
-      `/v1/accounts/${accountId}/webhooks/${webhookId}`,
-    ),
+  delete: (accountIdOrWebhookId, webhookId?) => {
+    const path = webhookId
+      ? `/v1/accounts/${accountIdOrWebhookId}/webhooks/${webhookId}`
+      : `/v1/webhooks/${accountIdOrWebhookId}`;
+    return request<void>("DELETE", path);
+  },
 });

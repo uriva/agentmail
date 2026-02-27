@@ -219,12 +219,21 @@ const Docs = () => (
             <p>
               Scoped to a single email account. Can send and receive email,
               manage webhooks, and view account info. Cannot access other
-              accounts or org-level endpoints (returns 403). Created
+              accounts or create new ones (returns 403). Created
               programmatically via{" "}
               <code class="text-white">
                 POST /v1/accounts/:id/api-keys
               </code>
               .
+            </p>
+            <p class="mt-2">
+              Account tokens can use shortcut routes that omit the account ID
+              -- the server infers it from the token. For example,{" "}
+              <code class="text-white">POST /v1/messages</code> instead of{" "}
+              <code class="text-white">
+                POST /v1/accounts/:accountId/messages
+              </code>
+              . See each endpoint section for the shortcut path.
             </p>
           </div>
         </div>
@@ -289,13 +298,13 @@ const Docs = () => (
       <Endpoint
         method="GET"
         path="/v1/accounts/:accountId"
-        description="Get details for a specific account."
+        description="Get details for a specific account. With an account token: GET /v1/account"
       />
 
       <Endpoint
         method="DELETE"
         path="/v1/accounts/:accountId"
-        description={`Delete an email account. Refunds ${KARMA_AMOUNTS.account_deleted} karma.`}
+        description={`Delete an email account. Refunds ${KARMA_AMOUNTS.account_deleted} karma. With an account token: DELETE /v1/account`}
         karma={`${formatKarma(KARMA_AMOUNTS.account_deleted)} karma`}
       >
         <p class="text-slate-500 text-xs">
@@ -310,7 +319,7 @@ const Docs = () => (
       <Endpoint
         method="POST"
         path="/v1/accounts/:accountId/messages"
-        description={`Send an email from this account. Costs ${Math.abs(KARMA_AMOUNTS.email_sent)} karma.`}
+        description={`Send an email from this account. Costs ${Math.abs(KARMA_AMOUNTS.email_sent)} karma. With an account token: POST /v1/messages`}
         karma={`${formatKarma(KARMA_AMOUNTS.email_sent)} karma`}
       >
         <p class="text-xs text-slate-500 mb-2">Request body</p>
@@ -354,7 +363,7 @@ const Docs = () => (
       <Endpoint
         method="GET"
         path="/v1/accounts/:accountId/messages"
-        description="List all messages (inbound and outbound) for this account, sorted by most recent first."
+        description="List all messages (inbound and outbound) for this account, sorted by most recent first. With an account token: GET /v1/messages"
       >
         <p class="text-xs text-slate-500 mb-2">Response</p>
         <CodeBlock
@@ -378,7 +387,7 @@ const Docs = () => (
       <Endpoint
         method="GET"
         path="/v1/accounts/:accountId/messages/:messageId"
-        description="Get a single message with full body content and attachment metadata."
+        description="Get a single message with full body content and attachment metadata. With an account token: GET /v1/messages/:messageId"
       >
         <p class="text-xs text-slate-500 mb-2">Response</p>
         <CodeBlock
@@ -413,7 +422,7 @@ const Docs = () => (
       <Endpoint
         method="GET"
         path="/v1/accounts/:accountId/messages/:messageId/attachments/:attachmentId"
-        description="Get a signed download URL for an attachment. The URL is valid for 1 hour."
+        description="Get a signed download URL for an attachment. The URL is valid for 1 hour. With an account token: GET /v1/messages/:messageId/attachments/:attachmentId"
       >
         <p class="text-xs text-slate-500 mb-2">Response</p>
         <CodeBlock
@@ -442,7 +451,7 @@ const Docs = () => (
       <Endpoint
         method="POST"
         path="/v1/accounts/:accountId/webhooks"
-        description="Register a webhook for inbound email notifications."
+        description="Register a webhook for inbound email notifications. With an account token: POST /v1/webhooks"
       >
         <p class="text-xs text-slate-500 mb-2">Request body</p>
         <CodeBlock
@@ -473,13 +482,13 @@ const Docs = () => (
       <Endpoint
         method="GET"
         path="/v1/accounts/:accountId/webhooks"
-        description="List all webhooks for this account."
+        description="List all webhooks for this account. With an account token: GET /v1/webhooks"
       />
 
       <Endpoint
         method="DELETE"
         path="/v1/accounts/:accountId/webhooks/:webhookId"
-        description="Delete a webhook."
+        description="Delete a webhook. With an account token: DELETE /v1/webhooks/:webhookId"
       />
 
       <div class="mt-8 p-6 bg-slate-800/50 border border-slate-700 rounded-xl">
@@ -735,25 +744,34 @@ const verify = (body: string, signature: string, secret: string) => {
         lang="typescript"
         code={`import { createClient } from "@agentmail/sdk";
 
+// With an account-scoped token (no accountId needed)
 const mail = createClient({ apiKey: "am_..." });
 
-// Create an email account
-const account = await mail.accounts.create({
-  address: "my-agent@theagentmail.net",
-});
-
 // Send an email
-await mail.messages.send(account.id, {
+await mail.messages.send({
   to: ["human@example.com"],
   subject: "Hello from my agent",
   text: "This email was sent by an AI agent.",
 });
 
 // Check inbox
-const messages = await mail.messages.list(account.id);
+const messages = await mail.messages.list();
 
-// Check karma balance
-const karma = await mail.karma.getBalance();`}
+// Register a webhook
+await mail.webhooks.create({
+  url: "https://my-agent.example.com/inbox",
+});
+
+// Get account info
+const account = await mail.accounts.get();
+
+// With an org-level token (accountId required)
+const orgMail = createClient({ apiKey: "am_org_..." });
+await orgMail.messages.send(accountId, {
+  to: ["human@example.com"],
+  subject: "Hello",
+  text: "Sent via org token.",
+});`}
       />
     </Section>
 

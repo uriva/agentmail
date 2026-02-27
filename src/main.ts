@@ -166,6 +166,22 @@ const routes: readonly Route[] = [
     "apiKeyOrUserToken",
   ),
 
+  // Account-scoped shortcuts (accountId inferred from account-scoped API key)
+  route("GET", "/v1/account", getAccount, "apiKey"),
+  route("DELETE", "/v1/account", deleteAccount, "apiKey"),
+  route("POST", "/v1/messages", sendMessage, "apiKey"),
+  route("GET", "/v1/messages", listMessages, "apiKey"),
+  route("GET", "/v1/messages/:messageId", getMessage, "apiKey"),
+  route(
+    "GET",
+    "/v1/messages/:messageId/attachments/:attachmentId",
+    getAttachmentUrl,
+    "apiKey",
+  ),
+  route("POST", "/v1/webhooks", createWebhook, "apiKey"),
+  route("GET", "/v1/webhooks", listWebhooks, "apiKey"),
+  route("DELETE", "/v1/webhooks/:webhookId", deleteWebhook, "apiKey"),
+
   // Karma
   route("GET", "/v1/karma", getKarmaBalance, "apiKeyOrUserToken"),
 
@@ -340,23 +356,18 @@ const handleRequest = async (req: Request): Promise<Response> => {
   );
   if (authError) return authError;
 
-  // Account-scoped token enforcement
+  // Account-scoped token enforcement / inference
   if (accountId) {
     const routeAccountId = params.accountId;
-    if (!routeAccountId) {
-      // Account-scoped tokens can't access org-level routes
-      return jsonError(
-        403,
-        "Account-scoped token cannot access this endpoint",
-        "FORBIDDEN",
-      );
-    }
-    if (routeAccountId !== accountId) {
+    if (routeAccountId && routeAccountId !== accountId) {
       return jsonError(
         403,
         "Account-scoped token cannot access other accounts",
         "FORBIDDEN",
       );
+    }
+    if (!routeAccountId) {
+      params.accountId = accountId;
     }
   }
 

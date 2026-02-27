@@ -3,8 +3,8 @@ import type { Account, CreateAccountParams, ApiResponse } from "../types.ts";
 export type AccountsResource = {
   readonly create: (params: CreateAccountParams) => Promise<Account>;
   readonly list: () => Promise<readonly Account[]>;
-  readonly get: (accountId: string) => Promise<Account>;
-  readonly delete: (accountId: string) => Promise<void>;
+  readonly get: (accountId?: string) => Promise<Account>;
+  readonly delete: (accountId?: string) => Promise<void>;
 };
 
 export const makeAccounts = (
@@ -18,10 +18,14 @@ export const makeAccounts = (
     request<ApiResponse<readonly Account[]>>("GET", "/v1/accounts").then(
       (r) => r.data,
     ),
-  get: (accountId) =>
-    request<ApiResponse<Account>>("GET", `/v1/accounts/${accountId}`).then(
-      (r) => r.data,
+  get: (accountId?) =>
+    request<ApiResponse<Account>>(
+      "GET",
+      accountId ? `/v1/accounts/${accountId}` : `/v1/account`,
+    ).then((r) => r.data),
+  delete: (accountId?) =>
+    request<void>(
+      "DELETE",
+      accountId ? `/v1/accounts/${accountId}` : `/v1/account`,
     ),
-  delete: (accountId) =>
-    request<void>("DELETE", `/v1/accounts/${accountId}`),
 });
