@@ -14,6 +14,8 @@ import { captureEvent } from "../services/posthog.ts";
 const WEBHOOK_RECEIVER_URL =
   Deno.env.get("INBOUND_WEBHOOK_URL") ?? "https://api.theagentmail.net/inbound";
 
+const RESERVED_ADDRESSES = new Set(["uri", "support"]);
+
 const createAccount = async (
   req: Request,
   _params: Record<string, string>,
@@ -24,6 +26,13 @@ const createAccount = async (
     ? input.address.split("@")[0]!
     : input.address;
   const address = `${localPart}@${FORWARD_EMAIL_DOMAIN}`;
+
+  if (RESERVED_ADDRESSES.has(localPart.toLowerCase())) {
+    return Response.json(
+      { error: "This address is reserved", code: "RESERVED_ADDRESS" },
+      { status: 400 },
+    );
+  }
 
   await requireKarmaForAccountCreation(orgId);
 

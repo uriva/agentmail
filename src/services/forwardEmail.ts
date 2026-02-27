@@ -30,18 +30,34 @@ const request = async (
 };
 
 // Alias management (email accounts)
-const createAlias = (
+const createAlias = async (
   name: string,
   recipients: readonly string[],
-): Promise<unknown> =>
-  request(`/domains/${FORWARD_EMAIL_DOMAIN}/aliases`, {
-    method: "POST",
-    body: JSON.stringify({
-      name,
-      recipients: [...recipients],
-      has_recipient_verification: false,
-    }),
-  });
+): Promise<unknown> => {
+  try {
+    return await request(`/domains/${FORWARD_EMAIL_DOMAIN}/aliases`, {
+      method: "POST",
+      body: JSON.stringify({
+        name,
+        recipients: [...recipients],
+        has_recipient_verification: false,
+      }),
+    });
+  } catch (e: unknown) {
+    // If alias already exists, update it to point to our webhook instead of failing
+    const err = e as { status?: number; error?: string };
+    if (err.status === 400 && err.error?.includes("Alias already exists")) {
+      return await request(`/domains/${FORWARD_EMAIL_DOMAIN}/aliases/${name}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          recipients: [...recipients],
+          has_recipient_verification: false,
+        }),
+      });
+    }
+    throw e;
+  }
+};
 
 const deleteAlias = (aliasId: string): Promise<unknown> =>
   request(`/domains/${FORWARD_EMAIL_DOMAIN}/aliases/${aliasId}`, {

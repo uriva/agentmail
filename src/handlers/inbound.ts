@@ -1,5 +1,5 @@
 import { db, id } from "../db.ts";
-import type { InboundEmail } from "../types.ts";
+import type { InboundEmail, InboundAttachment } from "../types.ts";
 import { recordKarmaEvent } from "../services/karma.ts";
 import { uploadFile } from "../services/storage.ts";
 import { deliverWithRetry } from "../services/webhookDelivery.ts";
@@ -79,8 +79,11 @@ const verifyInboundSignature = async (
   req: Request,
   body: string,
 ): Promise<boolean> => {
-  if (!INBOUND_WEBHOOK_SECRET) return true; // Skip in dev
+  // Forward Email sends POSTs to webhook URLs without a signature header.
+  // Only verify if a signature is actually present (e.g. from our own tests).
   const signature = req.headers.get("x-webhook-signature") ?? "";
+  if (!signature) return true;
+  if (!INBOUND_WEBHOOK_SECRET) return true;
   const key = await crypto.subtle.importKey(
     "raw",
     new TextEncoder().encode(INBOUND_WEBHOOK_SECRET),
@@ -99,6 +102,93 @@ const verifyInboundSignature = async (
   return signature === expectedHex;
 };
 
+// Forward Email sends a mailparser-style payload with structured objects
+// for from/to/cc, Buffer-style attachments, etc. This normalizes it into
+// our flat InboundEmail type.
+// deno-lint-ignore no-explicit-any
+const extractAddresses = (field: any): string[] => {
+  if (!field) return [];
+  // Already a string array (our own format)
+  if (Array.isArray(field) && typeof field[0] === "string") {
+    return field as string[];
+  }
+  // Array of objects with address field
+  if (Array.isArray(field)) {
+    // deno-lint-ignore no-explicit-any
+    return field.map((v: any) => v.address ?? String(v)).filter(Boolean);
+  }
+  // mailparser address object: { value: [{ address, name }], text: "..." }
+  if (field.value && Array.isArray(field.value)) {
+    // deno-lint-ignore no-explicit-any
+    return field.value.map((v: any) => v.address).filter(Boolean);
+  }
+  // Plain string
+  if (typeof field === "string") return [field];
+  return [];
+};
+
+// deno-lint-ignore no-explicit-any
+const extractFromString = (field: any): string => {
+  if (typeof field === "string") return field;
+  // mailparser address object - use .text for "Name <addr>" format
+  if (field?.text) return field.text;
+  if (field?.value?.[0]?.address) return field.value[0].address;
+  return String(field ?? "");
+};
+
+// deno-lint-ignore no-explicit-any
+const normalizeAttachments = (rawAtts: any[]): InboundAttachment[] =>
+  rawAtts.map((att) => {
+    // If content is already a base64 string, use it directly
+    if (typeof att.content === "string") {
+      return {
+        filename: att.filename ?? "attachment",
+        contentType: att.contentType ?? "application/octet-stream",
+        size: att.size ?? 0,
+        content: att.content,
+      };
+    }
+    // Forward Email sends { type: "Buffer", data: [byte, byte, ...] }
+    const bytes = att.content?.data
+      ? new Uint8Array(att.content.data)
+      : new Uint8Array(0);
+    return {
+      filename: att.filename ?? "attachment",
+      contentType: att.contentType ?? "application/octet-stream",
+      size: att.size ?? bytes.length,
+      content: btoa(String.fromCharCode(...bytes)),
+    };
+  });
+
+// deno-lint-ignore no-explicit-any
+const normalizePayload = (raw: any): InboundEmail => {
+  const from = extractFromString(raw.from);
+  const to = extractAddresses(raw.to);
+  // Fall back to recipients array if to is empty (webhook-style delivery)
+  const finalTo = to.length > 0 ? to : (raw.recipients ?? []);
+  const cc = extractAddresses(raw.cc);
+  const references = Array.isArray(raw.references)
+    ? raw.references.join(" ")
+    : (raw.references ?? undefined);
+
+  return {
+    from,
+    to: finalTo,
+    cc: cc.length > 0 ? cc : undefined,
+    subject: raw.subject ?? "",
+    text: raw.text,
+    html: raw.html,
+    headers: typeof raw.headers === "object" && !Array.isArray(raw.headers)
+      ? raw.headers
+      : undefined,
+    inReplyTo: raw.inReplyTo,
+    references,
+    attachments: raw.attachments?.length
+      ? normalizeAttachments(raw.attachments)
+      : undefined,
+  };
+};
+
 const handleInbound = async (
   req: Request,
   _params: Record<string, string>,
@@ -114,18 +204,27 @@ const handleInbound = async (
     );
   }
 
-  const email = JSON.parse(body) as InboundEmail;
+  // deno-lint-ignore no-explicit-any
+  const raw = JSON.parse(body) as any;
+  const email = normalizePayload(raw);
+
+  console.log("[inbound] Received email", {
+    from: email.from,
+    to: email.to,
+    subject: email.subject,
+    hasText: !!email.text,
+    hasHtml: !!email.html,
+    attachmentCount: email.attachments?.length ?? 0,
+  });
 
   // Find target account(s) by recipient address
   const recipients = [...email.to, ...(email.cc ?? [])];
   for (const recipient of recipients) {
-    const address = recipient.includes("<")
-      ? recipient.match(/<(.+)>/)?.[1] ?? recipient
-      : recipient;
+    const address = extractAddress(recipient);
 
     const { accounts } = await db.query({
       accounts: {
-        $: { where: { address: address.toLowerCase() } },
+        $: { where: { address } },
         webhooks: {},
         organization: {},
         messages: {},

@@ -1,6 +1,40 @@
 import { useState } from "preact/hooks";
 import { auth } from "./db.ts";
 
+const ALLOWED_DOMAINS = new Set([
+  "gmail.com",
+  "googlemail.com",
+  "outlook.com",
+  "hotmail.com",
+  "live.com",
+  "yahoo.com",
+  "ymail.com",
+  "protonmail.com",
+  "proton.me",
+  "icloud.com",
+  "me.com",
+  "mac.com",
+  "aol.com",
+  "zoho.com",
+  "fastmail.com",
+  "hey.com",
+  "pm.me",
+  "tutanota.com",
+  "tuta.com",
+  "gmx.com",
+  "gmx.net",
+  "mail.com",
+  "yandex.com",
+  "qq.com",
+  "163.com",
+  "126.com",
+]);
+
+const isAllowedEmail = (email: string): boolean => {
+  const domain = email.split("@")[1]?.toLowerCase() ?? "";
+  return ALLOWED_DOMAINS.has(domain);
+};
+
 const Login = () => {
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
@@ -9,6 +43,12 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
 
   const sendCode = async () => {
+    if (!isAllowedEmail(email)) {
+      setError(
+        "Please use a personal email (Gmail, Outlook, Yahoo, ProtonMail, iCloud, etc.)",
+      );
+      return;
+    }
     setLoading(true);
     setError("");
     try {

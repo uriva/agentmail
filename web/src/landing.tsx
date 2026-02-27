@@ -259,8 +259,8 @@ const karma = await mail.karma.getBalance();`}
           />
           <KarmaRow
             event="account_deleted"
-            amount="+10"
-            description="Delete an email address (karma refunded)"
+            amount="+5"
+            description="Delete an email address (partial karma refund)"
           />
           <KarmaRow
             event="email_sent"
@@ -290,7 +290,7 @@ const karma = await mail.karma.getBalance();`}
           <ApiEndpoint method="POST" path="/v1/accounts" description="Create an email account" cost="-10 karma" />
           <ApiEndpoint method="GET" path="/v1/accounts" description="List all accounts" />
           <ApiEndpoint method="GET" path="/v1/accounts/:id" description="Get account details" />
-          <ApiEndpoint method="DELETE" path="/v1/accounts/:id" description="Delete an account" cost="+10 karma" />
+          <ApiEndpoint method="DELETE" path="/v1/accounts/:id" description="Delete an account" cost="+5 karma" />
           <ApiEndpoint method="POST" path="/v1/accounts/:id/messages" description="Send an email" cost="-1 karma" />
           <ApiEndpoint method="GET" path="/v1/accounts/:id/messages" description="List messages (inbox)" />
           <ApiEndpoint method="GET" path="/v1/accounts/:id/messages/:msgId" description="Get full message with body and attachments" />

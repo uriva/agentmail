@@ -106,6 +106,27 @@ const AccountsList = ({
   const [sendingFor, setSendingFor] = useState<string | null>(null);
   const [webhookFor, setWebhookFor] = useState<string | null>(null);
   const [apiKeyFor, setApiKeyFor] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const handleDeleteAccount = async (accountId: string) => {
+    setDeletingId(accountId);
+    try {
+      const res = await fetch(`${API_BASE}/v1/accounts/${accountId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${userToken}`, "X-Org-Id": orgId },
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.error || "Failed to delete account");
+      }
+      setConfirmDeleteId(null);
+    } catch {
+      alert("Failed to delete account");
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const handleCreateAccount = async () => {
     const address = newAddress.trim();
@@ -221,7 +242,7 @@ const AccountsList = ({
                           }
                           class="text-xs px-2 py-1 bg-emerald-700 hover:bg-emerald-600 text-white rounded transition-colors"
                         >
-                          {sendingFor === account.id ? "Cancel" : "Send"}
+                          {sendingFor === account.id ? "Cancel" : "Send Email"}
                         </button>
                         <button
                           onClick={() =>
@@ -243,6 +264,30 @@ const AccountsList = ({
                         >
                           {apiKeyFor === account.id ? "Cancel" : "API Key"}
                         </button>
+                        {confirmDeleteId === account.id ? (
+                          <span class="flex items-center gap-1">
+                            <button
+                              onClick={() => handleDeleteAccount(account.id)}
+                              disabled={deletingId === account.id}
+                              class="text-xs px-2 py-1 bg-red-700 hover:bg-red-600 disabled:bg-slate-700 text-white rounded transition-colors"
+                            >
+                              {deletingId === account.id ? "..." : "Confirm"}
+                            </button>
+                            <button
+                              onClick={() => setConfirmDeleteId(null)}
+                              class="text-xs px-2 py-1 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded transition-colors"
+                            >
+                              No
+                            </button>
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => setConfirmDeleteId(account.id)}
+                            class="text-xs px-2 py-1 bg-red-900/50 hover:bg-red-800 text-red-300 rounded transition-colors"
+                          >
+                            Release
+                          </button>
+                        )}
                       </div>
                     </div>
                     <div class="flex gap-4 text-sm">
