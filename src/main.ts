@@ -196,7 +196,7 @@ const routes: readonly Route[] = [
     "/debug/accounts",
     async () => {
       const { accounts } = await db.query({
-        accounts: { organization: {} },
+        accounts: { organization: {}, messages: {} },
       });
       return Response.json(
         accounts.map((a) => ({
@@ -206,6 +206,18 @@ const routes: readonly Route[] = [
             const org = a.organization;
             return Array.isArray(org) ? org[0]?.id : org?.id;
           })(),
+          messageCount: a.messages?.length ?? 0,
+          // deno-lint-ignore no-explicit-any
+          recentMessages: (a.messages as any[])
+            ?.sort((x, y) => y.timestamp - x.timestamp)
+            .slice(0, 5)
+            .map((m) => ({
+              id: m.id,
+              from: m.from,
+              subject: m.subject,
+              direction: m.direction,
+              timestamp: m.timestamp,
+            })),
         })),
       );
     },
