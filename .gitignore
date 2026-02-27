@@ -1,0 +1,5 @@
+node_modules/
+.env
+*.json.bak
+gcp-sa-key.json
+web/dist/

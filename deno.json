@@ -1,0 +1,37 @@
+{
+  "name": "@agentmail/api",
+  "version": "0.1.0",
+  "exports": "./src/main.ts",
+  "tasks": {
+    "dev": "deno run --allow-net --allow-env --allow-read --watch src/main.ts",
+    "dev:web": "deno run -A --node-modules-dir=auto npm:vite",
+    "build:web": "deno run -A --node-modules-dir=auto npm:vite build",
+    "start": "deno run --allow-net --allow-env --allow-read src/main.ts",
+    "check": "deno check src/main.ts && deno check sdk/src/index.ts",
+    "push-schema": "npx instant-cli push schema --yes",
+    "push-perms": "npx instant-cli push perms --yes"
+  },
+  "imports": {
+    "gamla": "jsr:@uri/gamla",
+    "@instantdb/admin": "npm:@instantdb/admin@0.22.141",
+    "@instantdb/react": "npm:@instantdb/react@0.22.141",
+    "@instantdb/core": "npm:@instantdb/core@0.22.141",
+    "preact": "npm:preact@10.26.7",
+    "preact/": "npm:preact@10.26.7/",
+    "@preact/signals": "npm:@preact/signals@2.1.1",
+    "preact-iso": "npm:preact-iso@2.9.1",
+    "@preact/preset-vite": "npm:@preact/preset-vite@2.10.2",
+    "@deno/vite-plugin": "npm:@deno/vite-plugin@^1.0.5",
+    "vite": "npm:vite@^7.1.5"
+  },
+  "deploy": {
+    "org": "uriva",
+    "app": "agentmail"
+  },
+  "compilerOptions": {
+    "strict": true,
+    "jsx": "react-jsx",
+    "jsxImportSource": "preact",
+    "types": []
+  }
+}
