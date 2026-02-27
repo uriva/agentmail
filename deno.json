@@ -26,9 +26,7 @@
   },
   "deploy": {
     "org": "uriva",
-    "app": "agentmail",
-    "entrypoint": "./src/main.ts",
-    "include": ["web/dist"]
+    "app": "agentmail"
   },
   "compilerOptions": {
     "strict": true,
