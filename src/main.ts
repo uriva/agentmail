@@ -190,6 +190,28 @@ const routes: readonly Route[] = [
   // Inbound (from Forward Email, no auth — uses webhook secret)
   route("POST", "/inbound", handleInbound, "none"),
 
+  // Temporary debug endpoint — remove after inbound is working
+  route(
+    "GET",
+    "/debug/accounts",
+    async () => {
+      const { accounts } = await db.query({
+        accounts: { organization: {} },
+      });
+      return Response.json(
+        accounts.map((a) => ({
+          id: a.id,
+          address: a.address,
+          orgId: (() => {
+            const org = a.organization;
+            return Array.isArray(org) ? org[0]?.id : org?.id;
+          })(),
+        })),
+      );
+    },
+    "none",
+  ),
+
   // Health
   route(
     "GET",
