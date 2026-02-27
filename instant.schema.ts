@@ -129,6 +129,14 @@ const _schema = i.schema({
       },
       reverse: { on: "organizations", has: "many", label: "members" },
     },
+    orgBilling: {
+      forward: {
+        on: "organizations",
+        has: "one",
+        label: "billingUser",
+      },
+      reverse: { on: "$users", has: "many", label: "billingOrgs" },
+    },
   },
 });
 

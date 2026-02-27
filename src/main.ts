@@ -23,7 +23,12 @@ import {
   listApiKeys,
   deleteApiKey,
 } from "./handlers/apiKeys.ts";
-import { createOrganization } from "./handlers/organizations.ts";
+import { createOrganization, listOrganizations, renameOrganization } from "./handlers/organizations.ts";
+import {
+  inviteMember,
+  listMembers,
+  removeMember,
+} from "./handlers/members.ts";
 
 // --- Types ---
 
@@ -96,15 +101,17 @@ const authenticateUserToken = async (
     const user = await db.auth.verifyToken(token);
     if (!user?.id) return null;
 
-    // Find the user's organization
+    const orgId = req.headers.get("x-org-id");
+    if (!orgId) return null;
+
+    // Verify the user is a member of this org
     const { organizations } = await db.query({
       organizations: {
-        $: { where: { "members.id": user.id } },
+        $: { where: { id: orgId, "members.id": user.id } },
       },
     });
 
-    const org = organizations[0];
-    return org?.id ?? null;
+    return organizations.length > 0 ? orgId : null;
   } catch {
     return null;
   }
@@ -172,6 +179,13 @@ const routes: readonly Route[] = [
 
   // Organizations (user-token auth — org may not exist yet)
   route("POST", "/v1/organizations", createOrganization, "userTokenOptionalOrg"),
+  route("GET", "/v1/organizations", listOrganizations, "userTokenOptionalOrg"),
+  route("PATCH", "/v1/organizations", renameOrganization, "userToken"),
+
+  // Members (user-token auth — requires org via X-Org-Id)
+  route("POST", "/v1/members", inviteMember, "userToken"),
+  route("GET", "/v1/members", listMembers, "userToken"),
+  route("DELETE", "/v1/members/:memberId", removeMember, "userToken"),
 
   // Inbound (from Forward Email, no auth — uses webhook secret)
   route("POST", "/inbound", handleInbound, "none"),
@@ -195,8 +209,8 @@ const jsonError = (status: number, error: string, code: string): Response =>
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Org-Id",
 };
 
 // --- Request handler ---

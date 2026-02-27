@@ -1,6 +1,15 @@
 import { useState } from "preact/hooks";
 import { useQuery, useAuth } from "./db.ts";
 
+// @ts-ignore: Vite injects import.meta.env at build time
+const API_BASE: string = import.meta.env.VITE_API_BASE_URL ?? "";
+
+const apiHeaders = (userToken: string, orgId: string) => ({
+  "Content-Type": "application/json",
+  Authorization: `Bearer ${userToken}`,
+  "X-Org-Id": orgId,
+});
+
 const Card = ({
   title,
   children,
@@ -96,6 +105,7 @@ const AccountsList = ({
   const [createError, setCreateError] = useState<string | null>(null);
   const [sendingFor, setSendingFor] = useState<string | null>(null);
   const [webhookFor, setWebhookFor] = useState<string | null>(null);
+  const [apiKeyFor, setApiKeyFor] = useState<string | null>(null);
 
   const handleCreateAccount = async () => {
     const address = newAddress.trim();
@@ -107,10 +117,7 @@ const AccountsList = ({
       if (newDisplayName.trim()) body.displayName = newDisplayName.trim();
       const res = await fetch(`${API_BASE}/v1/accounts`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${userToken}`,
-        },
+        headers: apiHeaders(userToken, orgId),
         body: JSON.stringify(body),
       });
       if (!res.ok) {
@@ -136,7 +143,6 @@ const AccountsList = ({
 
   return (
     <Card title={`Email Accounts (${accounts.length})`}>
-      {/* Create account form */}
       <div class="flex gap-2 mb-4">
         <input
           type="text"
@@ -227,6 +233,16 @@ const AccountsList = ({
                         >
                           {webhookFor === account.id ? "Cancel" : "Webhooks"}
                         </button>
+                        <button
+                          onClick={() =>
+                            setApiKeyFor(
+                              apiKeyFor === account.id ? null : account.id,
+                            )
+                          }
+                          class="text-xs px-2 py-1 bg-slate-700 hover:bg-slate-600 text-white rounded transition-colors"
+                        >
+                          {apiKeyFor === account.id ? "Cancel" : "API Key"}
+                        </button>
                       </div>
                     </div>
                     <div class="flex gap-4 text-sm">
@@ -253,6 +269,7 @@ const AccountsList = ({
                       accountId={account.id}
                       fromAddress={account.address}
                       userToken={userToken}
+                      orgId={orgId}
                       onDone={() => setSendingFor(null)}
                     />
                   )}
@@ -261,6 +278,14 @@ const AccountsList = ({
                       accountId={account.id}
                       webhooks={account.webhooks}
                       userToken={userToken}
+                      orgId={orgId}
+                    />
+                  )}
+                  {apiKeyFor === account.id && (
+                    <AccountApiKey
+                      accountId={account.id}
+                      userToken={userToken}
+                      orgId={orgId}
                     />
                   )}
                 </div>
@@ -277,10 +302,12 @@ const WebhookManager = ({
   accountId,
   webhooks,
   userToken,
+  orgId,
 }: {
   accountId: string;
   webhooks: { id: string; url: string; active: boolean; createdAt: number }[];
   userToken: string;
+  orgId: string;
 }) => {
   const [newUrl, setNewUrl] = useState("");
   const [adding, setAdding] = useState(false);
@@ -298,10 +325,7 @@ const WebhookManager = ({
         `${API_BASE}/v1/accounts/${accountId}/webhooks`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${userToken}`,
-          },
+          headers: apiHeaders(userToken, orgId),
           body: JSON.stringify({ url }),
         },
       );
@@ -326,7 +350,7 @@ const WebhookManager = ({
         `${API_BASE}/v1/accounts/${accountId}/webhooks/${webhookId}`,
         {
           method: "DELETE",
-          headers: { Authorization: `Bearer ${userToken}` },
+          headers: { Authorization: `Bearer ${userToken}`, "X-Org-Id": orgId },
         },
       );
     } finally {
@@ -407,15 +431,157 @@ const WebhookManager = ({
   );
 };
 
+const AccountApiKey = ({
+  accountId,
+  userToken,
+  orgId,
+}: {
+  accountId: string;
+  userToken: string;
+  orgId: string;
+}) => {
+  const { isLoading, data } = useQuery({
+    apiKeys: {
+      $: { where: { "account.id": accountId } },
+    },
+  });
+
+  const [creating, setCreating] = useState(false);
+  const [createdKey, setCreatedKey] = useState<string | null>(null);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const handleCreate = async () => {
+    setCreating(true);
+    setCreateError(null);
+    try {
+      const res = await fetch(
+        `${API_BASE}/v1/accounts/${accountId}/api-keys`,
+        {
+          method: "POST",
+          headers: apiHeaders(userToken, orgId),
+          body: JSON.stringify({ name: "Account key" }),
+        },
+      );
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to create API key");
+      }
+      const { data: keyData } = await res.json();
+      setCreatedKey(keyData.key);
+    } catch (e: unknown) {
+      setCreateError(e instanceof Error ? e.message : "Unknown error");
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleDelete = async (apiKeyId: string) => {
+    setDeletingId(apiKeyId);
+    try {
+      await fetch(`${API_BASE}/v1/api-keys/${apiKeyId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${userToken}`, "X-Org-Id": orgId },
+      });
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleCopy = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // fallback
+    }
+  };
+
+  const keys = data?.apiKeys ?? [];
+
+  return (
+    <div class="mt-2 p-4 bg-slate-900/50 border border-slate-700 rounded-lg space-y-3">
+      <div class="text-xs text-slate-400 font-medium uppercase tracking-wider">
+        API Key
+      </div>
+
+      {createdKey && (
+        <div class="p-3 bg-emerald-900/30 border border-emerald-700 rounded-lg">
+          <div class="text-emerald-300 text-sm mb-1">
+            Key created. Copy it now -- it won't be shown again.
+          </div>
+          <div class="flex items-center gap-2">
+            <code class="flex-1 bg-slate-900 text-emerald-200 px-3 py-2 rounded font-mono text-xs break-all select-all">
+              {createdKey}
+            </code>
+            <button
+              onClick={() => handleCopy(createdKey)}
+              class="px-2 py-1 bg-emerald-700 hover:bg-emerald-600 text-white text-xs rounded transition-colors flex-shrink-0"
+            >
+              {copied ? "Copied!" : "Copy"}
+            </button>
+          </div>
+          <button
+            onClick={() => setCreatedKey(null)}
+            class="block mt-2 text-xs text-slate-400 hover:text-white"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {!isLoading && keys.length > 0 && (
+        <div class="space-y-2">
+          {keys.map(
+            (k: { id: string; prefix: string; name: string; createdAt: number }) => (
+              <div
+                key={k.id}
+                class="flex items-center justify-between p-2 bg-slate-900 rounded border border-slate-700"
+              >
+                <span class="text-sm text-white font-mono">
+                  {k.prefix}...
+                </span>
+                <button
+                  onClick={() => handleDelete(k.id)}
+                  disabled={deletingId === k.id}
+                  class="text-xs text-red-400 hover:text-red-300 disabled:text-slate-600 transition-colors"
+                >
+                  {deletingId === k.id ? "..." : "Delete"}
+                </button>
+              </div>
+            ),
+          )}
+        </div>
+      )}
+
+      {!isLoading && keys.length === 0 && !createdKey && (
+        <button
+          onClick={handleCreate}
+          disabled={creating}
+          class="w-full px-3 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white text-sm font-medium rounded-lg transition-colors"
+        >
+          {creating ? "Creating..." : "Generate API Key"}
+        </button>
+      )}
+
+      {createError && <div class="text-red-400 text-sm">{createError}</div>}
+    </div>
+  );
+};
+
 const SendMessageForm = ({
   accountId,
   fromAddress,
   userToken,
+  orgId,
   onDone,
 }: {
   accountId: string;
   fromAddress: string;
   userToken: string;
+  orgId: string;
   onDone: () => void;
 }) => {
   const [to, setTo] = useState("");
@@ -434,10 +600,7 @@ const SendMessageForm = ({
         `${API_BASE}/v1/accounts/${accountId}/messages`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${userToken}`,
-          },
+          headers: apiHeaders(userToken, orgId),
           body: JSON.stringify({
             to: to
               .split(",")
@@ -620,17 +783,12 @@ const RecentMessages = ({ orgId }: { orgId: string }) => {
   );
 };
 
-// @ts-ignore: Vite injects import.meta.env at build time
-const API_BASE: string = import.meta.env.VITE_API_BASE_URL ?? "";
-
 const ApiKeySection = ({
   orgId,
   userToken,
-  accounts,
 }: {
   orgId: string;
   userToken: string;
-  accounts: { id: string; address: string }[];
 }) => {
   const { isLoading, error, data } = useQuery({
     apiKeys: {
@@ -640,7 +798,6 @@ const ApiKeySection = ({
   });
 
   const [newKeyName, setNewKeyName] = useState("");
-  const [selectedAccountId, setSelectedAccountId] = useState("");
   const [createdKey, setCreatedKey] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -652,15 +809,10 @@ const ApiKeySection = ({
     setCreating(true);
     setCreateError(null);
     try {
-      const body: Record<string, string> = { name };
-      if (selectedAccountId) body.accountId = selectedAccountId;
       const res = await fetch(`${API_BASE}/v1/api-keys`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${userToken}`,
-        },
-        body: JSON.stringify(body),
+        headers: apiHeaders(userToken, orgId),
+        body: JSON.stringify({ name }),
       });
       if (!res.ok) {
         const err = await res.json();
@@ -669,7 +821,6 @@ const ApiKeySection = ({
       const { data: keyData } = await res.json();
       setCreatedKey(keyData.key);
       setNewKeyName("");
-      setSelectedAccountId("");
     } catch (e: unknown) {
       setCreateError(e instanceof Error ? e.message : "Unknown error");
     } finally {
@@ -682,7 +833,7 @@ const ApiKeySection = ({
     try {
       await fetch(`${API_BASE}/v1/api-keys/${apiKeyId}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${userToken}` },
+        headers: { Authorization: `Bearer ${userToken}`, "X-Org-Id": orgId },
       });
     } finally {
       setDeletingId(null);
@@ -695,23 +846,24 @@ const ApiKeySection = ({
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // fallback: select a hidden input
+      // fallback
     }
   };
 
   if (isLoading) return <div class="text-slate-400">Loading API keys...</div>;
   if (error) return <div class="text-red-400">Error: {error.message}</div>;
 
-  const keys = data?.apiKeys ?? [];
+  const keys = (data?.apiKeys ?? []).filter(
+    (k: { account?: unknown }) => !k.account,
+  );
 
   return (
-    <Card title={`API Keys (${keys.length})`}>
-      {/* Newly created key banner */}
+    <Card title="Org Admin Token">
       {createdKey && (
         <div class="mb-4 p-4 bg-emerald-900/30 border border-emerald-700 rounded-lg">
           <div class="flex items-center justify-between mb-2">
             <span class="text-emerald-300 text-sm font-medium">
-              API key created! Copy it now — it won't be shown again.
+              Token created! Copy it now -- it won't be shown again.
             </span>
             <button
               onClick={() => setCreatedKey(null)}
@@ -734,7 +886,6 @@ const ApiKeySection = ({
         </div>
       )}
 
-      {/* Create form */}
       <div class="flex gap-2 mb-4">
         <input
           type="text"
@@ -742,39 +893,24 @@ const ApiKeySection = ({
           onInput={(e: Event) =>
             setNewKeyName((e.target as HTMLInputElement).value)
           }
-          placeholder="Key name (optional)"
+          placeholder="Token name (optional)"
           class="flex-1 bg-slate-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 placeholder-slate-500 focus:border-blue-500 focus:outline-none"
         />
-        <select
-          value={selectedAccountId}
-          onChange={(e: Event) =>
-            setSelectedAccountId((e.target as HTMLSelectElement).value)
-          }
-          class="bg-slate-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none"
-        >
-          <option value="">Org-wide</option>
-          {accounts.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.address}
-            </option>
-          ))}
-        </select>
         <button
           onClick={handleCreate}
           disabled={creating}
           class="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white text-sm font-medium rounded-lg transition-colors flex-shrink-0"
         >
-          {creating ? "Creating..." : "Create API Key"}
+          {creating ? "Creating..." : "Create Token"}
         </button>
       </div>
       {createError && (
         <div class="mb-4 text-red-400 text-sm">{createError}</div>
       )}
 
-      {/* Key list */}
       {keys.length === 0 ? (
         <div class="text-slate-500 text-center py-4">
-          No API keys yet. Create one above to get started.
+          No org admin tokens yet. Create one above to get started.
         </div>
       ) : (
         <div class="space-y-2">
@@ -785,7 +921,6 @@ const ApiKeySection = ({
               name: string;
               createdAt: number;
               lastUsedAt?: number;
-              account?: { id: string; address: string };
             }) => (
               <div
                 key={k.id}
@@ -796,15 +931,6 @@ const ApiKeySection = ({
                   <span class="text-slate-500 text-xs font-mono">
                     {k.prefix}...
                   </span>
-                  {k.account ? (
-                    <span class="text-xs px-2 py-0.5 rounded bg-purple-900/50 text-purple-300 border border-purple-700">
-                      {k.account.address}
-                    </span>
-                  ) : (
-                    <span class="text-xs px-2 py-0.5 rounded bg-blue-900/50 text-blue-300 border border-blue-700">
-                      org
-                    </span>
-                  )}
                 </div>
                 <div class="flex items-center gap-3">
                   <span class="text-xs text-slate-500">
@@ -829,21 +955,282 @@ const ApiKeySection = ({
   );
 };
 
-const Dashboard = () => {
-  const { user } = useAuth();
-  const [creatingOrg, setCreatingOrg] = useState(false);
-  const [orgError, setOrgError] = useState<string | null>(null);
-
-  // Query organizations linked to the authenticated user
+const MembersSection = ({
+  orgId,
+  userToken,
+  currentUserId,
+}: {
+  orgId: string;
+  userToken: string;
+  currentUserId: string;
+}) => {
   const { isLoading, data } = useQuery({
     organizations: {
-      $: { where: { "members.id": user?.id ?? "" } },
-      accounts: {},
+      $: { where: { id: orgId } },
+      members: {},
+      billingUser: {},
     },
   });
 
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviting, setInviting] = useState(false);
+  const [inviteError, setInviteError] = useState<string | null>(null);
+  const [inviteSuccess, setInviteSuccess] = useState<string | null>(null);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+
+  const org = data?.organizations?.[0];
+  const members = org?.members ?? [];
+  // @ts-ignore billingUser from query
+  const billingUserId = org?.billingUser?.id;
+  const isBilling = currentUserId === billingUserId;
+
+  const handleInvite = async () => {
+    const email = inviteEmail.trim().toLowerCase();
+    if (!email) return;
+    setInviting(true);
+    setInviteError(null);
+    setInviteSuccess(null);
+    try {
+      const res = await fetch(`${API_BASE}/v1/members`, {
+        method: "POST",
+        headers: apiHeaders(userToken, orgId),
+        body: JSON.stringify({ email }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to invite member");
+      }
+      setInviteSuccess(`${email} added to org`);
+      setInviteEmail("");
+      setTimeout(() => setInviteSuccess(null), 3000);
+    } catch (e: unknown) {
+      setInviteError(e instanceof Error ? e.message : "Unknown error");
+    } finally {
+      setInviting(false);
+    }
+  };
+
+  const handleRemove = async (memberId: string) => {
+    setRemovingId(memberId);
+    try {
+      const res = await fetch(`${API_BASE}/v1/members/${memberId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${userToken}`, "X-Org-Id": orgId },
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.error || "Failed to remove member");
+      }
+    } finally {
+      setRemovingId(null);
+    }
+  };
+
+  if (isLoading) return <div class="text-slate-400">Loading members...</div>;
+
+  return (
+    <Card title="Team Members">
+      {/* Invite form */}
+      <div class="flex gap-2 mb-4">
+        <input
+          type="email"
+          value={inviteEmail}
+          onInput={(e: Event) =>
+            setInviteEmail((e.target as HTMLInputElement).value)
+          }
+          placeholder="Email address to invite"
+          class="flex-1 bg-slate-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 placeholder-slate-500 focus:border-blue-500 focus:outline-none"
+        />
+        <button
+          onClick={handleInvite}
+          disabled={inviting || !inviteEmail.trim()}
+          class="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white text-sm font-medium rounded-lg transition-colors flex-shrink-0"
+        >
+          {inviting ? "Inviting..." : "Invite"}
+        </button>
+      </div>
+      {inviteError && <div class="mb-3 text-red-400 text-sm">{inviteError}</div>}
+      {inviteSuccess && (
+        <div class="mb-3 text-emerald-400 text-sm">{inviteSuccess}</div>
+      )}
+
+      {/* Member list */}
+      <div class="space-y-2">
+        {members.map((m: { id: string; email: string }) => (
+          <div
+            key={m.id}
+            class="flex items-center justify-between p-3 bg-slate-900 rounded-lg border border-slate-700"
+          >
+            <div class="flex items-center gap-2">
+              <span class="text-white text-sm">{m.email}</span>
+              {m.id === billingUserId && (
+                <span class="text-xs px-2 py-0.5 bg-amber-900/50 text-amber-300 rounded">
+                  billing
+                </span>
+              )}
+              {m.id === currentUserId && (
+                <span class="text-xs text-slate-500">(you)</span>
+              )}
+            </div>
+            {isBilling && m.id !== billingUserId && (
+              <button
+                onClick={() => handleRemove(m.id)}
+                disabled={removingId === m.id}
+                class="text-xs text-red-400 hover:text-red-300 disabled:text-slate-600 transition-colors"
+              >
+                {removingId === m.id ? "Removing..." : "Remove"}
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+};
+
+const OrgSwitcher = ({
+  orgs,
+  selectedOrgId,
+  onSelect,
+  onCreateOrg,
+  creatingOrg,
+  userToken,
+}: {
+  orgs: { id: string; name: string }[];
+  selectedOrgId: string | null;
+  onSelect: (orgId: string) => void;
+  onCreateOrg: () => void;
+  creatingOrg: boolean;
+  userToken: string;
+}) => {
+  const [editing, setEditing] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  if (orgs.length === 0) return null;
+
+  const currentOrg = orgs.find((o) => o.id === selectedOrgId) ?? orgs[0];
+
+  const startEdit = () => {
+    setEditName(currentOrg.name);
+    setEditing(true);
+  };
+
+  const saveRename = async () => {
+    const name = editName.trim();
+    if (!name || name === currentOrg.name) {
+      setEditing(false);
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await fetch(`${API_BASE}/v1/organizations`, {
+        method: "PATCH",
+        headers: apiHeaders(userToken, currentOrg.id),
+        body: JSON.stringify({ name }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.error || "Failed to rename");
+      }
+    } finally {
+      setSaving(false);
+      setEditing(false);
+    }
+  };
+
+  return (
+    <div class="flex items-center gap-3">
+      {orgs.length > 1 ? (
+        <select
+          value={selectedOrgId ?? ""}
+          onChange={(e: Event) =>
+            onSelect((e.target as HTMLSelectElement).value)
+          }
+          class="bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none"
+        >
+          {orgs.map((org) => (
+            <option key={org.id} value={org.id}>
+              {org.name}
+            </option>
+          ))}
+        </select>
+      ) : editing ? (
+        <div class="flex items-center gap-2">
+          <input
+            type="text"
+            value={editName}
+            onInput={(e: Event) =>
+              setEditName((e.target as HTMLInputElement).value)
+            }
+            onKeyDown={(e: KeyboardEvent) => {
+              if (e.key === "Enter") saveRename();
+              if (e.key === "Escape") setEditing(false);
+            }}
+            class="bg-slate-800 border border-slate-700 text-white text-lg font-bold rounded-lg px-3 py-1 focus:border-blue-500 focus:outline-none"
+            autoFocus
+          />
+          <button
+            onClick={saveRename}
+            disabled={saving}
+            class="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded transition-colors"
+          >
+            {saving ? "..." : "Save"}
+          </button>
+          <button
+            onClick={() => setEditing(false)}
+            class="text-xs px-2 py-1 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
+      ) : (
+        <h1
+          class="text-2xl font-bold text-white cursor-pointer hover:text-slate-300 transition-colors"
+          onClick={startEdit}
+          title="Click to rename"
+        >
+          {orgs[0].name}
+        </h1>
+      )}
+      {!editing && (
+        <button
+          onClick={onCreateOrg}
+          disabled={creatingOrg}
+          class="text-xs px-3 py-1.5 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 text-slate-300 rounded-lg transition-colors"
+        >
+          {creatingOrg ? "Creating..." : "+ New Org"}
+        </button>
+      )}
+    </div>
+  );
+};
+
+const Dashboard = () => {
+  const { user } = useAuth();
+  const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
+  const [creatingOrg, setCreatingOrg] = useState(false);
+  const [orgError, setOrgError] = useState<string | null>(null);
+  const [newOrgName, setNewOrgName] = useState("");
+  const [showNewOrgForm, setShowNewOrgForm] = useState(false);
+
+  const { isLoading, data } = useQuery({
+    organizations: {
+      $: { where: { "members.id": user?.id ?? "" } },
+      billingUser: {},
+    },
+  });
+
+  const orgs = data?.organizations ?? [];
+
+  // Auto-select first org if none selected
+  const activeOrgId = selectedOrgId && orgs.some((o: { id: string }) => o.id === selectedOrgId)
+    ? selectedOrgId
+    : orgs[0]?.id ?? null;
+
   const handleCreateOrg = async () => {
     if (!user?.refresh_token) return;
+    const name = newOrgName.trim() || `${user.email}'s Org`;
     setCreatingOrg(true);
     setOrgError(null);
     try {
@@ -853,13 +1240,16 @@ const Dashboard = () => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${user.refresh_token}`,
         },
-        body: JSON.stringify({ name: `${user.email}'s Org` }),
+        body: JSON.stringify({ name }),
       });
       if (!res.ok) {
         const err = await res.json();
         throw new Error(err.error || "Failed to create organization");
       }
-      // InstantDB reactive query will pick up the new org automatically
+      const { data: orgData } = await res.json();
+      setSelectedOrgId(orgData.id);
+      setShowNewOrgForm(false);
+      setNewOrgName("");
     } catch (e: unknown) {
       setOrgError(e instanceof Error ? e.message : "Unknown error");
     } finally {
@@ -875,9 +1265,8 @@ const Dashboard = () => {
     );
   }
 
-  const org = data?.organizations?.[0];
-  const accounts = data?.organizations?.[0]?.accounts ?? [];
-  if (!org) {
+  // No orgs yet -- show welcome
+  if (orgs.length === 0) {
     return (
       <div class="text-center py-16">
         <h1 class="text-2xl font-bold text-white mb-2">Welcome to AgentMail</h1>
@@ -885,13 +1274,24 @@ const Dashboard = () => {
           Set up your organization to start creating email accounts for your AI
           agents.
         </p>
-        <button
-          onClick={handleCreateOrg}
-          disabled={creatingOrg}
-          class="px-6 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white font-medium rounded-lg transition-colors"
-        >
-          {creatingOrg ? "Setting up..." : "Get Started"}
-        </button>
+        <div class="flex items-center justify-center gap-2 mb-4">
+          <input
+            type="text"
+            value={newOrgName}
+            onInput={(e: Event) =>
+              setNewOrgName((e.target as HTMLInputElement).value)
+            }
+            placeholder="Organization name"
+            class="bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-4 py-3 placeholder-slate-500 focus:border-blue-500 focus:outline-none w-64"
+          />
+          <button
+            onClick={handleCreateOrg}
+            disabled={creatingOrg}
+            class="px-6 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white font-medium rounded-lg transition-colors"
+          >
+            {creatingOrg ? "Setting up..." : "Get Started"}
+          </button>
+        </div>
         {orgError && (
           <div class="mt-4 text-red-400 text-sm">{orgError}</div>
         )}
@@ -899,18 +1299,66 @@ const Dashboard = () => {
     );
   }
 
+  const userToken = user?.refresh_token ?? "";
+
   return (
     <div class="space-y-6">
       <div>
-        <h1 class="text-2xl font-bold text-white">{org.name}</h1>
+        <OrgSwitcher
+          orgs={orgs}
+          selectedOrgId={activeOrgId}
+          onSelect={setSelectedOrgId}
+          onCreateOrg={() => setShowNewOrgForm(!showNewOrgForm)}
+          creatingOrg={creatingOrg}
+        />
         <p class="text-slate-400 text-sm mt-1">
           Dashboard &middot; Signed in as {user?.email}
         </p>
       </div>
-      <KarmaSection orgId={org.id} />
-      <AccountsList orgId={org.id} userToken={user?.refresh_token ?? ""} />
-      <RecentMessages orgId={org.id} />
-      <ApiKeySection orgId={org.id} userToken={user?.refresh_token ?? ""} accounts={accounts} />
+
+      {showNewOrgForm && (
+        <Card title="Create Organization">
+          <div class="flex gap-2">
+            <input
+              type="text"
+              value={newOrgName}
+              onInput={(e: Event) =>
+                setNewOrgName((e.target as HTMLInputElement).value)
+              }
+              placeholder="Organization name"
+              class="flex-1 bg-slate-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 placeholder-slate-500 focus:border-blue-500 focus:outline-none"
+            />
+            <button
+              onClick={handleCreateOrg}
+              disabled={creatingOrg}
+              class="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white text-sm font-medium rounded-lg transition-colors flex-shrink-0"
+            >
+              {creatingOrg ? "Creating..." : "Create"}
+            </button>
+            <button
+              onClick={() => setShowNewOrgForm(false)}
+              class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white text-sm rounded-lg transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+          {orgError && <div class="mt-2 text-red-400 text-sm">{orgError}</div>}
+        </Card>
+      )}
+
+      {activeOrgId && (
+        <>
+          <KarmaSection orgId={activeOrgId} />
+          <AccountsList orgId={activeOrgId} userToken={userToken} />
+          <RecentMessages orgId={activeOrgId} />
+          <MembersSection
+            orgId={activeOrgId}
+            userToken={userToken}
+            currentUserId={user?.id ?? ""}
+          />
+          <ApiKeySection orgId={activeOrgId} userToken={userToken} />
+        </>
+      )}
     </div>
   );
 };

@@ -3,20 +3,15 @@ import { recordKarmaEvent } from "../services/karma.ts";
 import { captureEvent } from "../services/posthog.ts";
 
 /**
- * Creates an organization for the authenticated user.
- * The userId is extracted from the user token by main.ts and passed
- * via a custom header since the handler signature uses orgId (which
- * doesn't exist yet for first-time users).
- *
- * This endpoint is special: it's the only userToken endpoint where
- * orgId may be empty (the user has no org yet).
+ * Creates a new organization for the authenticated user.
+ * The user becomes both the billing user and a member.
+ * Limited to 1 org per user by default. Email support for more.
  */
 export const createOrganization = async (
   req: Request,
   _params: Record<string, string>,
   _orgId: string,
 ): Promise<Response> => {
-  // We need the userId to link the org. Extract from the token again.
   const authHeader = req.headers.get("authorization");
   if (!authHeader?.startsWith("Bearer ")) {
     return Response.json(
@@ -38,14 +33,19 @@ export const createOrganization = async (
     );
   }
 
-  // Check if user already has an org
+  // Check if user already owns an org (billing user)
   const { organizations: existing } = await db.query({
-    organizations: { $: { where: { "members.id": userId } } },
+    organizations: { $: { where: { "billingUser.id": userId } } },
   });
   if (existing.length > 0) {
-    return Response.json({
-      data: { id: existing[0].id, name: existing[0].name, alreadyExisted: true },
-    });
+    return Response.json(
+      {
+        error:
+          "You already have an organization. To create additional organizations, email support@theagentmail.net",
+        code: "FORBIDDEN",
+      },
+      { status: 403 },
+    );
   }
 
   let body: { name?: string } = {};
@@ -64,6 +64,7 @@ export const createOrganization = async (
       createdAt: Date.now(),
     }),
     db.tx.organizations[orgId]!.link({ members: userId }),
+    db.tx.organizations[orgId]!.link({ billingUser: userId }),
   ]);
 
   // Seed with welcome karma (money_paid event as signup bonus)
@@ -75,6 +76,86 @@ export const createOrganization = async (
   captureEvent(orgId, "organization_created", { userId, name });
 
   return Response.json({
-    data: { id: orgId, name, alreadyExisted: false },
+    data: { id: orgId, name },
   });
+};
+
+/**
+ * Lists organizations the authenticated user belongs to.
+ */
+export const listOrganizations = async (
+  req: Request,
+  _params: Record<string, string>,
+  _orgId: string,
+): Promise<Response> => {
+  const authHeader = req.headers.get("authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    return Response.json(
+      { error: "Missing authorization", code: "UNAUTHORIZED" },
+      { status: 401 },
+    );
+  }
+
+  const token = authHeader.slice(7);
+  let userId: string;
+  try {
+    const user = await db.auth.verifyToken(token);
+    if (!user?.id) throw new Error("No user");
+    userId = user.id;
+  } catch {
+    return Response.json(
+      { error: "Invalid token", code: "UNAUTHORIZED" },
+      { status: 401 },
+    );
+  }
+
+  const { organizations } = await db.query({
+    organizations: {
+      $: { where: { "members.id": userId } },
+      billingUser: {},
+    },
+  });
+
+  return Response.json({
+    data: organizations.map((org) => ({
+      id: org.id,
+      name: org.name,
+      createdAt: org.createdAt,
+      isBilling: org.billingUser?.id === userId,
+    })),
+  });
+};
+
+/**
+ * Rename an organization. Any member can rename.
+ * orgId comes from X-Org-Id header via auth.
+ */
+export const renameOrganization = async (
+  req: Request,
+  _params: Record<string, string>,
+  orgId: string,
+): Promise<Response> => {
+  let body: { name?: string } = {};
+  try {
+    body = await req.json();
+  } catch {
+    return Response.json(
+      { error: "Invalid request body", code: "BAD_REQUEST" },
+      { status: 400 },
+    );
+  }
+
+  const name = body.name?.trim();
+  if (!name) {
+    return Response.json(
+      { error: "name is required", code: "BAD_REQUEST" },
+      { status: 400 },
+    );
+  }
+
+  await db.transact([
+    db.tx.organizations[orgId]!.update({ name }),
+  ]);
+
+  return Response.json({ data: { id: orgId, name } });
 };
