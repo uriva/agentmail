@@ -194,49 +194,68 @@ const handleInbound = async (
   _params: Record<string, string>,
   _orgId: string,
 ): Promise<Response> => {
-  const body = await req.text();
+  try {
+    const body = await req.text();
 
-  const valid = await verifyInboundSignature(req, body);
-  if (!valid) {
-    return Response.json(
-      { error: "Invalid signature", code: "UNAUTHORIZED" },
-      { status: 401 },
-    );
-  }
+    const valid = await verifyInboundSignature(req, body);
+    if (!valid) {
+      return Response.json(
+        { error: "Invalid signature", code: "UNAUTHORIZED" },
+        { status: 401 },
+      );
+    }
 
-  // deno-lint-ignore no-explicit-any
-  const raw = JSON.parse(body) as any;
-  const email = normalizePayload(raw);
+    // deno-lint-ignore no-explicit-any
+    const raw = JSON.parse(body) as any;
+    const email = normalizePayload(raw);
 
-  console.log("[inbound] Received email", {
-    from: email.from,
-    to: email.to,
-    subject: email.subject,
-    hasText: !!email.text,
-    hasHtml: !!email.html,
+    console.log("[inbound] Received email", {
+      from: email.from,
+      to: email.to,
+      subject: email.subject,
+      hasText: !!email.text,
+      hasHtml: !!email.html,
     attachmentCount: email.attachments?.length ?? 0,
   });
 
   // Find target account(s) by recipient address
   const recipients = [...email.to, ...(email.cc ?? [])];
+  let matched = 0;
   for (const recipient of recipients) {
     const address = extractAddress(recipient);
+    console.log("[inbound] Looking up account for address:", address);
 
-    const { accounts } = await db.query({
-      accounts: {
-        $: { where: { address } },
-        webhooks: {},
-        organization: {},
-        messages: {},
-      },
-    });
+    // deno-lint-ignore no-explicit-any
+    let accounts: any[];
+    try {
+      const result = await db.query({
+        accounts: {
+          $: { where: { address } },
+          webhooks: {},
+          organization: {},
+          messages: {},
+        },
+      });
+      accounts = result.accounts;
+    } catch (e) {
+      console.error("[inbound] DB query failed for address:", address, e);
+      continue;
+    }
 
+    console.log("[inbound] Found", accounts.length, "accounts for", address);
     const account = accounts[0];
     if (!account) continue;
 
-    const org = account.organization;
-    if (!org) continue;
+    // organization is a "has one" link - InstantDB may return array or object
+    const orgRaw = account.organization;
+    const org = Array.isArray(orgRaw) ? orgRaw[0] : orgRaw;
+    if (!org) {
+      console.log("[inbound] Account found but no org linked:", account.id);
+      continue;
+    }
     const orgId = org.id;
+    console.log("[inbound] Matched account", account.id, "in org", orgId);
+    matched++;
 
     // Store attachments in GCS
     const attachmentRecords: {
@@ -324,7 +343,8 @@ const handleInbound = async (
     });
 
     // Deliver to agent webhooks (fire and forget)
-    const activeWebhooks = account.webhooks.filter((w) => w.active);
+    // deno-lint-ignore no-explicit-any
+    const activeWebhooks = account.webhooks.filter((w: any) => w.active);
     for (const webhook of activeWebhooks) {
       deliverWithRetry(
         webhook.url,
@@ -352,7 +372,20 @@ const handleInbound = async (
     }
   }
 
+  if (matched === 0) {
+    console.log("[inbound] No matching accounts found for recipients:", recipients);
+  } else {
+    console.log("[inbound] Processed", matched, "accounts");
+  }
+
   return Response.json({ received: true });
+  } catch (e) {
+    console.error("[inbound] Unhandled error processing inbound email:", e);
+    return Response.json(
+      { error: "Internal error processing inbound email", code: "INTERNAL_ERROR" },
+      { status: 500 },
+    );
+  }
 };
 
 export { handleInbound };
