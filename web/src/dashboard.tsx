@@ -106,6 +106,7 @@ const AccountsList = ({
   const [sendingFor, setSendingFor] = useState<string | null>(null);
   const [webhookFor, setWebhookFor] = useState<string | null>(null);
   const [apiKeyFor, setApiKeyFor] = useState<string | null>(null);
+  const [messagesFor, setMessagesFor] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -256,6 +257,18 @@ const AccountsList = ({
                         </button>
                         <button
                           onClick={() =>
+                            setMessagesFor(
+                              messagesFor === account.id ? null : account.id,
+                            )
+                          }
+                          class="text-xs px-2 py-1 bg-blue-700 hover:bg-blue-600 text-white rounded transition-colors"
+                        >
+                          {messagesFor === account.id
+                            ? "Hide"
+                            : `Messages (${account.messages.length})`}
+                        </button>
+                        <button
+                          onClick={() =>
                             setApiKeyFor(
                               apiKeyFor === account.id ? null : account.id,
                             )
@@ -332,6 +345,83 @@ const AccountsList = ({
                       userToken={userToken}
                       orgId={orgId}
                     />
+                  )}
+                  {messagesFor === account.id && (
+                    <div class="mt-2 p-4 bg-slate-900/50 border border-slate-700 rounded-lg space-y-2">
+                      <div class="text-xs text-slate-400 font-medium uppercase tracking-wider">
+                        Messages
+                      </div>
+                      {account.messages.length === 0 ? (
+                        <div class="text-slate-500 text-center py-4">
+                          No messages yet.
+                        </div>
+                      ) : (
+                        [...account.messages]
+                          .sort(
+                            (a: { timestamp: number }, b: { timestamp: number }) =>
+                              b.timestamp - a.timestamp,
+                          )
+                          .slice(0, 20)
+                          .map(
+                            (msg: {
+                              id: string;
+                              from: string;
+                              subject: string;
+                              direction: string;
+                              status: string;
+                              timestamp: number;
+                            }) => (
+                              <div
+                                key={msg.id}
+                                class="flex items-center gap-3 p-3 bg-slate-900 rounded-lg border border-slate-700"
+                              >
+                                <span
+                                  class={`text-xs px-2 py-0.5 rounded font-medium ${
+                                    msg.direction === "inbound"
+                                      ? "bg-blue-900/50 text-blue-300"
+                                      : "bg-emerald-900/50 text-emerald-300"
+                                  }`}
+                                >
+                                  {msg.direction === "inbound" ? "IN" : "OUT"}
+                                </span>
+                                <div class="flex-1 min-w-0">
+                                  <div class="text-sm text-white truncate">
+                                    {msg.subject || "(no subject)"}
+                                  </div>
+                                  <div class="text-xs text-slate-400 truncate">
+                                    {msg.direction === "inbound"
+                                      ? `From: ${msg.from}`
+                                      : `To: ${account.address}`}
+                                  </div>
+                                </div>
+                                <div class="text-right flex-shrink-0">
+                                  <span
+                                    class={`text-xs ${
+                                      msg.status === "sent" ||
+                                      msg.status === "delivered"
+                                        ? "text-green-400"
+                                        : msg.status === "failed"
+                                          ? "text-red-400"
+                                          : "text-slate-400"
+                                    }`}
+                                  >
+                                    {msg.status}
+                                  </span>
+                                  <div class="text-xs text-slate-500 mt-0.5">
+                                    {new Date(msg.timestamp).toLocaleTimeString(
+                                      [],
+                                      {
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                      },
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            ),
+                          )
+                      )}
+                    </div>
                   )}
                 </div>
               );
@@ -722,112 +812,6 @@ const SendMessageForm = ({
   );
 };
 
-const RecentMessages = ({ orgId }: { orgId: string }) => {
-  const { isLoading, error, data } = useQuery({
-    accounts: {
-      $: { where: { "organization.id": orgId } },
-      messages: {},
-    },
-  });
-
-  if (isLoading) return <div class="text-slate-400">Loading messages...</div>;
-  if (error)
-    return (
-      <div class="text-red-400">Error loading messages: {error.message}</div>
-    );
-
-  const allMessages = (data?.accounts ?? [])
-    .flatMap(
-      (a: {
-        address: string;
-        messages: {
-          id: string;
-          from: string;
-          to: unknown;
-          subject: string;
-          direction: string;
-          status: string;
-          timestamp: number;
-        }[];
-      }) => a.messages.map((m) => ({ ...m, accountAddress: a.address })),
-    )
-    .sort(
-      (a: { timestamp: number }, b: { timestamp: number }) =>
-        b.timestamp - a.timestamp,
-    )
-    .slice(0, 20);
-
-  if (allMessages.length === 0) {
-    return (
-      <Card title="Recent Messages">
-        <div class="text-slate-500 text-center py-8">No messages yet.</div>
-      </Card>
-    );
-  }
-
-  return (
-    <Card title="Recent Messages">
-      <div class="space-y-2">
-        {allMessages.map(
-          (msg: {
-            id: string;
-            from: string;
-            subject: string;
-            direction: string;
-            status: string;
-            timestamp: number;
-            accountAddress: string;
-          }) => (
-            <div
-              key={msg.id}
-              class="flex items-center gap-3 p-3 bg-slate-900 rounded-lg border border-slate-700"
-            >
-              <span
-                class={`text-xs px-2 py-0.5 rounded font-medium ${
-                  msg.direction === "inbound"
-                    ? "bg-blue-900/50 text-blue-300"
-                    : "bg-emerald-900/50 text-emerald-300"
-                }`}
-              >
-                {msg.direction === "inbound" ? "IN" : "OUT"}
-              </span>
-              <div class="flex-1 min-w-0">
-                <div class="text-sm text-white truncate">
-                  {msg.subject || "(no subject)"}
-                </div>
-                <div class="text-xs text-slate-400 truncate">
-                  {msg.direction === "inbound"
-                    ? `From: ${msg.from}`
-                    : `To: ${msg.accountAddress}`}
-                </div>
-              </div>
-              <div class="text-right flex-shrink-0">
-                <span
-                  class={`text-xs ${
-                    msg.status === "sent" || msg.status === "delivered"
-                      ? "text-green-400"
-                      : msg.status === "failed"
-                        ? "text-red-400"
-                        : "text-slate-400"
-                  }`}
-                >
-                  {msg.status}
-                </span>
-                <div class="text-xs text-slate-500 mt-0.5">
-                  {new Date(msg.timestamp).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </div>
-              </div>
-            </div>
-          ),
-        )}
-      </div>
-    </Card>
-  );
-};
-
 const ApiKeySection = ({
   orgId,
   userToken,
@@ -1074,7 +1058,7 @@ const MembersSection = ({
   if (isLoading) return <div class="text-slate-400">Loading members...</div>;
 
   return (
-    <Card title="Team Members">
+    <Card title="Org Admins">
       {/* Invite form */}
       <div class="flex gap-2 mb-4">
         <input
@@ -1395,13 +1379,18 @@ const Dashboard = () => {
         <>
           <KarmaSection orgId={activeOrgId} />
           <AccountsList orgId={activeOrgId} userToken={userToken} />
-          <RecentMessages orgId={activeOrgId} />
-          <MembersSection
-            orgId={activeOrgId}
-            userToken={userToken}
-            currentUserId={user?.id ?? ""}
-          />
-          <ApiKeySection orgId={activeOrgId} userToken={userToken} />
+
+          <div>
+            <h2 class="text-lg font-semibold text-white mb-4">Admin</h2>
+            <div class="space-y-6">
+              <MembersSection
+                orgId={activeOrgId}
+                userToken={userToken}
+                currentUserId={user?.id ?? ""}
+              />
+              <ApiKeySection orgId={activeOrgId} userToken={userToken} />
+            </div>
+          </div>
         </>
       )}
     </div>

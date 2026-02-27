@@ -190,40 +190,6 @@ const routes: readonly Route[] = [
   // Inbound (from Forward Email, no auth — uses webhook secret)
   route("POST", "/inbound", handleInbound, "none"),
 
-  // Temporary debug endpoint — remove after inbound is working
-  route(
-    "GET",
-    "/debug/accounts",
-    async () => {
-      const { accounts } = await db.query({
-        accounts: { organization: {}, messages: {} },
-      });
-      return Response.json(
-        accounts.map((a) => ({
-          id: a.id,
-          address: a.address,
-          orgId: (() => {
-            const org = a.organization;
-            return Array.isArray(org) ? org[0]?.id : org?.id;
-          })(),
-          messageCount: a.messages?.length ?? 0,
-          // deno-lint-ignore no-explicit-any
-          recentMessages: (a.messages as any[])
-            ?.sort((x, y) => y.timestamp - x.timestamp)
-            .slice(0, 5)
-            .map((m) => ({
-              id: m.id,
-              from: m.from,
-              subject: m.subject,
-              direction: m.direction,
-              timestamp: m.timestamp,
-            })),
-        })),
-      );
-    },
-    "none",
-  ),
-
   // Health
   route(
     "GET",
