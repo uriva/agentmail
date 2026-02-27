@@ -242,7 +242,7 @@ curl -X POST https://api.theagentmail.net/v1/accounts \\
       <Endpoint
         method="DELETE"
         path="/v1/accounts/:accountId"
-        description={`Delete an email account and its Forward Email alias. Refunds ${KARMA_AMOUNTS.account_deleted} karma.`}
+        description={`Delete an email account. Refunds ${KARMA_AMOUNTS.account_deleted} karma.`}
         karma={`${formatKarma(KARMA_AMOUNTS.account_deleted)} karma`}
       >
         <p class="text-slate-500 text-xs">

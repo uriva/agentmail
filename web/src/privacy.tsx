@@ -54,7 +54,7 @@ const Privacy = () => (
     <P>We use the following services to operate AgentMail:</P>
     <ul class="text-slate-400 text-sm space-y-2 ml-4 list-disc mb-3">
       <li>
-        <strong class="text-slate-300">Forward Email</strong> -- email
+        <strong class="text-slate-300">Email infrastructure provider</strong> -- email
         sending and receiving infrastructure
       </li>
       <li>
@@ -78,7 +78,7 @@ const Privacy = () => (
     <H2>Data retention</H2>
     <P>
       Messages and account data are retained for as long as the associated
-      email account exists. When you delete an account, its Forward Email
+      email account exists. When you delete an account, its email
       alias is removed. When you delete your organization, all associated
       data is removed.
     </P>
