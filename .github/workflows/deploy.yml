@@ -19,6 +19,8 @@ jobs:
 
       - name: Build frontend
         run: deno task build:web
+        env:
+          VITE_INSTANT_APP_ID: ${{ vars.VITE_INSTANT_APP_ID }}
 
       - name: Deploy to Deno Deploy
         run: deno deploy --prod
