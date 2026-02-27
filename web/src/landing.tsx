@@ -325,7 +325,10 @@ const karma = await mail.karma.getBalance();`}
 
     {/* Footer */}
     <footer class="border-t border-slate-800 py-8 px-4 text-center text-slate-500 text-sm">
-      AgentMail — email for AI agents
+      <p>AgentMail — email for AI agents</p>
+      <p class="mt-2">
+        Questions? <a href="mailto:support@theagentmail.net" class="text-slate-400 hover:text-white transition-colors">support@theagentmail.net</a>
+      </p>
     </footer>
   </div>
 );
