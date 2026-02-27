@@ -10,9 +10,21 @@ const Header = () => {
           AgentMail
         </a>
         <div class="flex items-center gap-4">
+          <a
+            href="/docs"
+            class="text-sm text-slate-400 hover:text-white transition-colors"
+          >
+            Docs
+          </a>
           {user ? (
             <>
-              <span class="text-sm text-slate-400">{user.email}</span>
+              <a
+                href="/app"
+                class="text-sm text-slate-400 hover:text-white transition-colors"
+              >
+                Dashboard
+              </a>
+              <span class="text-sm text-slate-500">{user.email}</span>
               <button
                 onClick={() => auth.signOut()}
                 class="text-sm text-slate-400 hover:text-white transition-colors"

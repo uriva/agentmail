@@ -8,6 +8,9 @@ import {
 import { Login } from "./login.tsx";
 import { Dashboard } from "./dashboard.tsx";
 import { Landing } from "./landing.tsx";
+import { Docs } from "./docs.tsx";
+import { Privacy } from "./privacy.tsx";
+import { Terms } from "./terms.tsx";
 import { Header } from "./header.tsx";
 import { useAuth } from "./db.ts";
 
@@ -20,7 +23,7 @@ const NotFound = () => (
   </div>
 );
 
-const Home = () => {
+const AppPage = () => {
   const { isLoading, error, user } = useAuth();
   if (isLoading) {
     return (
@@ -29,7 +32,10 @@ const Home = () => {
       </div>
     );
   }
-  if (error || !user) return <Landing />;
+  if (error || !user) {
+    window.location.href = "/login";
+    return null;
+  }
   return <Dashboard />;
 };
 
@@ -40,8 +46,12 @@ const App = () => (
         <Header />
         <main class="flex-1 max-w-6xl mx-auto w-full px-4 py-8">
           <Router>
-            <Route path="/" component={Home} />
+            <Route path="/" component={Landing} />
+            <Route path="/app" component={AppPage} />
             <Route path="/login" component={Login} />
+            <Route path="/docs" component={Docs} />
+            <Route path="/privacy" component={Privacy} />
+            <Route path="/terms" component={Terms} />
             <Route default component={NotFound} />
           </Router>
         </main>

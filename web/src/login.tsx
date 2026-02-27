@@ -65,7 +65,7 @@ const Login = () => {
     setError("");
     try {
       await auth.signInWithMagicCode({ email, code });
-      window.location.href = "/";
+      window.location.href = "/app";
     } catch (e) {
       setError(e instanceof Error ? e.message : "Invalid code");
     }

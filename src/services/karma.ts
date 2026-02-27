@@ -2,14 +2,7 @@ import { pipe, reduce } from "gamla";
 import { db, id } from "../db.ts";
 import type { KarmaEventType, KarmaBalance } from "../types.ts";
 import { captureEvent } from "./posthog.ts";
-
-const KARMA_AMOUNTS: Record<KarmaEventType, number> = {
-  email_sent: -1,
-  email_received: 2,
-  account_created: -10,
-  account_deleted: 5,
-  money_paid: 100,
-};
+import { KARMA_AMOUNTS } from "../karma-constants.ts";
 
 const sumAmounts = reduce(
   (acc: number, event: { amount: number }) => acc + event.amount,
@@ -72,5 +65,4 @@ export {
   recordKarmaEvent,
   requireKarmaForSend,
   requireKarmaForAccountCreation,
-  KARMA_AMOUNTS,
 };
