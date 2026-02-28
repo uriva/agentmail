@@ -190,8 +190,8 @@ const routes: readonly Route[] = [
   route("GET", "/v1/api-keys", listApiKeys, "userToken"),
   route("DELETE", "/v1/api-keys/:apiKeyId", deleteApiKey, "userToken"),
 
-  // Account API Keys (org-level API key auth — programmatic)
-  route("POST", "/v1/accounts/:accountId/api-keys", createAccountApiKey),
+  // Account API Keys
+  route("POST", "/v1/accounts/:accountId/api-keys", createAccountApiKey, "apiKeyOrUserToken"),
 
   // Organizations (user-token auth — org may not exist yet)
   route("POST", "/v1/organizations", createOrganization, "userTokenOptionalOrg"),
