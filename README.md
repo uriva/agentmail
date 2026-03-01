@@ -155,8 +155,11 @@ If `secret` is omitted, a random 32-byte hex secret is generated and returned.
 }
 ```
 
-Webhook deliveries include an `X-AgentMail-Signature` header (HMAC-SHA256 of the
-request body using the webhook secret).
+Webhook deliveries include two headers:
+- `X-AgentMail-Signature` — HMAC-SHA256 hex digest of the request body, signed with your webhook secret
+- `X-AgentMail-Timestamp` — millisecond timestamp of when the delivery was sent
+
+Verify the signature and reject requests with timestamps older than 5 minutes to prevent replay attacks.
 
 ### Attachments
 

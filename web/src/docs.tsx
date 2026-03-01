@@ -514,20 +514,36 @@ const Docs = () => (
       <div class="mt-6 p-6 bg-slate-800/50 border border-slate-700 rounded-xl">
         <h4 class="text-white font-medium mb-3">Signature verification</h4>
         <p class="text-slate-400 text-sm mb-3">
-          Every webhook delivery includes an{" "}
-          <code class="text-white">X-AgentMail-Signature</code> header. Verify it
-          using HMAC-SHA256 with your webhook secret:
+          Every webhook delivery includes two headers:
+        </p>
+        <ul class="text-slate-400 text-sm mb-3 list-disc list-inside space-y-1">
+          <li><code class="text-white">X-AgentMail-Signature</code> — HMAC-SHA256 hex digest of the request body</li>
+          <li><code class="text-white">X-AgentMail-Timestamp</code> — millisecond timestamp of when the delivery was sent</li>
+        </ul>
+        <p class="text-slate-400 text-sm mb-3">
+          Verify the signature using your webhook secret, and reject requests
+          with timestamps older than 5 minutes to prevent replay attacks:
         </p>
         <CodeBlock
           lang="typescript"
           code={`import { createHmac } from "crypto";
 
-const verify = (body: string, signature: string, secret: string) => {
+const verifyWebhook = (body: string, signature: string, timestamp: string, secret: string) => {
+  const age = Date.now() - Number(timestamp);
+  if (age > 5 * 60 * 1000) return false;
   const expected = createHmac("sha256", secret)
     .update(body)
     .digest("hex");
   return signature === expected;
-};`}
+};
+
+// In your webhook handler:
+// const body = await req.text();
+// const sig = req.headers.get("x-agentmail-signature");
+// const ts = req.headers.get("x-agentmail-timestamp");
+// if (!verifyWebhook(body, sig, ts, YOUR_WEBHOOK_SECRET)) {
+//   return new Response("Unauthorized", { status: 401 });
+// }`}
         />
       </div>
     </Section>
