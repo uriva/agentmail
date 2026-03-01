@@ -373,11 +373,14 @@ const handleInbound = async (
           event: "email.received",
           data: {
             id: messageId,
+            account_id: account.id,
             from: email.from,
             to: email.to,
             subject: email.subject,
-            text: email.text,
-            html: email.html,
+            text: typeof email.text === "string" ? email.text : "",
+            html: typeof email.html === "string" ? email.html : "",
+            inReplyTo: email.inReplyTo ?? "",
+            references: email.references ?? "",
             attachments: attachmentRecords.map((a) => ({
               id: a.id,
               filename: a.filename,
