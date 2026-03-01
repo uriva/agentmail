@@ -201,13 +201,7 @@ const handleInbound = async (
   _orgId: string,
 ): Promise<Response> => {
   try {
-    const contentType = req.headers.get("content-type") ?? "";
     const body = await req.text();
-    console.log("[inbound] Received request", {
-      contentType,
-      bodyLength: body.length,
-      bodyPreview: body.slice(0, 200),
-    });
 
     const valid = await verifyInboundSignature(req, body);
     if (!valid) {
@@ -217,7 +211,6 @@ const handleInbound = async (
       );
     }
 
-    console.log("[inbound] Step 1: parsing JSON body");
     // deno-lint-ignore no-explicit-any
     let raw: any;
     try {
@@ -229,11 +222,9 @@ const handleInbound = async (
         { status: 400 },
       );
     }
-    console.log("[inbound] Step 2: type:", typeof raw, "isArray:", Array.isArray(raw), "keys:", typeof raw === "object" && raw !== null ? Object.keys(raw).slice(0, 20) : "N/A");
     // Forward Email may send an array; use first element if so
     const payload = Array.isArray(raw) ? raw[0] : raw;
     if (!payload || typeof payload !== "object") {
-      console.error("[inbound] Unexpected payload type:", typeof payload);
       return Response.json(
         { error: `Unexpected payload type: ${typeof payload}`, code: "BAD_REQUEST" },
         { status: 400 },
@@ -241,12 +232,10 @@ const handleInbound = async (
     }
     const email = normalizePayload(payload);
 
-    console.log("[inbound] Step 3: Normalized email", {
+    console.log("[inbound] Received email", {
       from: email.from,
       to: email.to,
       subject: email.subject,
-      hasText: !!email.text,
-      hasHtml: !!email.html,
     attachmentCount: email.attachments?.length ?? 0,
   });
 
