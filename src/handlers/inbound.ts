@@ -362,37 +362,39 @@ const handleInbound = async (
       hasAttachments: attachmentRecords.length > 0,
     });
 
-    // Deliver to agent webhooks (fire and forget)
+    // Deliver to agent webhooks — await to prevent isolate eviction before delivery
     // deno-lint-ignore no-explicit-any
     const activeWebhooks = account.webhooks.filter((w: any) => w.active);
-    for (const webhook of activeWebhooks) {
-      deliverWithRetry(
-        webhook.url,
-        webhook.secret,
-        {
-          event: "email.received",
-          data: {
-            id: messageId,
-            account_id: account.id,
-            from: email.from,
-            to: email.to,
-            subject: email.subject,
-            text: typeof email.text === "string" ? email.text : "",
-            html: typeof email.html === "string" ? email.html : "",
-            inReplyTo: email.inReplyTo ?? "",
-            references: email.references ?? "",
-            attachments: attachmentRecords.map((a) => ({
-              id: a.id,
-              filename: a.filename,
-              contentType: a.contentType,
-              size: a.size,
-            })),
+    await Promise.all(
+      activeWebhooks.map((webhook: { url: string; secret: string }) =>
+        deliverWithRetry(
+          webhook.url,
+          webhook.secret,
+          {
+            event: "email.received",
+            data: {
+              id: messageId,
+              account_id: account.id,
+              from: email.from,
+              to: email.to,
+              subject: email.subject,
+              text: typeof email.text === "string" ? email.text : "",
+              html: typeof email.html === "string" ? email.html : "",
+              inReplyTo: email.inReplyTo ?? "",
+              references: email.references ?? "",
+              attachments: attachmentRecords.map((a) => ({
+                id: a.id,
+                filename: a.filename,
+                contentType: a.contentType,
+                size: a.size,
+              })),
+            },
+            timestamp: Date.now(),
           },
-          timestamp: Date.now(),
-        },
-        orgId,
-      );
-    }
+          orgId,
+        )
+      ),
+    );
   }
 
   if (matched === 0) {

@@ -47,6 +47,11 @@ const deliverWebhook = async (
     });
 
     const success = res.ok;
+    console.log("[webhook]", success ? "delivered" : "failed", {
+      url,
+      status: res.status,
+      event: payload.event,
+    });
     captureEvent(orgId, "webhook_delivered", {
       url,
       success,
@@ -55,6 +60,11 @@ const deliverWebhook = async (
     });
     return success;
   } catch (err) {
+    console.error("[webhook] error delivering", {
+      url,
+      error: err instanceof Error ? err.message : "Unknown error",
+      event: payload.event,
+    });
     captureEvent(orgId, "webhook_delivery_failed", {
       url,
       error: err instanceof Error ? err.message : "Unknown error",
@@ -64,7 +74,6 @@ const deliverWebhook = async (
   }
 };
 
-// Retry with exponential backoff: 1s, 2s, 4s
 const deliverWithRetry = async (
   url: string,
   secret: string,
@@ -74,11 +83,13 @@ const deliverWithRetry = async (
 ): Promise<boolean> => {
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     if (attempt > 0) {
+      console.log("[webhook] retry attempt", attempt, "for", url);
       await new Promise((r) => setTimeout(r, 1000 * Math.pow(2, attempt - 1)));
     }
     const success = await deliverWebhook(url, secret, payload, orgId);
     if (success) return true;
   }
+  console.error("[webhook] all retries exhausted for", url);
   return false;
 };
 
