@@ -186,6 +186,7 @@ const normalizePayload = (raw: any): InboundEmail => {
     headers: typeof raw.headers === "object" && !Array.isArray(raw.headers)
       ? raw.headers
       : undefined,
+    messageId: raw.messageId,
     inReplyTo: raw.inReplyTo,
     references,
     attachments: raw.attachments?.length
@@ -380,6 +381,7 @@ const handleInbound = async (
               subject: email.subject,
               text: typeof email.text === "string" ? email.text : "",
               html: typeof email.html === "string" ? email.html : "",
+              messageId: email.messageId ?? "",
               inReplyTo: email.inReplyTo ?? "",
               references: email.references ?? "",
               attachments: attachmentRecords.map((a) => ({

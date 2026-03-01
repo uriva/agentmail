@@ -50,6 +50,7 @@ export type InboundEmail = {
   readonly text?: string;
   readonly html?: string;
   readonly headers?: Record<string, string>;
+  readonly messageId?: string;
   readonly inReplyTo?: string;
   readonly references?: string;
   readonly attachments?: readonly InboundAttachment[];
