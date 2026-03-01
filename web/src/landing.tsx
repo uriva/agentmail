@@ -9,10 +9,12 @@ import { useAuth } from "./db.ts";
 const Section = ({
   children,
   class: className = "",
+  id,
 }: {
   children: ComponentChildren;
   class?: string;
-}) => <section class={`py-16 px-4 ${className}`}>{children}</section>;
+  id?: string;
+}) => <section id={id} class={`py-16 px-4 ${className}`}>{children}</section>;
 
 const KarmaRow = ({
   event,
@@ -205,6 +207,80 @@ const Landing = () => {
           When karma hits zero, sends and account creation are blocked until you
           buy more or earn it back through genuine conversations.
         </p>
+      </div>
+    </Section>
+
+    {/* Pricing */}
+    <Section class="scroll-mt-16" id="pricing">
+      <div class="max-w-3xl mx-auto">
+        <h2 class="text-3xl font-bold text-white mb-4 text-center">
+          Pricing
+        </h2>
+        <p class="text-slate-400 text-center mb-10 max-w-xl mx-auto">
+          No subscriptions. No monthly limits. Pay for karma, use it whenever.
+        </p>
+        <div class="grid sm:grid-cols-2 gap-6 max-w-2xl mx-auto">
+          <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-8">
+            <div class="text-slate-400 text-sm uppercase tracking-wide mb-2">
+              Free
+            </div>
+            <div class="text-4xl font-bold text-white mb-1">$0</div>
+            <div class="text-slate-500 text-sm mb-6">to get started</div>
+            <ul class="text-slate-300 text-sm space-y-3">
+              <li>100 karma on signup</li>
+              <li>10 email accounts</li>
+              <li>100 sends</li>
+              <li>Full API access</li>
+              <li>Webhooks</li>
+              <li>No time limit</li>
+            </ul>
+          </div>
+          <div class="bg-slate-800/50 border border-blue-600 rounded-xl p-8">
+            <div class="text-blue-400 text-sm uppercase tracking-wide mb-2">
+              Karma packs
+            </div>
+            <div class="text-4xl font-bold text-white mb-1">$5</div>
+            <div class="text-slate-500 text-sm mb-6">per 100 karma</div>
+            <ul class="text-slate-300 text-sm space-y-3">
+              <li>100 sends or 10 accounts per pack</li>
+              <li>Buy as many as you need</li>
+              <li>Karma never expires</li>
+              <li>Earn karma back from replies</li>
+              <li>No inbox limits</li>
+              <li>No monthly caps</li>
+            </ul>
+          </div>
+        </div>
+        <div class="mt-10 bg-slate-800/30 border border-slate-700 rounded-xl p-6 max-w-2xl mx-auto">
+          <h3 class="text-white font-medium mb-3 text-center">
+            vs. the competition
+          </h3>
+          <div class="grid grid-cols-3 gap-4 text-sm">
+            <div class="text-slate-500" />
+            <div class="text-slate-400 text-center font-medium">Others</div>
+            <div class="text-blue-400 text-center font-medium">AgentMail</div>
+
+            <div class="text-slate-400">10 inboxes</div>
+            <div class="text-slate-300 text-center">$20/mo</div>
+            <div class="text-green-400 text-center">$5 once</div>
+
+            <div class="text-slate-400">150 inboxes</div>
+            <div class="text-slate-300 text-center">$200/mo</div>
+            <div class="text-green-400 text-center">$75 once</div>
+
+            <div class="text-slate-400">Monthly caps</div>
+            <div class="text-slate-300 text-center">Yes</div>
+            <div class="text-green-400 text-center">No</div>
+
+            <div class="text-slate-400">Karma never expires</div>
+            <div class="text-slate-300 text-center">N/A</div>
+            <div class="text-green-400 text-center">Yes</div>
+
+            <div class="text-slate-400">Earn credits back</div>
+            <div class="text-slate-300 text-center">No</div>
+            <div class="text-green-400 text-center">Yes</div>
+          </div>
+        </div>
       </div>
     </Section>
 
