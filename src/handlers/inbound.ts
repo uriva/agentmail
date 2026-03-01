@@ -79,10 +79,9 @@ const verifyInboundSignature = async (
   req: Request,
   body: string,
 ): Promise<boolean> => {
-  // Forward Email sends X-Webhook-Signature on every POST, signed with
-  // their own "Webhook Signature Payload Verification Key" (available in
-  // the FE dashboard under Domains → Settings). To verify, set
-  // INBOUND_WEBHOOK_SECRET to that key. Until then, skip verification.
+  // Forward Email signs webhook POSTs with a domain-specific key
+  // (Domains → Settings → "Webhook Signature Payload Verification Key").
+  // INBOUND_WEBHOOK_SECRET must be set to that key on Deno Deploy.
   if (!INBOUND_WEBHOOK_SECRET) return true;
   const signature = req.headers.get("x-webhook-signature") ?? "";
   if (!signature) return true;
@@ -102,8 +101,8 @@ const verifyInboundSignature = async (
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
   if (signature !== expectedHex) {
-    console.warn("[inbound] Webhook signature mismatch — accepting anyway. Set INBOUND_WEBHOOK_SECRET to the Forward Email webhook verification key to enable proper verification.");
-    return true;
+    console.warn("[inbound] Webhook signature mismatch");
+    return false;
   }
   return true;
 };
