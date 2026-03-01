@@ -249,6 +249,12 @@ const Landing = () => {
               <li>No inbox limits</li>
               <li>No monthly caps</li>
             </ul>
+            <p class="text-slate-400 text-xs mt-6">
+              To buy karma, email{" "}
+              <a href="mailto:support@theagentmail.net" class="text-blue-400 hover:text-blue-300">
+                support@theagentmail.net
+              </a>
+            </p>
           </div>
         </div>
         <div class="mt-10 bg-slate-800/30 border border-slate-700 rounded-xl p-6 max-w-2xl mx-auto">
