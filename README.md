@@ -155,7 +155,7 @@ If `secret` is omitted, a random 32-byte hex secret is generated and returned.
 }
 ```
 
-Webhook deliveries include an `X-Webhook-Signature` header (HMAC-SHA256 of the
+Webhook deliveries include an `X-AgentMail-Signature` header (HMAC-SHA256 of the
 request body using the webhook secret).
 
 ### Attachments

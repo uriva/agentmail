@@ -515,7 +515,7 @@ const Docs = () => (
         <h4 class="text-white font-medium mb-3">Signature verification</h4>
         <p class="text-slate-400 text-sm mb-3">
           Every webhook delivery includes an{" "}
-          <code class="text-white">X-Webhook-Signature</code> header. Verify it
+          <code class="text-white">X-AgentMail-Signature</code> header. Verify it
           using HMAC-SHA256 with your webhook secret:
         </p>
         <CodeBlock
