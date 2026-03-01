@@ -217,11 +217,31 @@ const handleInbound = async (
       );
     }
 
+    console.log("[inbound] Step 1: parsing JSON body");
     // deno-lint-ignore no-explicit-any
-    const raw = JSON.parse(body) as any;
-    const email = normalizePayload(raw);
+    let raw: any;
+    try {
+      raw = JSON.parse(body);
+    } catch (parseErr) {
+      console.error("[inbound] JSON parse failed:", parseErr, "body preview:", body.slice(0, 500));
+      return Response.json(
+        { error: `JSON parse failed: ${parseErr}`, code: "BAD_REQUEST" },
+        { status: 400 },
+      );
+    }
+    console.log("[inbound] Step 2: type:", typeof raw, "isArray:", Array.isArray(raw), "keys:", typeof raw === "object" && raw !== null ? Object.keys(raw).slice(0, 20) : "N/A");
+    // Forward Email may send an array; use first element if so
+    const payload = Array.isArray(raw) ? raw[0] : raw;
+    if (!payload || typeof payload !== "object") {
+      console.error("[inbound] Unexpected payload type:", typeof payload);
+      return Response.json(
+        { error: `Unexpected payload type: ${typeof payload}`, code: "BAD_REQUEST" },
+        { status: 400 },
+      );
+    }
+    const email = normalizePayload(payload);
 
-    console.log("[inbound] Received email", {
+    console.log("[inbound] Step 3: Normalized email", {
       from: email.from,
       to: email.to,
       subject: email.subject,
@@ -305,8 +325,8 @@ const handleInbound = async (
         to: [...email.to],
         cc: email.cc ? [...email.cc] : undefined,
         subject: email.subject,
-        bodyText: email.text ?? "",
-        bodyHtml: email.html ?? "",
+        bodyText: typeof email.text === "string" ? email.text : "",
+        bodyHtml: typeof email.html === "string" ? email.html : "",
         direction: "inbound",
         status: "received",
         headers: email.headers ?? {},
@@ -392,9 +412,11 @@ const handleInbound = async (
 
   return Response.json({ received: true });
   } catch (e) {
-    console.error("[inbound] Unhandled error processing inbound email:", e);
+    const errorMessage = e instanceof Error ? e.message : String(e);
+    const errorStack = e instanceof Error ? e.stack : undefined;
+    console.error("[inbound] Unhandled error processing inbound email:", errorMessage, errorStack);
     return Response.json(
-      { error: "Internal error processing inbound email", code: "INTERNAL_ERROR" },
+      { error: `Inbound processing error: ${errorMessage}`, code: "INTERNAL_ERROR" },
       { status: 500 },
     );
   }
