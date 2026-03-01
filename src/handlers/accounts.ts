@@ -22,9 +22,11 @@ const createAccount = async (
   orgId: string,
 ): Promise<Response> => {
   const input = (await req.json()) as CreateAccountInput;
-  const localPart = input.address.includes("@")
-    ? input.address.split("@")[0]!
-    : input.address;
+  const localPart = (
+    input.address.includes("@")
+      ? input.address.split("@")[0]!
+      : input.address
+  ).toLowerCase();
   const address = `${localPart}@${FORWARD_EMAIL_DOMAIN}`;
 
   if (RESERVED_ADDRESSES.has(localPart.toLowerCase())) {

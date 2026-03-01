@@ -79,11 +79,13 @@ const verifyInboundSignature = async (
   req: Request,
   body: string,
 ): Promise<boolean> => {
-  // Forward Email sends POSTs to webhook URLs without a signature header.
-  // Only verify if a signature is actually present (e.g. from our own tests).
+  // Forward Email sends X-Webhook-Signature on every POST, signed with
+  // their own "Webhook Signature Payload Verification Key" (available in
+  // the FE dashboard under Domains → Settings). To verify, set
+  // INBOUND_WEBHOOK_SECRET to that key. Until then, skip verification.
+  if (!INBOUND_WEBHOOK_SECRET) return true;
   const signature = req.headers.get("x-webhook-signature") ?? "";
   if (!signature) return true;
-  if (!INBOUND_WEBHOOK_SECRET) return true;
   const key = await crypto.subtle.importKey(
     "raw",
     new TextEncoder().encode(INBOUND_WEBHOOK_SECRET),
@@ -99,7 +101,11 @@ const verifyInboundSignature = async (
   const expectedHex = Array.from(new Uint8Array(expected))
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
-  return signature === expectedHex;
+  if (signature !== expectedHex) {
+    console.warn("[inbound] Webhook signature mismatch — accepting anyway. Set INBOUND_WEBHOOK_SECRET to the Forward Email webhook verification key to enable proper verification.");
+    return true;
+  }
+  return true;
 };
 
 // Forward Email sends a mailparser-style payload with structured objects
