@@ -201,7 +201,13 @@ const handleInbound = async (
   _orgId: string,
 ): Promise<Response> => {
   try {
+    const contentType = req.headers.get("content-type") ?? "";
     const body = await req.text();
+    console.log("[inbound] Received request", {
+      contentType,
+      bodyLength: body.length,
+      bodyPreview: body.slice(0, 200),
+    });
 
     const valid = await verifyInboundSignature(req, body);
     if (!valid) {
