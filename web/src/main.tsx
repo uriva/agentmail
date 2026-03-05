@@ -11,6 +11,7 @@ import { Landing } from "./landing.tsx";
 import { Docs } from "./docs.tsx";
 import { Privacy } from "./privacy.tsx";
 import { Terms } from "./terms.tsx";
+import { Pricing } from "./pricing.tsx";
 import { Header } from "./header.tsx";
 import { useAuth } from "./db.ts";
 
@@ -52,6 +53,7 @@ const App = () => (
             <Route path="/docs" component={Docs} />
             <Route path="/privacy" component={Privacy} />
             <Route path="/terms" component={Terms} />
+            <Route path="/pricing" component={Pricing} />
             <Route default component={NotFound} />
           </Router>
         </main>

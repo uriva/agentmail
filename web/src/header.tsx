@@ -11,7 +11,7 @@ const Header = () => {
         </a>
         <div class="flex items-center gap-4">
           <a
-            href="/#pricing"
+            href="/pricing"
             class="text-sm text-slate-400 hover:text-white transition-colors"
           >
             Pricing
