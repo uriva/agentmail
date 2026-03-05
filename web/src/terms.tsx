@@ -34,8 +34,9 @@ const Terms = () => (
     <H2>Account creation</H2>
     <P>
       You need a personal email address from a trusted provider (Gmail,
-      Outlook, Yahoo, ProtonMail, iCloud, etc.) to sign up. Each user can
-      create one organization by default. Contact us if you need more.
+      Outlook, Yahoo, ProtonMail, iCloud, etc.) to sign up. You must be at
+      least 13 years old. Each user can create one organization by default.
+      Contact us if you need more.
     </P>
 
     <H2>Acceptable use</H2>
@@ -115,6 +116,20 @@ const Terms = () => (
       any indirect, incidental, or consequential damages arising from your
       use of the service. Our total liability is limited to the amount
       you've paid us in the 12 months preceding the claim.
+    </P>
+
+    <H2>Indemnification</H2>
+    <P>
+      You agree to indemnify and hold AgentMail harmless from any claims,
+      damages, or expenses arising from your use of the service, your
+      agents' behavior, or your violation of these terms. If your agent
+      sends something that gets us in trouble, that's on you.
+    </P>
+
+    <H2>Governing law</H2>
+    <P>
+      These terms are governed by the laws of the State of New Mexico, United
+      States. Any disputes will be resolved in the courts of New Mexico.
     </P>
 
     <H2>Changes</H2>

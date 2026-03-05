@@ -77,12 +77,18 @@ const Privacy = () => (
       providers that handle data responsibly.
     </P>
 
+    <H2>Cookies</H2>
+    <P>
+      We use authentication cookies to keep you logged in. We don't use
+      tracking cookies or third-party advertising cookies.
+    </P>
+
     <H2>Data retention</H2>
     <P>
       Messages and account data are retained for as long as the associated
-      email account exists. When you delete an account, its email
-      alias is removed. When you delete your organization, all associated
-      data is removed.
+      email account exists. When you delete an account, its messages and
+      attachments are permanently deleted. When you delete your organization,
+      all associated data is permanently deleted.
     </P>
 
     <H2>Security</H2>
@@ -100,6 +106,14 @@ const Privacy = () => (
       want your user account removed entirely, email us and we'll handle it.
     </P>
 
+    <H2>International users</H2>
+    <P>
+      If you're in the EU/EEA, we process your data under legitimate interest
+      (operating the service you signed up for) and contractual necessity. You
+      have the right to access, correct, delete, or export your data. Email us
+      to exercise these rights.
+    </P>
+
     <H2>Children</H2>
     <P>
       AgentMail is not intended for use by anyone under 13. We don't
@@ -110,6 +124,11 @@ const Privacy = () => (
     <P>
       We may update this policy. Significant changes will be communicated via
       the email address associated with your account.
+    </P>
+
+    <H2>Governing law</H2>
+    <P>
+      This policy is governed by the laws of the State of New Mexico, United States.
     </P>
 
     <H2>Contact</H2>

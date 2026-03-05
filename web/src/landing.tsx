@@ -210,6 +210,22 @@ const Landing = () => {
       </div>
     </Section>
 
+    {/* Works with */}
+    <Section class="text-center">
+      <p class="text-slate-400 text-sm">
+        Works with{" "}
+        <a
+          href="https://prompt2bot.com"
+          class="text-blue-400 hover:text-blue-300 transition-colors"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          prompt2bot.com
+        </a>
+        {" "}to create agents that send and receive email out of the box.
+      </p>
+    </Section>
+
     {/* CTA */}
     <Section class="text-center pb-24">
       <h2 class="text-3xl font-bold text-white mb-4">
