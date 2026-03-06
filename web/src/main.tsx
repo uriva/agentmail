@@ -5,6 +5,7 @@ import {
   Route,
   ErrorBoundary,
 } from "preact-iso";
+import posthog from "posthog-js";
 import { Login } from "./login.tsx";
 import { Dashboard } from "./dashboard.tsx";
 import { Landing } from "./landing.tsx";
@@ -14,6 +15,15 @@ import { Terms } from "./terms.tsx";
 import { Pricing } from "./pricing.tsx";
 import { Header } from "./header.tsx";
 import { useAuth } from "./db.ts";
+
+const posthogKey: string = import.meta.env.VITE_POSTHOG_KEY ?? "";
+if (posthogKey) {
+  posthog.init(posthogKey, {
+    api_host: "https://us.i.posthog.com",
+    capture_pageview: true,
+    capture_pageleave: true,
+  });
+}
 
 const NotFound = () => (
   <div class="flex items-center justify-center h-full">

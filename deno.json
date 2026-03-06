@@ -16,6 +16,7 @@
     "@instantdb/admin": "npm:@instantdb/admin@0.22.141",
     "@instantdb/react": "npm:@instantdb/react@0.22.141",
     "@instantdb/core": "npm:@instantdb/core@0.22.141",
+    "posthog-js": "npm:posthog-js@^1.359.0",
     "preact": "npm:preact@10.26.7",
     "preact/hooks": "npm:preact@10.26.7/hooks",
     "preact/jsx-runtime": "npm:preact@10.26.7/jsx-runtime",
