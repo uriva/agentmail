@@ -442,6 +442,12 @@ const handleStatic = async (req: Request): Promise<Response | null> => {
   const fileResponse = await serveStaticFile(filePath);
   if (fileResponse) return fileResponse;
 
+  // Try prerendered route (e.g. /docs -> /docs/index.html)
+  const prerenderResponse = await serveStaticFile(
+    `${DIST_DIR}${pathname}/index.html`,
+  );
+  if (prerenderResponse) return prerenderResponse;
+
   // SPA fallback — serve index.html for non-file paths
   return serveStaticFile(`${DIST_DIR}/index.html`);
 };

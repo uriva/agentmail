@@ -5,7 +5,7 @@
   "tasks": {
     "dev": "deno run --allow-net --allow-env --allow-read --watch src/main.ts",
     "dev:web": "deno run -A --node-modules-dir=auto npm:vite",
-    "build:web": "deno run -A --node-modules-dir=auto npm:vite build",
+    "build:web": "mkdir -p web/node_modules/vite-prerender-plugin && deno run -A --node-modules-dir=auto npm:vite build",
     "start": "deno run --allow-net --allow-env --allow-read src/main.ts",
     "check": "deno check src/main.ts && deno check sdk/src/index.ts",
     "push-schema": "npx instant-cli push schema --yes",
@@ -24,7 +24,10 @@
     "preact-iso": "npm:preact-iso@2.9.1",
     "@preact/preset-vite": "npm:@preact/preset-vite@2.10.2",
     "@deno/vite-plugin": "npm:@deno/vite-plugin@^1.0.5",
-    "vite": "npm:vite@^7.1.5"
+    "vite": "npm:vite@^7.1.5",
+    "vite-prerender-plugin": "npm:vite-prerender-plugin@0.5.12",
+    "@tailwindcss/vite": "npm:@tailwindcss/vite@4.2.1",
+    "tailwindcss": "npm:tailwindcss@4.2.1"
   },
   "deploy": {
     "build": "deno task build:web",

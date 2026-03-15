@@ -1,11 +1,10 @@
-import { render } from "preact";
+import hydrate from "preact-iso/hydrate";
 import {
   LocationProvider,
   Router,
   Route,
   ErrorBoundary,
 } from "preact-iso";
-import posthog from "posthog-js";
 import { Login } from "./login.tsx";
 import { Dashboard } from "./dashboard.tsx";
 import { Landing } from "./landing.tsx";
@@ -15,14 +14,20 @@ import { Terms } from "./terms.tsx";
 import { Pricing } from "./pricing.tsx";
 import { Header } from "./header.tsx";
 import { useAuth } from "./db.ts";
+import "./app.css";
 
-const posthogKey: string = import.meta.env.VITE_POSTHOG_KEY ?? "";
-if (posthogKey) {
-  posthog.init(posthogKey, {
-    api_host: "https://us.i.posthog.com",
-    capture_pageview: true,
-    capture_pageleave: true,
-  });
+if (typeof window !== "undefined") {
+  // deno-lint-ignore no-explicit-any
+  const posthogKey: string = (import.meta as any).env?.VITE_POSTHOG_KEY ?? "";
+  if (posthogKey) {
+    import("posthog-js").then(({ default: posthog }) => {
+      posthog.init(posthogKey, {
+        api_host: "https://us.i.posthog.com",
+        capture_pageview: true,
+        capture_pageleave: true,
+      });
+    });
+  }
 }
 
 const NotFound = () => (
@@ -51,25 +56,31 @@ const AppPage = () => {
 };
 
 const App = () => (
+  <ErrorBoundary>
+    <div class="min-h-full flex flex-col">
+      <Header />
+      <main class="flex-1 max-w-6xl mx-auto w-full px-4 py-8">
+        <Router>
+          <Route path="/" component={Landing} />
+          <Route path="/app" component={AppPage} />
+          <Route path="/login" component={Login} />
+          <Route path="/docs" component={Docs} />
+          <Route path="/privacy" component={Privacy} />
+          <Route path="/terms" component={Terms} />
+          <Route path="/pricing" component={Pricing} />
+          <Route default component={NotFound} />
+        </Router>
+      </main>
+    </div>
+  </ErrorBoundary>
+);
+
+export const App_ = () => (
   <LocationProvider>
-    <ErrorBoundary>
-      <div class="min-h-full flex flex-col">
-        <Header />
-        <main class="flex-1 max-w-6xl mx-auto w-full px-4 py-8">
-          <Router>
-            <Route path="/" component={Landing} />
-            <Route path="/app" component={AppPage} />
-            <Route path="/login" component={Login} />
-            <Route path="/docs" component={Docs} />
-            <Route path="/privacy" component={Privacy} />
-            <Route path="/terms" component={Terms} />
-            <Route path="/pricing" component={Pricing} />
-            <Route default component={NotFound} />
-          </Router>
-        </main>
-      </div>
-    </ErrorBoundary>
+    <App />
   </LocationProvider>
 );
 
-render(<App />, document.getElementById("root")!);
+if (typeof window !== "undefined") {
+  hydrate(<App_ />);
+}

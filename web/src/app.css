@@ -1,0 +1,29 @@
+@import "tailwindcss";
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+  }
+  body {
+    background: #0f172a;
+    color: #e2e8f0;
+    font-family:
+      "Inter",
+      system-ui,
+      -apple-system,
+      sans-serif;
+  }
+  button {
+    cursor: pointer;
+  }
+  pre[class*="language-"],
+  code[class*="language-"] {
+    background: none !important;
+    text-shadow: none !important;
+  }
+}
