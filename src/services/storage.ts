@@ -123,7 +123,11 @@ const getSignedUrl = async (
   const now = Math.floor(Date.now() / 1000);
   const expires = now + expiresInSeconds;
   const host = "storage.googleapis.com";
-  const path = `/${GCP_STORAGE_BUCKET}/${storageKey}`;
+  const encodedStorageKey = storageKey
+    .split("/")
+    .map(encodeURIComponent)
+    .join("/");
+  const path = `/${GCP_STORAGE_BUCKET}/${encodedStorageKey}`;
   const canonicalRequest = [
     "GET",
     path,
