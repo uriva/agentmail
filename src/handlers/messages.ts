@@ -172,30 +172,40 @@ const getMessage = async (
   params: Record<string, string>,
   orgId: string,
 ): Promise<Response> => {
-  const accountId = params.accountId!;
+  const accountId = params.accountId;
   const messageId = params.messageId!;
-
-  // Verify account belongs to org
-  const { accounts } = await db.query({
-    accounts: {
-      $: { where: { id: accountId, "organization.id": orgId } },
-    },
-  });
-  if (!accounts[0]) {
-    return Response.json(
-      { error: "Account not found", code: "NOT_FOUND" },
-      { status: 404 },
-    );
-  }
 
   const { messages } = await db.query({
     messages: {
-      $: { where: { id: messageId, "account.id": accountId } },
+      $: { where: { id: messageId } },
+      account: {
+        organization: {},
+      },
       attachments: {},
     },
   });
   const message = messages[0];
+  
   if (!message) {
+    return Response.json(
+      { error: "Message not found", code: "NOT_FOUND" },
+      { status: 404 },
+    );
+  }
+
+  // deno-lint-ignore no-explicit-any
+  const rawMessage = message as any;
+  const account = Array.isArray(rawMessage.account) ? rawMessage.account[0] : rawMessage.account;
+  const organization = account ? (Array.isArray(account.organization) ? account.organization[0] : account.organization) : null;
+
+  if (organization?.id !== orgId) {
+    return Response.json(
+      { error: "Message not found", code: "NOT_FOUND" },
+      { status: 404 },
+    );
+  }
+
+  if (accountId && account?.id !== accountId) {
     return Response.json(
       { error: "Message not found", code: "NOT_FOUND" },
       { status: 404 },
