@@ -2,6 +2,7 @@
   "version": "5",
   "specifiers": {
     "jsr:@noble/hashes@2.0.0": "2.0.0",
+    "jsr:@std/encoding@*": "0.224.0",
     "jsr:@std/encoding@0.224.0": "0.224.0",
     "jsr:@uri/gamla@*": "0.0.14",
     "npm:@deno/vite-plugin@^1.0.5": "1.0.6_vite@7.3.1__picomatch@4.0.3",
@@ -31,7 +32,7 @@
       "integrity": "5a83c61f77d0efc761f6a269596cb8d43658e4343d261f8c28ebbd4522e33519",
       "dependencies": [
         "jsr:@noble/hashes",
-        "jsr:@std/encoding"
+        "jsr:@std/encoding@0.224.0"
       ]
     }
   },

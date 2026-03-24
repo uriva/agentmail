@@ -4,6 +4,7 @@ import { recordKarmaEvent } from "../services/karma.ts";
 import { uploadFile } from "../services/storage.ts";
 import { deliverWithRetry } from "../services/webhookDelivery.ts";
 import { captureEvent } from "../services/posthog.ts";
+import { encodeBase64, decodeBase64 } from "jsr:@std/encoding/base64";
 
 const INBOUND_WEBHOOK_SECRET = Deno.env.get("INBOUND_WEBHOOK_SECRET") ?? "";
 
@@ -161,7 +162,7 @@ const normalizeAttachments = (rawAtts: any[]): InboundAttachment[] =>
       filename: att.filename ?? "attachment",
       contentType: att.contentType ?? "application/octet-stream",
       size: att.size ?? bytes.length,
-      content: btoa(String.fromCharCode(...bytes)),
+      content: encodeBase64(bytes),
     };
   });
 
@@ -291,9 +292,7 @@ const handleInbound = async (
       for (const att of email.attachments) {
         const attId = id();
         const storageKey = `${orgId}/${account.id}/${attId}/${att.filename}`;
-        const data = Uint8Array.from(atob(att.content), (c) =>
-          c.charCodeAt(0),
-        );
+        const data = decodeBase64(att.content);
         await uploadFile(storageKey, data, att.contentType);
         attachmentRecords.push({
           id: attId,
