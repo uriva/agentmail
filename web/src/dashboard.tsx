@@ -1,6 +1,6 @@
 import type { ComponentChildren } from "preact";
 import { useState } from "preact/hooks";
-import { useQuery, useAuth } from "./db.ts";
+import { useAuth, useQuery } from "./db.ts";
 
 // @ts-ignore: Vite injects import.meta.env at build time
 const API_BASE: string = import.meta.env.VITE_API_BASE_URL ?? "";
@@ -47,8 +47,9 @@ const KarmaSection = ({ orgId }: { orgId: string }) => {
   });
 
   if (isLoading) return <div class="text-slate-400">Loading karma...</div>;
-  if (error)
+  if (error) {
     return <div class="text-red-400">Error loading karma: {error.message}</div>;
+  }
 
   const events = data?.karmaEvents ?? [];
   const balance = events.reduce(
@@ -65,20 +66,28 @@ const KarmaSection = ({ orgId }: { orgId: string }) => {
     (e: { type: string }) => e.type === "account_created",
   ).length;
 
-  const balanceColor =
-    balance > 50 ? "text-green-400" : balance > 10 ? "text-yellow-400" : "text-red-400";
+  const balanceColor = balance > 50
+    ? "text-green-400"
+    : balance > 10
+    ? "text-yellow-400"
+    : "text-red-400";
 
   return (
     <Card title="Karma">
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-6">
-        <StatNumber value={balance.toFixed(1)} label="Balance" color={balanceColor} />
+        <StatNumber
+          value={balance.toFixed(1)}
+          label="Balance"
+          color={balanceColor}
+        />
         <StatNumber value={sent} label="Emails Sent" />
         <StatNumber value={received} label="Emails Received" />
         <StatNumber value={accountsCreated} label="Accounts Created" />
       </div>
       {balance <= 0 && (
         <div class="mt-4 p-3 bg-red-900/30 border border-red-700 rounded-lg text-red-300 text-sm">
-          Your karma balance is depleted. Sends and account creation are blocked.
+          Your karma balance is depleted. Sends and account creation are
+          blocked.
         </div>
       )}
     </Card>
@@ -157,10 +166,11 @@ const AccountsList = ({
   };
 
   if (isLoading) return <div class="text-slate-400">Loading accounts...</div>;
-  if (error)
+  if (error) {
     return (
       <div class="text-red-400">Error loading accounts: {error.message}</div>
     );
+  }
 
   const accounts = data?.accounts ?? [];
 
@@ -171,8 +181,7 @@ const AccountsList = ({
           type="text"
           value={newAddress}
           onInput={(e: Event) =>
-            setNewAddress((e.target as HTMLInputElement).value)
-          }
+            setNewAddress((e.target as HTMLInputElement).value)}
           placeholder="address (e.g. my-agent)"
           class="flex-1 bg-slate-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 placeholder-slate-500 focus:border-blue-500 focus:outline-none"
         />
@@ -180,8 +189,7 @@ const AccountsList = ({
           type="text"
           value={newDisplayName}
           onInput={(e: Event) =>
-            setNewDisplayName((e.target as HTMLInputElement).value)
-          }
+            setNewDisplayName((e.target as HTMLInputElement).value)}
           placeholder="Display name (optional)"
           class="flex-1 bg-slate-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 placeholder-slate-500 focus:border-blue-500 focus:outline-none"
         />
@@ -193,238 +201,254 @@ const AccountsList = ({
           {creating ? "Creating..." : "Create Account"}
         </button>
       </div>
-      {createError && (
-        <div class="mb-4 text-red-400 text-sm">{createError}</div>
-      )}
+      {createError && <div class="mb-4 text-red-400 text-sm">{createError}
+      </div>}
 
-      {accounts.length === 0 ? (
-        <div class="text-slate-500 text-center py-4">
-          No email accounts yet. Create one above.
-        </div>
-      ) : (
-        <div class="space-y-3">
-          {accounts.map(
-            (account: {
-              id: string;
-              address: string;
-              displayName?: string;
-              messages: { id: string; direction: string; timestamp: number }[];
-              webhooks: { id: string; url: string; active: boolean; createdAt: number }[];
-              createdAt: number;
-            }) => {
-              const inbound = account.messages.filter(
-                (m) => m.direction === "inbound",
-              ).length;
-              const outbound = account.messages.filter(
-                (m) => m.direction === "outbound",
-              ).length;
-              return (
-                <div key={account.id}>
-                  <div class="bg-slate-900 rounded-lg p-4 border border-slate-700 hover:border-slate-600 transition-colors">
-                    <div class="flex items-center justify-between mb-2">
-                      <div>
-                        <span class="text-white font-mono text-sm">
-                          {account.address}
-                        </span>
-                        {account.displayName && (
-                          <span class="text-slate-400 text-sm ml-2">
-                            ({account.displayName})
+      {accounts.length === 0
+        ? (
+          <div class="text-slate-500 text-center py-4">
+            No email accounts yet. Create one above.
+          </div>
+        )
+        : (
+          <div class="space-y-3">
+            {accounts.map(
+              (account: {
+                id: string;
+                address: string;
+                displayName?: string;
+                messages: {
+                  id: string;
+                  direction: string;
+                  timestamp: number;
+                }[];
+                webhooks: {
+                  id: string;
+                  url: string;
+                  active: boolean;
+                  createdAt: number;
+                }[];
+                createdAt: number;
+              }) => {
+                const inbound = account.messages.filter(
+                  (m) => m.direction === "inbound",
+                ).length;
+                const outbound = account.messages.filter(
+                  (m) => m.direction === "outbound",
+                ).length;
+                return (
+                  <div key={account.id}>
+                    <div class="bg-slate-900 rounded-lg p-4 border border-slate-700 hover:border-slate-600 transition-colors">
+                      <div class="flex items-center justify-between mb-2">
+                        <div>
+                          <span class="text-white font-mono text-sm">
+                            {account.address}
                           </span>
-                        )}
-                      </div>
-                      <div class="flex items-center gap-3">
-                        <span class="text-xs text-slate-500">
-                          {new Date(account.createdAt).toLocaleDateString()}
-                        </span>
-                        <button
-                          onClick={() =>
-                            setSendingFor(
-                              sendingFor === account.id ? null : account.id,
-                            )
-                          }
-                          class="text-xs px-2 py-1 bg-emerald-700 hover:bg-emerald-600 text-white rounded transition-colors"
-                        >
-                          {sendingFor === account.id ? "Cancel" : "Send Email"}
-                        </button>
-                        <button
-                          onClick={() =>
-                            setWebhookFor(
-                              webhookFor === account.id ? null : account.id,
-                            )
-                          }
-                          class="text-xs px-2 py-1 bg-purple-700 hover:bg-purple-600 text-white rounded transition-colors"
-                        >
-                          {webhookFor === account.id ? "Cancel" : "Webhooks"}
-                        </button>
-                        <button
-                          onClick={() =>
-                            setMessagesFor(
-                              messagesFor === account.id ? null : account.id,
-                            )
-                          }
-                          class="text-xs px-2 py-1 bg-blue-700 hover:bg-blue-600 text-white rounded transition-colors"
-                        >
-                          {messagesFor === account.id
-                            ? "Hide"
-                            : `Messages (${account.messages.length})`}
-                        </button>
-                        <button
-                          onClick={() =>
-                            setApiKeyFor(
-                              apiKeyFor === account.id ? null : account.id,
-                            )
-                          }
-                          class="text-xs px-2 py-1 bg-slate-700 hover:bg-slate-600 text-white rounded transition-colors"
-                        >
-                          {apiKeyFor === account.id ? "Cancel" : "API Key"}
-                        </button>
-                        {confirmDeleteId === account.id ? (
-                          <span class="flex items-center gap-1">
-                            <button
-                              onClick={() => handleDeleteAccount(account.id)}
-                              disabled={deletingId === account.id}
-                              class="text-xs px-2 py-1 bg-red-700 hover:bg-red-600 disabled:bg-slate-700 text-white rounded transition-colors"
-                            >
-                              {deletingId === account.id ? "..." : "Confirm"}
-                            </button>
-                            <button
-                              onClick={() => setConfirmDeleteId(null)}
-                              class="text-xs px-2 py-1 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded transition-colors"
-                            >
-                              No
-                            </button>
-                          </span>
-                        ) : (
-                          <button
-                            onClick={() => setConfirmDeleteId(account.id)}
-                            class="text-xs px-2 py-1 bg-red-900/50 hover:bg-red-800 text-red-300 rounded transition-colors"
-                          >
-                            Release
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                    <div class="flex gap-4 text-sm">
-                      <span class="text-slate-400">
-                        <span class="text-blue-400 font-medium">{inbound}</span>{" "}
-                        received
-                      </span>
-                      <span class="text-slate-400">
-                        <span class="text-emerald-400 font-medium">
-                          {outbound}
-                        </span>{" "}
-                        sent
-                      </span>
-                      <span class="text-slate-400">
-                        <span class="text-purple-400 font-medium">
-                          {account.webhooks.length}
-                        </span>{" "}
-                        webhooks
-                      </span>
-                    </div>
-                  </div>
-                  {sendingFor === account.id && (
-                    <SendMessageForm
-                      accountId={account.id}
-                      fromAddress={account.address}
-                      userToken={userToken}
-                      orgId={orgId}
-                      onDone={() => setSendingFor(null)}
-                    />
-                  )}
-                  {webhookFor === account.id && (
-                    <WebhookManager
-                      accountId={account.id}
-                      webhooks={account.webhooks}
-                      userToken={userToken}
-                      orgId={orgId}
-                    />
-                  )}
-                  {apiKeyFor === account.id && (
-                    <AccountApiKey
-                      accountId={account.id}
-                      userToken={userToken}
-                      orgId={orgId}
-                    />
-                  )}
-                  {messagesFor === account.id && (
-                    <div class="mt-2 p-4 bg-slate-900/50 border border-slate-700 rounded-lg space-y-2">
-                      <div class="text-xs text-slate-400 font-medium uppercase tracking-wider">
-                        Messages
-                      </div>
-                      {account.messages.length === 0 ? (
-                        <div class="text-slate-500 text-center py-4">
-                          No messages yet.
+                          {account.displayName && (
+                            <span class="text-slate-400 text-sm ml-2">
+                              ({account.displayName})
+                            </span>
+                          )}
                         </div>
-                      ) : (
-                        [...account.messages]
-                          .sort(
-                            (
-                              a: { timestamp: number },
-                              b: { timestamp: number },
-                            ) => b.timestamp - a.timestamp,
-                          )
-                          .slice(0, 20)
-                          // deno-lint-ignore no-explicit-any
-                          .map((msg: any) => (
-                              <div
-                                key={msg.id}
-                                class="flex items-center gap-3 p-3 bg-slate-900 rounded-lg border border-slate-700"
-                              >
-                                <span
-                                  class={`text-xs px-2 py-0.5 rounded font-medium ${
-                                    msg.direction === "inbound"
-                                      ? "bg-blue-900/50 text-blue-300"
-                                      : "bg-emerald-900/50 text-emerald-300"
-                                  }`}
+                        <div class="flex items-center gap-3">
+                          <span class="text-xs text-slate-500">
+                            {new Date(account.createdAt).toLocaleDateString()}
+                          </span>
+                          <button
+                            onClick={() =>
+                              setSendingFor(
+                                sendingFor === account.id ? null : account.id,
+                              )}
+                            class="text-xs px-2 py-1 bg-emerald-700 hover:bg-emerald-600 text-white rounded transition-colors"
+                          >
+                            {sendingFor === account.id
+                              ? "Cancel"
+                              : "Send Email"}
+                          </button>
+                          <button
+                            onClick={() => setWebhookFor(
+                              webhookFor === account.id ? null : account.id,
+                            )}
+                            class="text-xs px-2 py-1 bg-purple-700 hover:bg-purple-600 text-white rounded transition-colors"
+                          >
+                            {webhookFor === account.id ? "Cancel" : "Webhooks"}
+                          </button>
+                          <button
+                            onClick={() =>
+                              setMessagesFor(
+                                messagesFor === account.id ? null : account.id,
+                              )}
+                            class="text-xs px-2 py-1 bg-blue-700 hover:bg-blue-600 text-white rounded transition-colors"
+                          >
+                            {messagesFor === account.id
+                              ? "Hide"
+                              : `Messages (${account.messages.length})`}
+                          </button>
+                          <button
+                            onClick={() =>
+                              setApiKeyFor(
+                                apiKeyFor === account.id ? null : account.id,
+                              )}
+                            class="text-xs px-2 py-1 bg-slate-700 hover:bg-slate-600 text-white rounded transition-colors"
+                          >
+                            {apiKeyFor === account.id ? "Cancel" : "API Key"}
+                          </button>
+                          {confirmDeleteId === account.id
+                            ? (
+                              <span class="flex items-center gap-1">
+                                <button
+                                  onClick={() =>
+                                    handleDeleteAccount(account.id)}
+                                  disabled={deletingId === account.id}
+                                  class="text-xs px-2 py-1 bg-red-700 hover:bg-red-600 disabled:bg-slate-700 text-white rounded transition-colors"
                                 >
-                                  {msg.direction === "inbound" ? "IN" : "OUT"}
-                                </span>
-                                <div class="flex-1 min-w-0">
-                                  <div class="text-sm text-white truncate">
-                                    {msg.subject || "(no subject)"}
-                                  </div>
-                                  <div class="text-xs text-slate-400 truncate">
-                                    {msg.direction === "inbound"
-                                      ? `From: ${msg.from}`
-                                      : `To: ${account.address}`}
-                                  </div>
-                                </div>
-                                <div class="text-right flex-shrink-0">
+                                  {deletingId === account.id
+                                    ? "..."
+                                    : "Confirm"}
+                                </button>
+                                <button
+                                  onClick={() => setConfirmDeleteId(null)}
+                                  class="text-xs px-2 py-1 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded transition-colors"
+                                >
+                                  No
+                                </button>
+                              </span>
+                            )
+                            : (
+                              <button
+                                onClick={() => setConfirmDeleteId(account.id)}
+                                class="text-xs px-2 py-1 bg-red-900/50 hover:bg-red-800 text-red-300 rounded transition-colors"
+                              >
+                                Release
+                              </button>
+                            )}
+                        </div>
+                      </div>
+                      <div class="flex gap-4 text-sm">
+                        <span class="text-slate-400">
+                          <span class="text-blue-400 font-medium">
+                            {inbound}
+                          </span>{" "}
+                          received
+                        </span>
+                        <span class="text-slate-400">
+                          <span class="text-emerald-400 font-medium">
+                            {outbound}
+                          </span>{" "}
+                          sent
+                        </span>
+                        <span class="text-slate-400">
+                          <span class="text-purple-400 font-medium">
+                            {account.webhooks.length}
+                          </span>{" "}
+                          webhooks
+                        </span>
+                      </div>
+                    </div>
+                    {sendingFor === account.id && (
+                      <SendMessageForm
+                        accountId={account.id}
+                        fromAddress={account.address}
+                        userToken={userToken}
+                        orgId={orgId}
+                        onDone={() => setSendingFor(null)}
+                      />
+                    )}
+                    {webhookFor === account.id && (
+                      <WebhookManager
+                        accountId={account.id}
+                        webhooks={account.webhooks}
+                        userToken={userToken}
+                        orgId={orgId}
+                      />
+                    )}
+                    {apiKeyFor === account.id && (
+                      <AccountApiKey
+                        accountId={account.id}
+                        userToken={userToken}
+                        orgId={orgId}
+                      />
+                    )}
+                    {messagesFor === account.id && (
+                      <div class="mt-2 p-4 bg-slate-900/50 border border-slate-700 rounded-lg space-y-2">
+                        <div class="text-xs text-slate-400 font-medium uppercase tracking-wider">
+                          Messages
+                        </div>
+                        {account.messages.length === 0
+                          ? (
+                            <div class="text-slate-500 text-center py-4">
+                              No messages yet.
+                            </div>
+                          )
+                          : (
+                            [...account.messages]
+                              .sort(
+                                (
+                                  a: { timestamp: number },
+                                  b: { timestamp: number },
+                                ) => b.timestamp - a.timestamp,
+                              )
+                              .slice(0, 20)
+                              // deno-lint-ignore no-explicit-any
+                              .map((msg: any) => (
+                                <div
+                                  key={msg.id}
+                                  class="flex items-center gap-3 p-3 bg-slate-900 rounded-lg border border-slate-700"
+                                >
                                   <span
-                                    class={`text-xs ${
-                                      msg.status === "sent" ||
-                                      msg.status === "delivered"
-                                        ? "text-green-400"
-                                        : msg.status === "failed"
-                                          ? "text-red-400"
-                                          : "text-slate-400"
+                                    class={`text-xs px-2 py-0.5 rounded font-medium ${
+                                      msg.direction === "inbound"
+                                        ? "bg-blue-900/50 text-blue-300"
+                                        : "bg-emerald-900/50 text-emerald-300"
                                     }`}
                                   >
-                                    {msg.status}
+                                    {msg.direction === "inbound" ? "IN" : "OUT"}
                                   </span>
-                                  <div class="text-xs text-slate-500 mt-0.5">
-                                    {new Date(msg.timestamp).toLocaleTimeString(
-                                      [],
-                                      {
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                      },
-                                    )}
+                                  <div class="flex-1 min-w-0">
+                                    <div class="text-sm text-white truncate">
+                                      {msg.subject || "(no subject)"}
+                                    </div>
+                                    <div class="text-xs text-slate-400 truncate">
+                                      {msg.direction === "inbound"
+                                        ? `From: ${msg.from}`
+                                        : `To: ${account.address}`}
+                                    </div>
+                                  </div>
+                                  <div class="text-right flex-shrink-0">
+                                    <span
+                                      class={`text-xs ${
+                                        msg.status === "sent" ||
+                                          msg.status === "delivered"
+                                          ? "text-green-400"
+                                          : msg.status === "failed"
+                                          ? "text-red-400"
+                                          : "text-slate-400"
+                                      }`}
+                                    >
+                                      {msg.status}
+                                    </span>
+                                    <div class="text-xs text-slate-500 mt-0.5">
+                                      {new Date(msg.timestamp)
+                                        .toLocaleTimeString(
+                                          [],
+                                          {
+                                            hour: "2-digit",
+                                            minute: "2-digit",
+                                          },
+                                        )}
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                            ),
-                          )
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            },
-          )}
-        </div>
-      )}
+                              ))
+                          )}
+                      </div>
+                    )}
+                  </div>
+                );
+              },
+            )}
+          </div>
+        )}
     </Card>
   );
 };
@@ -521,7 +545,9 @@ const WebhookManager = ({
             >
               <div class="flex items-center gap-2 min-w-0">
                 <span
-                  class={`w-2 h-2 rounded-full flex-shrink-0 ${w.active ? "bg-green-400" : "bg-slate-500"}`}
+                  class={`w-2 h-2 rounded-full flex-shrink-0 ${
+                    w.active ? "bg-green-400" : "bg-slate-500"
+                  }`}
                 />
                 <span class="text-sm text-white font-mono truncate">
                   {w.url}
@@ -544,8 +570,7 @@ const WebhookManager = ({
           type="text"
           value={newUrl}
           onInput={(e: Event) =>
-            setNewUrl((e.target as HTMLInputElement).value)
-          }
+            setNewUrl((e.target as HTMLInputElement).value)}
           placeholder="https://my-agent.example.com/inbox"
           class="flex-1 bg-slate-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 placeholder-slate-500 focus:border-purple-500 focus:outline-none"
         />
@@ -666,7 +691,14 @@ const AccountApiKey = ({
       {!isLoading && keys.length > 0 && (
         <div class="space-y-2">
           {keys.map(
-            (k: { id: string; prefix: string; name: string; createdAt: number }) => (
+            (
+              k: {
+                id: string;
+                prefix: string;
+                name: string;
+                createdAt: number;
+              },
+            ) => (
               <div
                 key={k.id}
                 class="flex items-center justify-between p-2 bg-slate-900 rounded border border-slate-700"
@@ -781,9 +813,7 @@ const SendMessageForm = ({
       <input
         type="text"
         value={subject}
-        onInput={(e: Event) =>
-          setSubject((e.target as HTMLInputElement).value)
-        }
+        onInput={(e: Event) => setSubject((e.target as HTMLInputElement).value)}
         placeholder="Subject"
         class="w-full bg-slate-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 placeholder-slate-500 focus:border-blue-500 focus:outline-none"
       />
@@ -916,8 +946,7 @@ const ApiKeySection = ({
           type="text"
           value={newKeyName}
           onInput={(e: Event) =>
-            setNewKeyName((e.target as HTMLInputElement).value)
-          }
+            setNewKeyName((e.target as HTMLInputElement).value)}
           placeholder="Token name (optional)"
           class="flex-1 bg-slate-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 placeholder-slate-500 focus:border-blue-500 focus:outline-none"
         />
@@ -929,53 +958,56 @@ const ApiKeySection = ({
           {creating ? "Creating..." : "Create Token"}
         </button>
       </div>
-      {createError && (
-        <div class="mb-4 text-red-400 text-sm">{createError}</div>
-      )}
+      {createError && <div class="mb-4 text-red-400 text-sm">{createError}
+      </div>}
 
-      {keys.length === 0 ? (
-        <div class="text-slate-500 text-center py-4">
-          No org admin tokens yet. Create one above to get started.
-        </div>
-      ) : (
-        <div class="space-y-2">
-          {keys.map(
-            (k: {
-              id: string;
-              prefix: string;
-              name: string;
-              createdAt: number;
-              lastUsedAt?: number;
-            }) => (
-              <div
-                key={k.id}
-                class="flex items-center justify-between p-3 bg-slate-900 rounded-lg border border-slate-700"
-              >
-                <div class="flex items-center gap-2">
-                  <span class="text-white text-sm font-medium">{k.name}</span>
-                  <span class="text-slate-500 text-xs font-mono">
-                    {k.prefix}...
-                  </span>
+      {keys.length === 0
+        ? (
+          <div class="text-slate-500 text-center py-4">
+            No org admin tokens yet. Create one above to get started.
+          </div>
+        )
+        : (
+          <div class="space-y-2">
+            {keys.map(
+              (k: {
+                id: string;
+                prefix: string;
+                name: string;
+                createdAt: number;
+                lastUsedAt?: number;
+              }) => (
+                <div
+                  key={k.id}
+                  class="flex items-center justify-between p-3 bg-slate-900 rounded-lg border border-slate-700"
+                >
+                  <div class="flex items-center gap-2">
+                    <span class="text-white text-sm font-medium">{k.name}</span>
+                    <span class="text-slate-500 text-xs font-mono">
+                      {k.prefix}...
+                    </span>
+                  </div>
+                  <div class="flex items-center gap-3">
+                    <span class="text-xs text-slate-500">
+                      {k.lastUsedAt
+                        ? `Last used ${
+                          new Date(k.lastUsedAt).toLocaleDateString()
+                        }`
+                        : "Never used"}
+                    </span>
+                    <button
+                      onClick={() => handleDelete(k.id)}
+                      disabled={deletingId === k.id}
+                      class="text-xs text-red-400 hover:text-red-300 disabled:text-slate-600 transition-colors"
+                    >
+                      {deletingId === k.id ? "Deleting..." : "Delete"}
+                    </button>
+                  </div>
                 </div>
-                <div class="flex items-center gap-3">
-                  <span class="text-xs text-slate-500">
-                    {k.lastUsedAt
-                      ? `Last used ${new Date(k.lastUsedAt).toLocaleDateString()}`
-                      : "Never used"}
-                  </span>
-                  <button
-                    onClick={() => handleDelete(k.id)}
-                    disabled={deletingId === k.id}
-                    class="text-xs text-red-400 hover:text-red-300 disabled:text-slate-600 transition-colors"
-                  >
-                    {deletingId === k.id ? "Deleting..." : "Delete"}
-                  </button>
-                </div>
-              </div>
-            ),
-          )}
-        </div>
-      )}
+              ),
+            )}
+          </div>
+        )}
     </Card>
   );
 };
@@ -1061,8 +1093,7 @@ const MembersSection = ({
           type="email"
           value={inviteEmail}
           onInput={(e: Event) =>
-            setInviteEmail((e.target as HTMLInputElement).value)
-          }
+            setInviteEmail((e.target as HTMLInputElement).value)}
           placeholder="Email address to invite"
           class="flex-1 bg-slate-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 placeholder-slate-500 focus:border-blue-500 focus:outline-none"
         />
@@ -1074,7 +1105,8 @@ const MembersSection = ({
           {inviting ? "Inviting..." : "Invite"}
         </button>
       </div>
-      {inviteError && <div class="mb-3 text-red-400 text-sm">{inviteError}</div>}
+      {inviteError && <div class="mb-3 text-red-400 text-sm">{inviteError}
+      </div>}
       {inviteSuccess && (
         <div class="mb-3 text-emerald-400 text-sm">{inviteSuccess}</div>
       )}
@@ -1166,58 +1198,60 @@ const OrgSwitcher = ({
 
   return (
     <div class="flex items-center gap-3">
-      {orgs.length > 1 ? (
-        <select
-          value={selectedOrgId ?? ""}
-          onChange={(e: Event) =>
-            onSelect((e.target as HTMLSelectElement).value)
-          }
-          class="bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none"
-        >
-          {orgs.map((org) => (
-            <option key={org.id} value={org.id}>
-              {org.name}
-            </option>
-          ))}
-        </select>
-      ) : editing ? (
-        <div class="flex items-center gap-2">
-          <input
-            type="text"
-            value={editName}
-            onInput={(e: Event) =>
-              setEditName((e.target as HTMLInputElement).value)
-            }
-            onKeyDown={(e: KeyboardEvent) => {
-              if (e.key === "Enter") saveRename();
-              if (e.key === "Escape") setEditing(false);
-            }}
-            class="bg-slate-800 border border-slate-700 text-white text-lg font-bold rounded-lg px-3 py-1 focus:border-blue-500 focus:outline-none"
-            autoFocus
-          />
-          <button
-            onClick={saveRename}
-            disabled={saving}
-            class="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded transition-colors"
+      {orgs.length > 1
+        ? (
+          <select
+            value={selectedOrgId ?? ""}
+            onChange={(e: Event) =>
+              onSelect((e.target as HTMLSelectElement).value)}
+            class="bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none"
           >
-            {saving ? "..." : "Save"}
-          </button>
-          <button
-            onClick={() => setEditing(false)}
-            class="text-xs px-2 py-1 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded transition-colors"
+            {orgs.map((org) => (
+              <option key={org.id} value={org.id}>
+                {org.name}
+              </option>
+            ))}
+          </select>
+        )
+        : editing
+        ? (
+          <div class="flex items-center gap-2">
+            <input
+              type="text"
+              value={editName}
+              onInput={(e: Event) =>
+                setEditName((e.target as HTMLInputElement).value)}
+              onKeyDown={(e: KeyboardEvent) => {
+                if (e.key === "Enter") saveRename();
+                if (e.key === "Escape") setEditing(false);
+              }}
+              class="bg-slate-800 border border-slate-700 text-white text-lg font-bold rounded-lg px-3 py-1 focus:border-blue-500 focus:outline-none"
+              autoFocus
+            />
+            <button
+              onClick={saveRename}
+              disabled={saving}
+              class="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded transition-colors"
+            >
+              {saving ? "..." : "Save"}
+            </button>
+            <button
+              onClick={() => setEditing(false)}
+              class="text-xs px-2 py-1 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        )
+        : (
+          <h1
+            class="text-2xl font-bold text-white cursor-pointer hover:text-slate-300 transition-colors"
+            onClick={startEdit}
+            title="Click to rename"
           >
-            Cancel
-          </button>
-        </div>
-      ) : (
-        <h1
-          class="text-2xl font-bold text-white cursor-pointer hover:text-slate-300 transition-colors"
-          onClick={startEdit}
-          title="Click to rename"
-        >
-          {orgs[0].name}
-        </h1>
-      )}
+            {orgs[0].name}
+          </h1>
+        )}
       {!editing && (
         <button
           onClick={onCreateOrg}
@@ -1249,9 +1283,10 @@ const Dashboard = () => {
   const orgs = data?.organizations ?? [];
 
   // Auto-select first org if none selected
-  const activeOrgId = selectedOrgId && orgs.some((o: { id: string }) => o.id === selectedOrgId)
-    ? selectedOrgId
-    : orgs[0]?.id ?? null;
+  const activeOrgId =
+    selectedOrgId && orgs.some((o: { id: string }) => o.id === selectedOrgId)
+      ? selectedOrgId
+      : orgs[0]?.id ?? null;
 
   const handleCreateOrg = async () => {
     if (!user?.refresh_token) return;
@@ -1304,8 +1339,7 @@ const Dashboard = () => {
             type="text"
             value={newOrgName}
             onInput={(e: Event) =>
-              setNewOrgName((e.target as HTMLInputElement).value)
-            }
+              setNewOrgName((e.target as HTMLInputElement).value)}
             placeholder="Organization name"
             class="bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-4 py-3 placeholder-slate-500 focus:border-blue-500 focus:outline-none w-64"
           />
@@ -1317,9 +1351,7 @@ const Dashboard = () => {
             {creatingOrg ? "Setting up..." : "Get Started"}
           </button>
         </div>
-        {orgError && (
-          <div class="mt-4 text-red-400 text-sm">{orgError}</div>
-        )}
+        {orgError && <div class="mt-4 text-red-400 text-sm">{orgError}</div>}
       </div>
     );
   }
@@ -1349,8 +1381,7 @@ const Dashboard = () => {
               type="text"
               value={newOrgName}
               onInput={(e: Event) =>
-                setNewOrgName((e.target as HTMLInputElement).value)
-              }
+                setNewOrgName((e.target as HTMLInputElement).value)}
               placeholder="Organization name"
               class="flex-1 bg-slate-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 placeholder-slate-500 focus:border-blue-500 focus:outline-none"
             />

@@ -1,6 +1,6 @@
 import { pipe, reduce } from "gamla";
 import { db, id } from "../db.ts";
-import type { KarmaEventType, KarmaBalance } from "../types.ts";
+import type { KarmaBalance, KarmaEventType } from "../types.ts";
 import { captureEvent } from "./posthog.ts";
 import { KARMA_AMOUNTS } from "../karma-constants.ts";
 
@@ -49,8 +49,7 @@ const recordKarmaEvent = (
 };
 
 const requireKarma =
-  (minimumNeeded: number) =>
-  (orgId: string): Promise<void> =>
+  (minimumNeeded: number) => (orgId: string): Promise<void> =>
     getBalance(orgId).then(({ balance }) => {
       if (balance < minimumNeeded) {
         throw { status: 402, error: "Insufficient karma", code: "KARMA_LOW" };
@@ -63,6 +62,6 @@ const requireKarmaForAccountCreation = requireKarma(10);
 export {
   getBalance,
   recordKarmaEvent,
-  requireKarmaForSend,
   requireKarmaForAccountCreation,
+  requireKarmaForSend,
 };

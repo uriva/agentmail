@@ -1,10 +1,5 @@
 import hydrate from "preact-iso/hydrate";
-import {
-  LocationProvider,
-  Router,
-  Route,
-  ErrorBoundary,
-} from "preact-iso";
+import { ErrorBoundary, LocationProvider, Route, Router } from "preact-iso";
 import { Login } from "./login.tsx";
 import { Dashboard } from "./dashboard.tsx";
 import { Landing } from "./landing.tsx";

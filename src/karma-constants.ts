@@ -13,4 +13,4 @@ const INITIAL_KARMA = KARMA_AMOUNTS.money_paid;
 const formatKarma = (amount: number): string =>
   amount > 0 ? `+${amount}` : `${amount}`;
 
-export { KARMA_AMOUNTS, INITIAL_KARMA, formatKarma };
+export { formatKarma, INITIAL_KARMA, KARMA_AMOUNTS };

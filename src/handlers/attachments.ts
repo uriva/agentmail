@@ -30,9 +30,17 @@ const getAttachmentUrl = async (
 
   // deno-lint-ignore no-explicit-any
   const rawAtt = attachment as any;
-  const message = Array.isArray(rawAtt.message) ? rawAtt.message[0] : rawAtt.message;
-  const account = message ? (Array.isArray(message.account) ? message.account[0] : message.account) : null;
-  const organization = account ? (Array.isArray(account.organization) ? account.organization[0] : account.organization) : null;
+  const message = Array.isArray(rawAtt.message)
+    ? rawAtt.message[0]
+    : rawAtt.message;
+  const account = message
+    ? (Array.isArray(message.account) ? message.account[0] : message.account)
+    : null;
+  const organization = account
+    ? (Array.isArray(account.organization)
+      ? account.organization[0]
+      : account.organization)
+    : null;
 
   if (organization?.id !== orgId) {
     return Response.json(
@@ -57,15 +65,17 @@ const getAttachmentUrl = async (
 
   const url = await getSignedUrl(attachment.storageKey);
 
-  return Response.json({
-    data: {
-      id: attachment.id,
-      filename: attachment.filename,
-      contentType: attachment.contentType,
-      size: attachment.size,
-      url,
-    },
-  } satisfies ApiResponse<unknown>);
+  return Response.json(
+    {
+      data: {
+        id: attachment.id,
+        filename: attachment.filename,
+        contentType: attachment.contentType,
+        size: attachment.size,
+        url,
+      },
+    } satisfies ApiResponse<unknown>,
+  );
 };
 
 export { getAttachmentUrl };

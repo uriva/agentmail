@@ -93,5 +93,5 @@ Forward Email sends a mailparser-style payload. Watch out for:
 - `from` and `to` can be structured objects (`{ value: [{ address, name }] }`)
   instead of plain strings. The `normalizePayload` function in `inbound.ts`
   handles this.
-- Attachments come as `{ content: { type: "Buffer", data: [...] } }` and need
-  to be converted to base64.
+- Attachments come as `{ content: { type: "Buffer", data: [...] } }` and need to
+  be converted to base64.

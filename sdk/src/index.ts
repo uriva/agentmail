@@ -1,28 +1,28 @@
-import type { ClientConfig, ApiError } from "./types.ts";
-import { makeAccounts, type AccountsResource } from "./resources/accounts.ts";
+import type { ApiError, ClientConfig } from "./types.ts";
+import { type AccountsResource, makeAccounts } from "./resources/accounts.ts";
 import { makeMessages, type MessagesResource } from "./resources/messages.ts";
 import {
-  makeAttachments,
   type AttachmentsResource,
+  makeAttachments,
 } from "./resources/attachments.ts";
 import { makeWebhooks, type WebhooksResource } from "./resources/webhooks.ts";
-import { makeKarma, type KarmaResource } from "./resources/karma.ts";
+import { type KarmaResource, makeKarma } from "./resources/karma.ts";
 
 export type {
   Account,
-  CreateAccountParams,
-  Message,
-  MessageDetail,
-  SendMessageParams,
+  ApiError,
+  AttachmentInput,
   AttachmentMeta,
   AttachmentWithUrl,
-  AttachmentInput,
-  Webhook,
+  ClientConfig,
+  CreateAccountParams,
   CreateWebhookParams,
   KarmaBalance,
   KarmaEvent,
-  ApiError,
-  ClientConfig,
+  Message,
+  MessageDetail,
+  SendMessageParams,
+  Webhook,
 } from "./types.ts";
 
 export type { AccountsResource } from "./resources/accounts.ts";

@@ -17,19 +17,19 @@ send and receive messages, and get real-time notifications via webhooks.
 
 Copy `.env.example` to `.env` and fill in the values:
 
-| Variable | Description |
-|----------|-------------|
-| `INSTANT_APP_ID` | InstantDB app ID |
-| `INSTANT_ADMIN_TOKEN` | InstantDB admin token |
-| `VITE_INSTANT_APP_ID` | Same app ID, exposed to the frontend |
-| `FORWARD_EMAIL_API_KEY` | Forward Email API key |
-| `FORWARD_EMAIL_DOMAIN` | Domain for email accounts (default: `theagentmail.net`) |
-| `GCP_PROJECT_ID` | Google Cloud project ID |
-| `GCP_STORAGE_BUCKET` | GCS bucket for attachments (default: `agentmail-attachments`) |
-| `GCP_SERVICE_ACCOUNT_KEY` | GCP service account key JSON |
-| `POSTHOG_API_KEY` | PostHog API key |
-| `POSTHOG_HOST` | PostHog ingest URL |
-| `INBOUND_WEBHOOK_SECRET` | Forward Email webhook signature key (from domain settings) |
+| Variable                  | Description                                                   |
+| ------------------------- | ------------------------------------------------------------- |
+| `INSTANT_APP_ID`          | InstantDB app ID                                              |
+| `INSTANT_ADMIN_TOKEN`     | InstantDB admin token                                         |
+| `VITE_INSTANT_APP_ID`     | Same app ID, exposed to the frontend                          |
+| `FORWARD_EMAIL_API_KEY`   | Forward Email API key                                         |
+| `FORWARD_EMAIL_DOMAIN`    | Domain for email accounts (default: `theagentmail.net`)       |
+| `GCP_PROJECT_ID`          | Google Cloud project ID                                       |
+| `GCP_STORAGE_BUCKET`      | GCS bucket for attachments (default: `agentmail-attachments`) |
+| `GCP_SERVICE_ACCOUNT_KEY` | GCP service account key JSON                                  |
+| `POSTHOG_API_KEY`         | PostHog API key                                               |
+| `POSTHOG_HOST`            | PostHog ingest URL                                            |
+| `INBOUND_WEBHOOK_SECRET`  | Forward Email webhook signature key (from domain settings)    |
 
 ```bash
 deno task dev        # Run server with watch mode
@@ -60,34 +60,37 @@ All responses are wrapped in `{ "data": ... }`. Errors return
 
 ### Accounts
 
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| `POST` | `/v1/accounts` | apiKey or userToken | Create account |
-| `GET` | `/v1/accounts` | apiKey or userToken | List accounts |
-| `GET` | `/v1/accounts/:accountId` | apiKey or userToken | Get account |
-| `DELETE` | `/v1/accounts/:accountId` | apiKey or userToken | Delete account |
-| `GET` | `/v1/account` | apiKey (account-scoped) | Get own account |
-| `DELETE` | `/v1/account` | apiKey (account-scoped) | Delete own account |
+| Method   | Path                      | Auth                    | Description        |
+| -------- | ------------------------- | ----------------------- | ------------------ |
+| `POST`   | `/v1/accounts`            | apiKey or userToken     | Create account     |
+| `GET`    | `/v1/accounts`            | apiKey or userToken     | List accounts      |
+| `GET`    | `/v1/accounts/:accountId` | apiKey or userToken     | Get account        |
+| `DELETE` | `/v1/accounts/:accountId` | apiKey or userToken     | Delete account     |
+| `GET`    | `/v1/account`             | apiKey (account-scoped) | Get own account    |
+| `DELETE` | `/v1/account`             | apiKey (account-scoped) | Delete own account |
 
 **Create account** body:
+
 ```json
 { "address": "mybot", "displayName": "My Bot" }
 ```
+
 The address is the local part only. A Forward Email alias is created
 automatically, pointing inbound mail to the AgentMail inbound webhook.
 
 ### Messages
 
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| `POST` | `/v1/accounts/:accountId/messages` | apiKey or userToken | Send message |
-| `GET` | `/v1/accounts/:accountId/messages` | apiKey or userToken | List messages |
-| `GET` | `/v1/accounts/:accountId/messages/:messageId` | apiKey or userToken | Get message |
-| `POST` | `/v1/messages` | apiKey (account-scoped) | Send message (shortcut) |
-| `GET` | `/v1/messages` | apiKey (account-scoped) | List messages (shortcut) |
-| `GET` | `/v1/messages/:messageId` | apiKey (account-scoped) | Get message (shortcut) |
+| Method | Path                                          | Auth                    | Description              |
+| ------ | --------------------------------------------- | ----------------------- | ------------------------ |
+| `POST` | `/v1/accounts/:accountId/messages`            | apiKey or userToken     | Send message             |
+| `GET`  | `/v1/accounts/:accountId/messages`            | apiKey or userToken     | List messages            |
+| `GET`  | `/v1/accounts/:accountId/messages/:messageId` | apiKey or userToken     | Get message              |
+| `POST` | `/v1/messages`                                | apiKey (account-scoped) | Send message (shortcut)  |
+| `GET`  | `/v1/messages`                                | apiKey (account-scoped) | List messages (shortcut) |
+| `GET`  | `/v1/messages/:messageId`                     | apiKey (account-scoped) | Get message (shortcut)   |
 
 **Send message** body:
+
 ```json
 {
   "to": ["recipient@example.com"],
@@ -113,22 +116,25 @@ threading replies.
 
 ### Webhooks
 
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| `POST` | `/v1/accounts/:accountId/webhooks` | apiKey or userToken | Create webhook |
-| `GET` | `/v1/accounts/:accountId/webhooks` | apiKey or userToken | List webhooks |
-| `DELETE` | `/v1/accounts/:accountId/webhooks/:webhookId` | apiKey or userToken | Delete webhook |
-| `POST` | `/v1/webhooks` | apiKey (account-scoped) | Create webhook (shortcut) |
-| `GET` | `/v1/webhooks` | apiKey (account-scoped) | List webhooks (shortcut) |
-| `DELETE` | `/v1/webhooks/:webhookId` | apiKey (account-scoped) | Delete webhook (shortcut) |
+| Method   | Path                                          | Auth                    | Description               |
+| -------- | --------------------------------------------- | ----------------------- | ------------------------- |
+| `POST`   | `/v1/accounts/:accountId/webhooks`            | apiKey or userToken     | Create webhook            |
+| `GET`    | `/v1/accounts/:accountId/webhooks`            | apiKey or userToken     | List webhooks             |
+| `DELETE` | `/v1/accounts/:accountId/webhooks/:webhookId` | apiKey or userToken     | Delete webhook            |
+| `POST`   | `/v1/webhooks`                                | apiKey (account-scoped) | Create webhook (shortcut) |
+| `GET`    | `/v1/webhooks`                                | apiKey (account-scoped) | List webhooks (shortcut)  |
+| `DELETE` | `/v1/webhooks/:webhookId`                     | apiKey (account-scoped) | Delete webhook (shortcut) |
 
 **Create webhook** body:
+
 ```json
 { "url": "https://example.com/webhook", "secret": "optional-secret" }
 ```
+
 If `secret` is omitted, a random 32-byte hex secret is generated and returned.
 
 **Webhook delivery payload** (sent as POST to your URL):
+
 ```json
 {
   "event": "email.received",
@@ -156,57 +162,60 @@ If `secret` is omitted, a random 32-byte hex secret is generated and returned.
 ```
 
 Webhook deliveries include two headers:
-- `X-AgentMail-Signature` — HMAC-SHA256 hex digest of the request body, signed with your webhook secret
+
+- `X-AgentMail-Signature` — HMAC-SHA256 hex digest of the request body, signed
+  with your webhook secret
 - `X-AgentMail-Timestamp` — millisecond timestamp of when the delivery was sent
 
-Verify the signature and reject requests with timestamps older than 5 minutes to prevent replay attacks.
+Verify the signature and reject requests with timestamps older than 5 minutes to
+prevent replay attacks.
 
 ### Attachments
 
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| `GET` | `/v1/accounts/:accountId/messages/:messageId/attachments/:attachmentId` | apiKey or userToken | Get attachment URL |
-| `GET` | `/v1/messages/:messageId/attachments/:attachmentId` | apiKey (account-scoped) | Get attachment URL (shortcut) |
+| Method | Path                                                                    | Auth                    | Description                   |
+| ------ | ----------------------------------------------------------------------- | ----------------------- | ----------------------------- |
+| `GET`  | `/v1/accounts/:accountId/messages/:messageId/attachments/:attachmentId` | apiKey or userToken     | Get attachment URL            |
+| `GET`  | `/v1/messages/:messageId/attachments/:attachmentId`                     | apiKey (account-scoped) | Get attachment URL (shortcut) |
 
 ### API Keys
 
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| `POST` | `/v1/api-keys` | userToken | Create API key |
-| `GET` | `/v1/api-keys` | userToken | List API keys |
-| `DELETE` | `/v1/api-keys/:apiKeyId` | userToken | Delete API key |
-| `POST` | `/v1/accounts/:accountId/api-keys` | apiKey or userToken | Create account-scoped API key |
+| Method   | Path                               | Auth                | Description                   |
+| -------- | ---------------------------------- | ------------------- | ----------------------------- |
+| `POST`   | `/v1/api-keys`                     | userToken           | Create API key                |
+| `GET`    | `/v1/api-keys`                     | userToken           | List API keys                 |
+| `DELETE` | `/v1/api-keys/:apiKeyId`           | userToken           | Delete API key                |
+| `POST`   | `/v1/accounts/:accountId/api-keys` | apiKey or userToken | Create account-scoped API key |
 
 ### Organizations
 
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| `POST` | `/v1/organizations` | userToken | Create organization |
-| `GET` | `/v1/organizations` | userToken | List organizations |
+| Method  | Path                | Auth      | Description         |
+| ------- | ------------------- | --------- | ------------------- |
+| `POST`  | `/v1/organizations` | userToken | Create organization |
+| `GET`   | `/v1/organizations` | userToken | List organizations  |
 | `PATCH` | `/v1/organizations` | userToken | Rename organization |
 
 ### Members
 
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| `POST` | `/v1/members` | userToken | Invite member |
-| `GET` | `/v1/members` | userToken | List members |
+| Method   | Path                    | Auth      | Description   |
+| -------- | ----------------------- | --------- | ------------- |
+| `POST`   | `/v1/members`           | userToken | Invite member |
+| `GET`    | `/v1/members`           | userToken | List members  |
 | `DELETE` | `/v1/members/:memberId` | userToken | Remove member |
 
 ### Karma
 
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| `GET` | `/v1/karma` | apiKey or userToken | Get karma balance |
+| Method | Path        | Auth                | Description       |
+| ------ | ----------- | ------------------- | ----------------- |
+| `GET`  | `/v1/karma` | apiKey or userToken | Get karma balance |
 
 Karma is earned by receiving emails from trusted domains (gmail, outlook, etc.)
 and spent on sending emails and creating accounts.
 
 ### Health
 
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| `GET` | `/health` | none | Health check |
+| Method | Path      | Auth | Description  |
+| ------ | --------- | ---- | ------------ |
+| `GET`  | `/health` | none | Health check |
 
 ## Inbound email flow
 
@@ -217,8 +226,8 @@ and spent on sending emails and creating accounts.
    Buffer-style attachments, `html: false` for missing HTML, etc.)
 5. Looks up the recipient account in InstantDB
 6. Stores the message and any attachments (GCS)
-7. Awards karma if the sender is from a trusted domain and no unanswered
-   inbound exists from this sender
+7. Awards karma if the sender is from a trusted domain and no unanswered inbound
+   exists from this sender
 8. Fires webhook delivery to all active webhook subscriptions for the account
 
 ## Deployment

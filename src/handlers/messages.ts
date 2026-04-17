@@ -1,7 +1,7 @@
 import { db, id } from "../db.ts";
-import type { SendEmailInput, ApiResponse } from "../types.ts";
-import { requireKarmaForSend, recordKarmaEvent } from "../services/karma.ts";
-import { sendEmail, FORWARD_EMAIL_DOMAIN } from "../services/forwardEmail.ts";
+import type { ApiResponse, SendEmailInput } from "../types.ts";
+import { recordKarmaEvent, requireKarmaForSend } from "../services/karma.ts";
+import { FORWARD_EMAIL_DOMAIN, sendEmail } from "../services/forwardEmail.ts";
 import { uploadFile } from "../services/storage.ts";
 import { captureEvent } from "../services/posthog.ts";
 
@@ -154,17 +154,19 @@ const listMessages = async (
     );
   }
 
-  return Response.json({
-    data: account.messages.map((m) => ({
-      id: m.id,
-      from: m.from,
-      to: m.to,
-      subject: m.subject,
-      direction: m.direction,
-      status: m.status,
-      timestamp: m.timestamp,
-    })),
-  } satisfies ApiResponse<unknown>);
+  return Response.json(
+    {
+      data: account.messages.map((m) => ({
+        id: m.id,
+        from: m.from,
+        to: m.to,
+        subject: m.subject,
+        direction: m.direction,
+        status: m.status,
+        timestamp: m.timestamp,
+      })),
+    } satisfies ApiResponse<unknown>,
+  );
 };
 
 const getMessage = async (
@@ -185,7 +187,7 @@ const getMessage = async (
     },
   });
   const message = messages[0];
-  
+
   if (!message) {
     return Response.json(
       { error: "Message not found", code: "NOT_FOUND" },
@@ -195,8 +197,14 @@ const getMessage = async (
 
   // deno-lint-ignore no-explicit-any
   const rawMessage = message as any;
-  const account = Array.isArray(rawMessage.account) ? rawMessage.account[0] : rawMessage.account;
-  const organization = account ? (Array.isArray(account.organization) ? account.organization[0] : account.organization) : null;
+  const account = Array.isArray(rawMessage.account)
+    ? rawMessage.account[0]
+    : rawMessage.account;
+  const organization = account
+    ? (Array.isArray(account.organization)
+      ? account.organization[0]
+      : account.organization)
+    : null;
 
   if (organization?.id !== orgId) {
     return Response.json(
@@ -212,29 +220,31 @@ const getMessage = async (
     );
   }
 
-  return Response.json({
-    data: {
-      id: message.id,
-      from: message.from,
-      to: message.to,
-      cc: message.cc || null,
-      bcc: message.bcc || null,
-      subject: message.subject,
-      bodyText: message.bodyText || null,
-      bodyHtml: message.bodyHtml || null,
-      direction: message.direction,
-      status: message.status,
-      timestamp: message.timestamp,
-      inReplyTo: message.inReplyTo || null,
-      references: message.references || null,
-      attachments: message.attachments.map((a) => ({
-        id: a.id,
-        filename: a.filename,
-        contentType: a.contentType,
-        size: a.size,
-      })),
-    },
-  } satisfies ApiResponse<unknown>);
+  return Response.json(
+    {
+      data: {
+        id: message.id,
+        from: message.from,
+        to: message.to,
+        cc: message.cc || null,
+        bcc: message.bcc || null,
+        subject: message.subject,
+        bodyText: message.bodyText || null,
+        bodyHtml: message.bodyHtml || null,
+        direction: message.direction,
+        status: message.status,
+        timestamp: message.timestamp,
+        inReplyTo: message.inReplyTo || null,
+        references: message.references || null,
+        attachments: message.attachments.map((a) => ({
+          id: a.id,
+          filename: a.filename,
+          contentType: a.contentType,
+          size: a.size,
+        })),
+      },
+    } satisfies ApiResponse<unknown>,
+  );
 };
 
-export { sendMessage, listMessages, getMessage };
+export { getMessage, listMessages, sendMessage };

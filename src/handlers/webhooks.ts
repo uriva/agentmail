@@ -1,5 +1,5 @@
 import { db, id } from "../db.ts";
-import type { CreateWebhookInput, ApiResponse } from "../types.ts";
+import type { ApiResponse, CreateWebhookInput } from "../types.ts";
 
 const generateSecret = (): string => {
   const bytes = new Uint8Array(32);
@@ -71,14 +71,16 @@ const listWebhooks = async (
     );
   }
 
-  return Response.json({
-    data: accounts[0].webhooks.map((w) => ({
-      id: w.id,
-      url: w.url,
-      active: w.active,
-      createdAt: w.createdAt,
-    })),
-  } satisfies ApiResponse<unknown>);
+  return Response.json(
+    {
+      data: accounts[0].webhooks.map((w) => ({
+        id: w.id,
+        url: w.url,
+        active: w.active,
+        createdAt: w.createdAt,
+      })),
+    } satisfies ApiResponse<unknown>,
+  );
 };
 
 const deleteWebhook = async (
@@ -113,4 +115,4 @@ const deleteWebhook = async (
   return new Response(null, { status: 204 });
 };
 
-export { createWebhook, listWebhooks, deleteWebhook };
+export { createWebhook, deleteWebhook, listWebhooks };

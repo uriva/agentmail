@@ -1,8 +1,8 @@
 import { db, id } from "../db.ts";
-import type { CreateAccountInput, ApiResponse } from "../types.ts";
+import type { ApiResponse, CreateAccountInput } from "../types.ts";
 import {
-  requireKarmaForAccountCreation,
   recordKarmaEvent,
+  requireKarmaForAccountCreation,
 } from "../services/karma.ts";
 import {
   createAlias,
@@ -11,8 +11,8 @@ import {
 } from "../services/forwardEmail.ts";
 import { captureEvent } from "../services/posthog.ts";
 
-const WEBHOOK_RECEIVER_URL =
-  Deno.env.get("INBOUND_WEBHOOK_URL") ?? "https://api.theagentmail.net/inbound";
+const WEBHOOK_RECEIVER_URL = Deno.env.get("INBOUND_WEBHOOK_URL") ??
+  "https://api.theagentmail.net/inbound";
 
 const RESERVED_ADDRESSES = new Set(["uri", "support"]);
 
@@ -23,9 +23,7 @@ const createAccount = async (
 ): Promise<Response> => {
   const input = (await req.json()) as CreateAccountInput;
   const localPart = (
-    input.address.includes("@")
-      ? input.address.split("@")[0]!
-      : input.address
+    input.address.includes("@") ? input.address.split("@")[0]! : input.address
   ).toLowerCase();
   const address = `${localPart}@${FORWARD_EMAIL_DOMAIN}`;
 
@@ -70,14 +68,16 @@ const listAccounts = async (
   const { accounts } = await db.query({
     accounts: { $: { where: { "organization.id": orgId } } },
   });
-  return Response.json({
-    data: accounts.map((a) => ({
-      id: a.id,
-      address: a.address,
-      displayName: a.displayName || null,
-      createdAt: a.createdAt,
-    })),
-  } satisfies ApiResponse<unknown>);
+  return Response.json(
+    {
+      data: accounts.map((a) => ({
+        id: a.id,
+        address: a.address,
+        displayName: a.displayName || null,
+        createdAt: a.createdAt,
+      })),
+    } satisfies ApiResponse<unknown>,
+  );
 };
 
 const getAccount = async (
@@ -97,14 +97,16 @@ const getAccount = async (
       { status: 404 },
     );
   }
-  return Response.json({
-    data: {
-      id: account.id,
-      address: account.address,
-      displayName: account.displayName || null,
-      createdAt: account.createdAt,
-    },
-  } satisfies ApiResponse<unknown>);
+  return Response.json(
+    {
+      data: {
+        id: account.id,
+        address: account.address,
+        displayName: account.displayName || null,
+        createdAt: account.createdAt,
+      },
+    } satisfies ApiResponse<unknown>,
+  );
 };
 
 const deleteAccount = async (
@@ -143,4 +145,4 @@ const deleteAccount = async (
   return new Response(null, { status: 204 });
 };
 
-export { createAccount, listAccounts, getAccount, deleteAccount };
+export { createAccount, deleteAccount, getAccount, listAccounts };

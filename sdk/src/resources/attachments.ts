@@ -1,4 +1,4 @@
-import type { AttachmentWithUrl, ApiResponse } from "../types.ts";
+import type { ApiResponse, AttachmentWithUrl } from "../types.ts";
 
 export type AttachmentsResource = {
   readonly getUrl: (

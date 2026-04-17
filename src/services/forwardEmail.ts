@@ -1,10 +1,9 @@
 const FORWARD_EMAIL_API_KEY = Deno.env.get("FORWARD_EMAIL_API_KEY") ?? "";
-const FORWARD_EMAIL_DOMAIN =
-  Deno.env.get("FORWARD_EMAIL_DOMAIN") ?? "theagentmail.net";
+const FORWARD_EMAIL_DOMAIN = Deno.env.get("FORWARD_EMAIL_DOMAIN") ??
+  "theagentmail.net";
 const BASE_URL = "https://api.forwardemail.net/v1";
 
-const authHeader = () =>
-  `Basic ${btoa(`${FORWARD_EMAIL_API_KEY}:`)}`;
+const authHeader = () => `Basic ${btoa(`${FORWARD_EMAIL_API_KEY}:`)}`;
 
 const request = async (
   path: string,
@@ -109,10 +108,4 @@ const sendEmail = (params: SendEmailParams): Promise<unknown> =>
     }),
   });
 
-export {
-  createAlias,
-  deleteAlias,
-  getAlias,
-  sendEmail,
-  FORWARD_EMAIL_DOMAIN,
-};
+export { createAlias, deleteAlias, FORWARD_EMAIL_DOMAIN, getAlias, sendEmail };

@@ -55,7 +55,9 @@ export const inviteMember = async (
 
   // Look up the user by email in InstantDB
   // deno-lint-ignore no-explicit-any
-  const userResult = await (db as any).query({ $users: { $: { where: { email } } } });
+  const userResult = await (db as any).query({
+    $users: { $: { where: { email } } },
+  });
   const targetUser = userResult?.$users?.[0];
 
   if (!targetUser) {
@@ -158,7 +160,10 @@ export const removeMember = async (
       const user = await db.auth.verifyToken(token);
       if (user?.id !== org.billingUser?.id) {
         return Response.json(
-          { error: "Only the billing user can remove members", code: "FORBIDDEN" },
+          {
+            error: "Only the billing user can remove members",
+            code: "FORBIDDEN",
+          },
           { status: 403 },
         );
       }

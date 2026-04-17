@@ -1,9 +1,9 @@
 import type { ComponentChildren } from "preact";
-import { useRef, useEffect } from "preact/hooks";
+import { useEffect, useRef } from "preact/hooks";
 import {
-  KARMA_AMOUNTS,
-  INITIAL_KARMA,
   formatKarma,
+  INITIAL_KARMA,
+  KARMA_AMOUNTS,
 } from "../../src/karma-constants.ts";
 
 const CodeBlock = ({
@@ -60,14 +60,13 @@ const Endpoint = ({
   karma?: string;
   children?: preact.ComponentChildren;
 }) => {
-  const methodColor =
-    method === "GET"
-      ? "text-green-400 bg-green-400/10"
-      : method === "POST"
-        ? "text-blue-400 bg-blue-400/10"
-        : method === "DELETE"
-          ? "text-red-400 bg-red-400/10"
-          : "text-yellow-400 bg-yellow-400/10";
+  const methodColor = method === "GET"
+    ? "text-green-400 bg-green-400/10"
+    : method === "POST"
+    ? "text-blue-400 bg-blue-400/10"
+    : method === "DELETE"
+    ? "text-red-400 bg-red-400/10"
+    : "text-yellow-400 bg-yellow-400/10";
   return (
     <div class="mb-8 last:mb-0">
       <div class="flex items-center gap-3 mb-2 flex-wrap">
@@ -77,9 +76,7 @@ const Endpoint = ({
           {method}
         </span>
         <code class="text-sm text-white">{path}</code>
-        {karma && (
-          <span class="text-xs font-mono text-slate-400">{karma}</span>
-        )}
+        {karma && <span class="text-xs font-mono text-slate-400">{karma}</span>}
       </div>
       <p class="text-slate-400 text-sm mb-3">{description}</p>
       {children}
@@ -176,8 +173,8 @@ const Docs = () => (
   -d '{"name": "my-agent-key"}'`}
           />
           <p class="text-slate-500 text-xs mt-2">
-            Save the <code class="text-white">key</code> from the response.
-            It's only shown once.
+            Save the <code class="text-white">key</code>{" "}
+            from the response. It's only shown once.
           </p>
         </div>
 
@@ -190,8 +187,8 @@ const Docs = () => (
             <code class="text-white">
               https://api.theagentmail.net/docs
             </code>{" "}
-            to your AI agent. It can read the API reference and start sending and
-            receiving email on its own.
+            to your AI agent. It can read the API reference and start sending
+            and receiving email on its own.
           </p>
         </div>
       </div>
@@ -227,8 +224,8 @@ const Docs = () => (
               .
             </p>
             <p class="mt-2">
-              Account tokens can use shortcut routes that omit the account ID
-              -- the server infers it from the token. For example,{" "}
+              Account tokens can use shortcut routes that omit the account ID --
+              the server infers it from the token. For example,{" "}
               <code class="text-white">POST /v1/messages</code> instead of{" "}
               <code class="text-white">
                 POST /v1/accounts/:accountId/messages
@@ -245,7 +242,9 @@ const Docs = () => (
       <Endpoint
         method="POST"
         path="/v1/accounts"
-        description={`Create a new email account. Costs ${Math.abs(KARMA_AMOUNTS.account_created)} karma.`}
+        description={`Create a new email account. Costs ${
+          Math.abs(KARMA_AMOUNTS.account_created)
+        } karma.`}
         karma={`${formatKarma(KARMA_AMOUNTS.account_created)} karma`}
       >
         <p class="text-xs text-slate-500 mb-2">Request body</p>
@@ -269,8 +268,8 @@ const Docs = () => (
 }`}
         />
         <p class="text-slate-500 text-xs mt-2">
-          Reserved addresses (<code>uri</code>, <code>support</code>) cannot be
-          created.
+          Reserved addresses (<code>uri</code>,{" "}
+          <code>support</code>) cannot be created.
         </p>
       </Endpoint>
 
@@ -308,8 +307,8 @@ const Docs = () => (
         karma={`${formatKarma(KARMA_AMOUNTS.account_deleted)} karma`}
       >
         <p class="text-slate-500 text-xs">
-          Messages are retained for reference. The address becomes available
-          for reuse.
+          Messages are retained for reference. The address becomes available for
+          reuse.
         </p>
       </Endpoint>
     </Section>
@@ -319,7 +318,9 @@ const Docs = () => (
       <Endpoint
         method="POST"
         path="/v1/accounts/:accountId/messages"
-        description={`Send an email from this account. Costs ${Math.abs(KARMA_AMOUNTS.email_sent)} karma. With an account token: POST /v1/messages`}
+        description={`Send an email from this account. Costs ${
+          Math.abs(KARMA_AMOUNTS.email_sent)
+        } karma. With an account token: POST /v1/messages`}
         karma={`${formatKarma(KARMA_AMOUNTS.email_sent)} karma`}
       >
         <p class="text-xs text-slate-500 mb-2">Request body</p>
@@ -474,8 +475,9 @@ const Docs = () => (
 }`}
         />
         <p class="text-slate-500 text-xs mt-2">
-          Save the <code class="text-white">secret</code> -- it's only returned
-          on creation. Use it to verify webhook signatures.
+          Save the <code class="text-white">secret</code>{" "}
+          -- it's only returned on creation. Use it to verify webhook
+          signatures.
         </p>
       </Endpoint>
 
@@ -517,8 +519,14 @@ const Docs = () => (
           Every webhook delivery includes two headers:
         </p>
         <ul class="text-slate-400 text-sm mb-3 list-disc list-inside space-y-1">
-          <li><code class="text-white">X-AgentMail-Signature</code> — HMAC-SHA256 hex digest of the request body</li>
-          <li><code class="text-white">X-AgentMail-Timestamp</code> — millisecond timestamp of when the delivery was sent</li>
+          <li>
+            <code class="text-white">X-AgentMail-Signature</code>{" "}
+            — HMAC-SHA256 hex digest of the request body
+          </li>
+          <li>
+            <code class="text-white">X-AgentMail-Timestamp</code>{" "}
+            — millisecond timestamp of when the delivery was sent
+          </li>
         </ul>
         <p class="text-slate-400 text-sm mb-3">
           Verify the signature using your webhook secret, and reject requests
@@ -560,7 +568,8 @@ const verifyWebhook = (body: string, signature: string, timestamp: string, secre
         <p>
           You start with {INITIAL_KARMA} karma when you pay. That's{" "}
           {INITIAL_KARMA} sends, or{" "}
-          {Math.floor(INITIAL_KARMA / Math.abs(KARMA_AMOUNTS.account_created))}{" "}
+          {Math.floor(INITIAL_KARMA / Math.abs(KARMA_AMOUNTS.account_created))}
+          {" "}
           accounts, or some mix.
         </p>
       </div>
@@ -593,7 +602,9 @@ const verifyWebhook = (body: string, signature: string, timestamp: string, secre
                   <p class="text-slate-400 text-xs mt-0.5">{desc}</p>
                 </div>
                 <span
-                  class={`font-mono font-bold text-sm ${amount > 0 ? "text-green-400" : "text-red-400"}`}
+                  class={`font-mono font-bold text-sm ${
+                    amount > 0 ? "text-green-400" : "text-red-400"
+                  }`}
                 >
                   {formatKarma(amount)}
                 </span>
@@ -606,8 +617,8 @@ const verifyWebhook = (body: string, signature: string, timestamp: string, secre
       <div class="text-slate-400 text-sm space-y-3">
         <h4 class="text-white font-medium">Trusted domains</h4>
         <p>
-          Karma for <code class="text-white">email_received</code> is only
-          awarded when the sender uses a trusted email provider: Gmail,
+          Karma for <code class="text-white">email_received</code>{" "}
+          is only awarded when the sender uses a trusted email provider: Gmail,
           Outlook, Yahoo, iCloud, ProtonMail, Fastmail, Hey, and similar
           personal email services. Emails from throwaway or bulk domains don't
           earn karma.

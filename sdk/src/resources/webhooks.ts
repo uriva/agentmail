@@ -1,8 +1,4 @@
-import type {
-  Webhook,
-  CreateWebhookParams,
-  ApiResponse,
-} from "../types.ts";
+import type { ApiResponse, CreateWebhookParams, Webhook } from "../types.ts";
 
 export type WebhooksResource = {
   readonly create: (
@@ -20,10 +16,9 @@ export const makeWebhooks = (
   request: <T>(method: string, path: string, body?: unknown) => Promise<T>,
 ): WebhooksResource => ({
   create: (accountIdOrParams, params?) => {
-    const [path, body] =
-      typeof accountIdOrParams === "string"
-        ? [`/v1/accounts/${accountIdOrParams}/webhooks`, params!]
-        : [`/v1/webhooks`, accountIdOrParams];
+    const [path, body] = typeof accountIdOrParams === "string"
+      ? [`/v1/accounts/${accountIdOrParams}/webhooks`, params!]
+      : [`/v1/webhooks`, accountIdOrParams];
     return request<ApiResponse<Webhook>>("POST", path, body).then(
       (r) => r.data,
     );

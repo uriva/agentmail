@@ -1,10 +1,10 @@
 import { db, id } from "../db.ts";
-import type { InboundEmail, InboundAttachment } from "../types.ts";
+import type { InboundAttachment, InboundEmail } from "../types.ts";
 import { recordKarmaEvent } from "../services/karma.ts";
 import { uploadFile } from "../services/storage.ts";
 import { deliverWithRetry } from "../services/webhookDelivery.ts";
 import { captureEvent } from "../services/posthog.ts";
-import { encodeBase64, decodeBase64 } from "jsr:@std/encoding/base64";
+import { decodeBase64, encodeBase64 } from "jsr:@std/encoding/base64";
 
 const INBOUND_WEBHOOK_SECRET = Deno.env.get("INBOUND_WEBHOOK_SECRET") ?? "";
 
@@ -40,9 +40,7 @@ const TRUSTED_SENDER_DOMAINS = new Set([
 ]);
 
 const extractAddress = (raw: string): string => {
-  const addr = raw.includes("<")
-    ? raw.match(/<(.+)>/)?.[1] ?? raw
-    : raw;
+  const addr = raw.includes("<") ? raw.match(/<(.+)>/)?.[1] ?? raw : raw;
   return addr.toLowerCase().trim();
 };
 
@@ -55,7 +53,12 @@ const isFromTrustedDomain = (from: string): boolean =>
 // Check if the agent has an unanswered inbound from this sender.
 // If so, no karma — you only earn karma once per inbound until you reply.
 const hasUnansweredInbound = (
-  messages: { from: string; to: unknown; direction: string; timestamp: number }[],
+  messages: {
+    from: string;
+    to: unknown;
+    direction: string;
+    timestamp: number;
+  }[],
   senderAddress: string,
 ): boolean => {
   const relevant = messages
@@ -217,7 +220,12 @@ const handleInbound = async (
     try {
       raw = JSON.parse(body);
     } catch (parseErr) {
-      console.error("[inbound] JSON parse failed:", parseErr, "body preview:", body.slice(0, 500));
+      console.error(
+        "[inbound] JSON parse failed:",
+        parseErr,
+        "body preview:",
+        body.slice(0, 500),
+      );
       return Response.json(
         { error: `JSON parse failed: ${parseErr}`, code: "BAD_REQUEST" },
         { status: 400 },
@@ -227,7 +235,10 @@ const handleInbound = async (
     const payload = Array.isArray(raw) ? raw[0] : raw;
     if (!payload || typeof payload !== "object") {
       return Response.json(
-        { error: `Unexpected payload type: ${typeof payload}`, code: "BAD_REQUEST" },
+        {
+          error: `Unexpected payload type: ${typeof payload}`,
+          code: "BAD_REQUEST",
+        },
         { status: 400 },
       );
     }
@@ -237,180 +248,195 @@ const handleInbound = async (
       from: email.from,
       to: email.to,
       subject: email.subject,
-    attachmentCount: email.attachments?.length ?? 0,
-  });
+      attachmentCount: email.attachments?.length ?? 0,
+    });
 
-  // Find target account(s) by recipient address
-  const recipients = [...email.to, ...(email.cc ?? [])];
-  let matched = 0;
-  for (const recipient of recipients) {
-    const address = extractAddress(recipient);
-    console.log("[inbound] Looking up account for address:", address);
+    // Find target account(s) by recipient address
+    const recipients = [...email.to, ...(email.cc ?? [])];
+    let matched = 0;
+    for (const recipient of recipients) {
+      const address = extractAddress(recipient);
+      console.log("[inbound] Looking up account for address:", address);
 
-    // deno-lint-ignore no-explicit-any
-    let accounts: any[];
-    try {
-      const result = await db.query({
-        accounts: {
-          $: { where: { address } },
-          webhooks: {},
-          organization: {},
-          messages: {},
-        },
-      });
-      accounts = result.accounts;
-    } catch (e) {
-      console.error("[inbound] DB query failed for address:", address, e);
-      continue;
-    }
+      // deno-lint-ignore no-explicit-any
+      let accounts: any[];
+      try {
+        const result = await db.query({
+          accounts: {
+            $: { where: { address } },
+            webhooks: {},
+            organization: {},
+            messages: {},
+          },
+        });
+        accounts = result.accounts;
+      } catch (e) {
+        console.error("[inbound] DB query failed for address:", address, e);
+        continue;
+      }
 
-    console.log("[inbound] Found", accounts.length, "accounts for", address);
-    const account = accounts[0];
-    if (!account) continue;
+      console.log("[inbound] Found", accounts.length, "accounts for", address);
+      const account = accounts[0];
+      if (!account) continue;
 
-    // organization is a "has one" link - InstantDB may return array or object
-    const orgRaw = account.organization;
-    const org = Array.isArray(orgRaw) ? orgRaw[0] : orgRaw;
-    if (!org) {
-      console.log("[inbound] Account found but no org linked:", account.id);
-      continue;
-    }
-    const orgId = org.id;
-    console.log("[inbound] Matched account", account.id, "in org", orgId);
-    matched++;
+      // organization is a "has one" link - InstantDB may return array or object
+      const orgRaw = account.organization;
+      const org = Array.isArray(orgRaw) ? orgRaw[0] : orgRaw;
+      if (!org) {
+        console.log("[inbound] Account found but no org linked:", account.id);
+        continue;
+      }
+      const orgId = org.id;
+      console.log("[inbound] Matched account", account.id, "in org", orgId);
+      matched++;
 
-    // Store attachments in GCS
-    const attachmentRecords: {
-      id: string;
-      filename: string;
-      contentType: string;
-      size: number;
-      storageKey: string;
-    }[] = [];
+      // Store attachments in GCS
+      const attachmentRecords: {
+        id: string;
+        filename: string;
+        contentType: string;
+        size: number;
+        storageKey: string;
+      }[] = [];
 
-    if (email.attachments) {
-      for (const att of email.attachments) {
-        const attId = id();
-        const storageKey = `${orgId}/${account.id}/${attId}/${att.filename}`;
-        const data = decodeBase64(att.content);
-        await uploadFile(storageKey, data, att.contentType);
-        attachmentRecords.push({
-          id: attId,
-          filename: att.filename,
-          contentType: att.contentType,
-          size: att.size,
-          storageKey,
+      if (email.attachments) {
+        for (const att of email.attachments) {
+          const attId = id();
+          const storageKey = `${orgId}/${account.id}/${attId}/${att.filename}`;
+          const data = decodeBase64(att.content);
+          await uploadFile(storageKey, data, att.contentType);
+          attachmentRecords.push({
+            id: attId,
+            filename: att.filename,
+            contentType: att.contentType,
+            size: att.size,
+            storageKey,
+          });
+        }
+      }
+
+      // Store message in DB
+      const messageId = id();
+      // deno-lint-ignore no-explicit-any
+      const txOps: any[] = [
+        db.tx.messages[messageId]!.update({
+          from: email.from,
+          to: [...email.to],
+          cc: email.cc ? [...email.cc] : undefined,
+          subject: email.subject,
+          bodyText: typeof email.text === "string" ? email.text : "",
+          bodyHtml: typeof email.html === "string" ? email.html : "",
+          direction: "inbound",
+          status: "received",
+          headers: email.headers ?? {},
+          timestamp: Date.now(),
+          inReplyTo: email.inReplyTo ?? "",
+          references: email.references ?? "",
+        }),
+        db.tx.messages[messageId]!.link({ account: account.id }),
+      ];
+
+      for (const att of attachmentRecords) {
+        txOps.push(
+          db.tx.attachments[att.id]!.update({
+            filename: att.filename,
+            contentType: att.contentType,
+            size: att.size,
+            storageKey: att.storageKey,
+            createdAt: Date.now(),
+          }),
+          db.tx.attachments[att.id]!.link({ message: messageId }),
+        );
+      }
+
+      await db.transact(txOps);
+
+      // Record karma only if:
+      // 1. Sender is from a trusted domain (prevents self-send farming)
+      // 2. No unanswered inbound from this sender (one karma per turn)
+      const senderAddr = extractAddress(email.from);
+      const trusted = isFromTrustedDomain(email.from);
+      const unanswered = hasUnansweredInbound(
+        account.messages as {
+          from: string;
+          to: unknown;
+          direction: string;
+          timestamp: number;
+        }[],
+        senderAddr,
+      );
+      if (trusted && !unanswered) {
+        await recordKarmaEvent(orgId, "email_received", {
+          messageId,
+          from: email.from,
         });
       }
-    }
 
-    // Store message in DB
-    const messageId = id();
-    // deno-lint-ignore no-explicit-any
-    const txOps: any[] = [
-      db.tx.messages[messageId]!.update({
+      captureEvent(orgId, "email_received", {
         from: email.from,
-        to: [...email.to],
-        cc: email.cc ? [...email.cc] : undefined,
-        subject: email.subject,
-        bodyText: typeof email.text === "string" ? email.text : "",
-        bodyHtml: typeof email.html === "string" ? email.html : "",
-        direction: "inbound",
-        status: "received",
-        headers: email.headers ?? {},
-        timestamp: Date.now(),
-        inReplyTo: email.inReplyTo ?? "",
-        references: email.references ?? "",
-      }),
-      db.tx.messages[messageId]!.link({ account: account.id }),
-    ];
+        to: address,
+        hasAttachments: attachmentRecords.length > 0,
+      });
 
-    for (const att of attachmentRecords) {
-      txOps.push(
-        db.tx.attachments[att.id]!.update({
-          filename: att.filename,
-          contentType: att.contentType,
-          size: att.size,
-          storageKey: att.storageKey,
-          createdAt: Date.now(),
-        }),
-        db.tx.attachments[att.id]!.link({ message: messageId }),
+      // Deliver to agent webhooks — await to prevent isolate eviction before delivery
+      // deno-lint-ignore no-explicit-any
+      const activeWebhooks = account.webhooks.filter((w: any) => w.active);
+      await Promise.all(
+        activeWebhooks.map((webhook: { url: string; secret: string }) =>
+          deliverWithRetry(
+            webhook.url,
+            webhook.secret,
+            {
+              event: "email.received",
+              data: {
+                id: messageId,
+                account_id: account.id,
+                from: email.from,
+                to: email.to,
+                subject: email.subject,
+                text: typeof email.text === "string" ? email.text : "",
+                html: typeof email.html === "string" ? email.html : "",
+                messageId: email.messageId ?? "",
+                inReplyTo: email.inReplyTo ?? "",
+                references: email.references ?? "",
+                attachments: attachmentRecords.map((a) => ({
+                  id: a.id,
+                  filename: a.filename,
+                  contentType: a.contentType,
+                  size: a.size,
+                })),
+              },
+              timestamp: Date.now(),
+            },
+            orgId,
+          )
+        ),
       );
     }
 
-    await db.transact(txOps);
-
-    // Record karma only if:
-    // 1. Sender is from a trusted domain (prevents self-send farming)
-    // 2. No unanswered inbound from this sender (one karma per turn)
-    const senderAddr = extractAddress(email.from);
-    const trusted = isFromTrustedDomain(email.from);
-    const unanswered = hasUnansweredInbound(
-      account.messages as { from: string; to: unknown; direction: string; timestamp: number }[],
-      senderAddr,
-    );
-    if (trusted && !unanswered) {
-      await recordKarmaEvent(orgId, "email_received", {
-        messageId,
-        from: email.from,
-      });
+    if (matched === 0) {
+      console.log(
+        "[inbound] No matching accounts found for recipients:",
+        recipients,
+      );
+    } else {
+      console.log("[inbound] Processed", matched, "accounts");
     }
 
-    captureEvent(orgId, "email_received", {
-      from: email.from,
-      to: address,
-      hasAttachments: attachmentRecords.length > 0,
-    });
-
-    // Deliver to agent webhooks — await to prevent isolate eviction before delivery
-    // deno-lint-ignore no-explicit-any
-    const activeWebhooks = account.webhooks.filter((w: any) => w.active);
-    await Promise.all(
-      activeWebhooks.map((webhook: { url: string; secret: string }) =>
-        deliverWithRetry(
-          webhook.url,
-          webhook.secret,
-          {
-            event: "email.received",
-            data: {
-              id: messageId,
-              account_id: account.id,
-              from: email.from,
-              to: email.to,
-              subject: email.subject,
-              text: typeof email.text === "string" ? email.text : "",
-              html: typeof email.html === "string" ? email.html : "",
-              messageId: email.messageId ?? "",
-              inReplyTo: email.inReplyTo ?? "",
-              references: email.references ?? "",
-              attachments: attachmentRecords.map((a) => ({
-                id: a.id,
-                filename: a.filename,
-                contentType: a.contentType,
-                size: a.size,
-              })),
-            },
-            timestamp: Date.now(),
-          },
-          orgId,
-        )
-      ),
-    );
-  }
-
-  if (matched === 0) {
-    console.log("[inbound] No matching accounts found for recipients:", recipients);
-  } else {
-    console.log("[inbound] Processed", matched, "accounts");
-  }
-
-  return Response.json({ received: true });
+    return Response.json({ received: true });
   } catch (e) {
     const errorMessage = e instanceof Error ? e.message : String(e);
     const errorStack = e instanceof Error ? e.stack : undefined;
-    console.error("[inbound] Unhandled error processing inbound email:", errorMessage, errorStack);
+    console.error(
+      "[inbound] Unhandled error processing inbound email:",
+      errorMessage,
+      errorStack,
+    );
     return Response.json(
-      { error: `Inbound processing error: ${errorMessage}`, code: "INTERNAL_ERROR" },
+      {
+        error: `Inbound processing error: ${errorMessage}`,
+        code: "INTERNAL_ERROR",
+      },
       { status: 500 },
     );
   }

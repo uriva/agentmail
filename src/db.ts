@@ -1,4 +1,4 @@
-import { init, id } from "@instantdb/admin";
+import { id, init } from "@instantdb/admin";
 import schema from "../instant.schema.ts";
 
 const db = init({

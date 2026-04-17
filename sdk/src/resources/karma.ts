@@ -1,4 +1,4 @@
-import type { KarmaBalance, ApiResponse } from "../types.ts";
+import type { ApiResponse, KarmaBalance } from "../types.ts";
 
 export type KarmaResource = {
   readonly getBalance: () => Promise<KarmaBalance>;

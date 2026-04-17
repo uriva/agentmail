@@ -1,4 +1,4 @@
-import type { Account, CreateAccountParams, ApiResponse } from "../types.ts";
+import type { Account, ApiResponse, CreateAccountParams } from "../types.ts";
 
 export type AccountsResource = {
   readonly create: (params: CreateAccountParams) => Promise<Account>;

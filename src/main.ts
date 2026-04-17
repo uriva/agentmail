@@ -4,35 +4,40 @@ import type { ApiError } from "./types.ts";
 // Handlers
 import {
   createAccount,
-  listAccounts,
-  getAccount,
   deleteAccount,
+  getAccount,
+  listAccounts,
 } from "./handlers/accounts.ts";
-import { sendMessage, listMessages, getMessage } from "./handlers/messages.ts";
+import { getMessage, listMessages, sendMessage } from "./handlers/messages.ts";
 import { getAttachmentUrl } from "./handlers/attachments.ts";
 import { getKarmaBalance } from "./handlers/karma.ts";
 import {
   createWebhook,
-  listWebhooks,
   deleteWebhook,
+  listWebhooks,
 } from "./handlers/webhooks.ts";
 import { handleInbound } from "./handlers/inbound.ts";
 import {
-  createApiKey,
   createAccountApiKey,
-  listApiKeys,
+  createApiKey,
   deleteApiKey,
+  listApiKeys,
 } from "./handlers/apiKeys.ts";
-import { createOrganization, listOrganizations, renameOrganization } from "./handlers/organizations.ts";
 import {
-  inviteMember,
-  listMembers,
-  removeMember,
-} from "./handlers/members.ts";
+  createOrganization,
+  listOrganizations,
+  renameOrganization,
+} from "./handlers/organizations.ts";
+import { inviteMember, listMembers, removeMember } from "./handlers/members.ts";
 
 // --- Types ---
 
-type AuthType = "apiKey" | "apiKeyOrUserToken" | "userToken" | "userTokenOptionalOrg" | "none";
+type AuthType =
+  | "apiKey"
+  | "apiKeyOrUserToken"
+  | "userToken"
+  | "userTokenOptionalOrg"
+  | "none";
 
 type RouteHandler = (
   req: Request,
@@ -136,11 +141,26 @@ const routes: readonly Route[] = [
   route("POST", "/v1/accounts", createAccount, "apiKeyOrUserToken"),
   route("GET", "/v1/accounts", listAccounts, "apiKeyOrUserToken"),
   route("GET", "/v1/accounts/:accountId", getAccount, "apiKeyOrUserToken"),
-  route("DELETE", "/v1/accounts/:accountId", deleteAccount, "apiKeyOrUserToken"),
+  route(
+    "DELETE",
+    "/v1/accounts/:accountId",
+    deleteAccount,
+    "apiKeyOrUserToken",
+  ),
 
   // Messages
-  route("POST", "/v1/accounts/:accountId/messages", sendMessage, "apiKeyOrUserToken"),
-  route("GET", "/v1/accounts/:accountId/messages", listMessages, "apiKeyOrUserToken"),
+  route(
+    "POST",
+    "/v1/accounts/:accountId/messages",
+    sendMessage,
+    "apiKeyOrUserToken",
+  ),
+  route(
+    "GET",
+    "/v1/accounts/:accountId/messages",
+    listMessages,
+    "apiKeyOrUserToken",
+  ),
   route(
     "GET",
     "/v1/accounts/:accountId/messages/:messageId",
@@ -157,8 +177,18 @@ const routes: readonly Route[] = [
   ),
 
   // Webhooks
-  route("POST", "/v1/accounts/:accountId/webhooks", createWebhook, "apiKeyOrUserToken"),
-  route("GET", "/v1/accounts/:accountId/webhooks", listWebhooks, "apiKeyOrUserToken"),
+  route(
+    "POST",
+    "/v1/accounts/:accountId/webhooks",
+    createWebhook,
+    "apiKeyOrUserToken",
+  ),
+  route(
+    "GET",
+    "/v1/accounts/:accountId/webhooks",
+    listWebhooks,
+    "apiKeyOrUserToken",
+  ),
   route(
     "DELETE",
     "/v1/accounts/:accountId/webhooks/:webhookId",
@@ -191,10 +221,20 @@ const routes: readonly Route[] = [
   route("DELETE", "/v1/api-keys/:apiKeyId", deleteApiKey, "userToken"),
 
   // Account API Keys
-  route("POST", "/v1/accounts/:accountId/api-keys", createAccountApiKey, "apiKeyOrUserToken"),
+  route(
+    "POST",
+    "/v1/accounts/:accountId/api-keys",
+    createAccountApiKey,
+    "apiKeyOrUserToken",
+  ),
 
   // Organizations (user-token auth — org may not exist yet)
-  route("POST", "/v1/organizations", createOrganization, "userTokenOptionalOrg"),
+  route(
+    "POST",
+    "/v1/organizations",
+    createOrganization,
+    "userTokenOptionalOrg",
+  ),
   route("GET", "/v1/organizations", listOrganizations, "userTokenOptionalOrg"),
   route("PATCH", "/v1/organizations", renameOrganization, "userToken"),
 
@@ -264,10 +304,10 @@ const resolveAuth = async (
       return result
         ? { orgId: result.orgId, accountId: result.accountId, error: null }
         : {
-            orgId: null,
-            accountId: null,
-            error: jsonError(401, "Invalid or missing API key", "UNAUTHORIZED"),
-          };
+          orgId: null,
+          accountId: null,
+          error: jsonError(401, "Invalid or missing API key", "UNAUTHORIZED"),
+        };
     }
     case "apiKeyOrUserToken": {
       // Try API key first, then user token
@@ -280,27 +320,23 @@ const resolveAuth = async (
         };
       }
       const orgId = await authenticateUserToken(req);
-      return orgId
-        ? { orgId, accountId: null, error: null }
-        : {
-            orgId: null,
-            accountId: null,
-            error: jsonError(401, "Invalid or missing credentials", "UNAUTHORIZED"),
-          };
+      return orgId ? { orgId, accountId: null, error: null } : {
+        orgId: null,
+        accountId: null,
+        error: jsonError(401, "Invalid or missing credentials", "UNAUTHORIZED"),
+      };
     }
     case "userToken": {
       const orgId = await authenticateUserToken(req);
-      return orgId
-        ? { orgId, accountId: null, error: null }
-        : {
-            orgId: null,
-            accountId: null,
-            error: jsonError(
-              401,
-              "Invalid or missing user token",
-              "UNAUTHORIZED",
-            ),
-          };
+      return orgId ? { orgId, accountId: null, error: null } : {
+        orgId: null,
+        accountId: null,
+        error: jsonError(
+          401,
+          "Invalid or missing user token",
+          "UNAUTHORIZED",
+        ),
+      };
     }
     case "userTokenOptionalOrg": {
       // Verify the user token is valid but don't require an org
@@ -372,7 +408,12 @@ const handleRequest = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const response = await matchedRoute.handler(req, params, orgId!, accountId ?? undefined);
+    const response = await matchedRoute.handler(
+      req,
+      params,
+      orgId!,
+      accountId ?? undefined,
+    );
     for (const [key, value] of Object.entries(corsHeaders)) {
       response.headers.set(key, value);
     }
@@ -459,8 +500,7 @@ const handler = async (req: Request): Promise<Response> => {
   // If API returned 404 and this isn't an API path, try static files
   if (response.status === 404) {
     const url = new URL(req.url);
-    const isApiPath =
-      url.pathname.startsWith("/v1/") ||
+    const isApiPath = url.pathname.startsWith("/v1/") ||
       url.pathname === "/inbound" ||
       url.pathname === "/health";
     if (!isApiPath && req.method === "GET") {

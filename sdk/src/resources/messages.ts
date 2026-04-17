@@ -1,8 +1,8 @@
 import type {
+  ApiResponse,
   Message,
   MessageDetail,
   SendMessageParams,
-  ApiResponse,
 } from "../types.ts";
 
 export type MessagesResource = {
@@ -21,10 +21,9 @@ export const makeMessages = (
   request: <T>(method: string, path: string, body?: unknown) => Promise<T>,
 ): MessagesResource => ({
   send: (accountIdOrParams, params?) => {
-    const [path, body] =
-      typeof accountIdOrParams === "string"
-        ? [`/v1/accounts/${accountIdOrParams}/messages`, params!]
-        : [`/v1/messages`, accountIdOrParams];
+    const [path, body] = typeof accountIdOrParams === "string"
+      ? [`/v1/accounts/${accountIdOrParams}/messages`, params!]
+      : [`/v1/messages`, accountIdOrParams];
     return request<ApiResponse<Message>>("POST", path, body).then(
       (r) => r.data,
     );

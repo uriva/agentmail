@@ -1,6 +1,6 @@
 const GCP_PROJECT_ID = Deno.env.get("GCP_PROJECT") ?? "";
-const GCP_STORAGE_BUCKET =
-  Deno.env.get("GCP_STORAGE_BUCKET") ?? "agentmail-attachments";
+const GCP_STORAGE_BUCKET = Deno.env.get("GCP_STORAGE_BUCKET") ??
+  "agentmail-attachments";
 const GCP_SERVICE_ACCOUNT_KEY = Deno.env.get("GCP_SERVICE_ACCOUNT_KEY") ?? "";
 
 type ServiceAccountKey = {
@@ -73,7 +73,8 @@ const getAccessToken = async (): Promise<string> => {
   const res = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`,
+    body:
+      `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`,
   });
   const data = (await res.json()) as {
     access_token: string;
@@ -94,7 +95,9 @@ const uploadFile = async (
 ): Promise<void> => {
   const token = await getAccessToken();
   const res = await fetch(
-    `https://storage.googleapis.com/upload/storage/v1/b/${GCP_STORAGE_BUCKET}/o?uploadType=media&name=${encodeURIComponent(storageKey)}`,
+    `https://storage.googleapis.com/upload/storage/v1/b/${GCP_STORAGE_BUCKET}/o?uploadType=media&name=${
+      encodeURIComponent(storageKey)
+    }`,
     {
       method: "POST",
       headers: {
@@ -131,7 +134,15 @@ const getSignedUrl = async (
   const canonicalRequest = [
     "GET",
     path,
-    `X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=${encodeURIComponent(`${sa.client_email}/${new Date().toISOString().slice(0, 10).replace(/-/g, "")}/auto/storage/goog4_request`)}&X-Goog-Date=${new Date().toISOString().replace(/[-:]/g, "").split(".")[0]}Z&X-Goog-Expires=${expiresInSeconds}&X-Goog-SignedHeaders=host`,
+    `X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=${
+      encodeURIComponent(
+        `${sa.client_email}/${
+          new Date().toISOString().slice(0, 10).replace(/-/g, "")
+        }/auto/storage/goog4_request`,
+      )
+    }&X-Goog-Date=${
+      new Date().toISOString().replace(/[-:]/g, "").split(".")[0]
+    }Z&X-Goog-Expires=${expiresInSeconds}&X-Goog-SignedHeaders=host`,
     `host:${host}`,
     "",
     "host",
@@ -187,14 +198,18 @@ const getSignedUrl = async (
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
 
-  return `https://${host}${path}?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=${encodeURIComponent(`${sa.client_email}/${credentialScope}`)}&X-Goog-Date=${datetime}&X-Goog-Expires=${expiresInSeconds}&X-Goog-SignedHeaders=host&X-Goog-Signature=${sig}`;
+  return `https://${host}${path}?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=${
+    encodeURIComponent(`${sa.client_email}/${credentialScope}`)
+  }&X-Goog-Date=${datetime}&X-Goog-Expires=${expiresInSeconds}&X-Goog-SignedHeaders=host&X-Goog-Signature=${sig}`;
 };
 
 // Delete a file from GCS
 const deleteFile = async (storageKey: string): Promise<void> => {
   const token = await getAccessToken();
   await fetch(
-    `https://storage.googleapis.com/storage/v1/b/${GCP_STORAGE_BUCKET}/o/${encodeURIComponent(storageKey)}`,
+    `https://storage.googleapis.com/storage/v1/b/${GCP_STORAGE_BUCKET}/o/${
+      encodeURIComponent(storageKey)
+    }`,
     {
       method: "DELETE",
       headers: { Authorization: `Bearer ${token}` },
@@ -202,4 +217,4 @@ const deleteFile = async (storageKey: string): Promise<void> => {
   );
 };
 
-export { uploadFile, getSignedUrl, deleteFile, GCP_STORAGE_BUCKET };
+export { deleteFile, GCP_STORAGE_BUCKET, getSignedUrl, uploadFile };
