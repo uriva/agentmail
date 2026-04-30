@@ -1,6 +1,7 @@
 import type { ComponentChildren } from "preact";
 import { useState } from "preact/hooks";
 import { useAuth, useQuery } from "./db.ts";
+import { AccountMessagesList } from "./AccountMessagesList.tsx";
 
 // @ts-ignore: Vite injects import.meta.env at build time
 const API_BASE: string = import.meta.env.VITE_API_BASE_URL ?? "";
@@ -104,7 +105,6 @@ const AccountsList = ({
   const { isLoading, error, data } = useQuery({
     accounts: {
       $: { where: { "organization.id": orgId } },
-      messages: {},
       webhooks: {},
     },
   });
@@ -117,9 +117,6 @@ const AccountsList = ({
   const [webhookFor, setWebhookFor] = useState<string | null>(null);
   const [apiKeyFor, setApiKeyFor] = useState<string | null>(null);
   const [messagesFor, setMessagesFor] = useState<string | null>(null);
-  const [expandedMessageId, setExpandedMessageId] = useState<string | null>(
-    null,
-  );
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -220,11 +217,6 @@ const AccountsList = ({
                 id: string;
                 address: string;
                 displayName?: string;
-                messages: {
-                  id: string;
-                  direction: string;
-                  timestamp: number;
-                }[];
                 webhooks: {
                   id: string;
                   url: string;
@@ -233,12 +225,6 @@ const AccountsList = ({
                 }[];
                 createdAt: number;
               }) => {
-                const inbound = account.messages.filter(
-                  (m) => m.direction === "inbound",
-                ).length;
-                const outbound = account.messages.filter(
-                  (m) => m.direction === "outbound",
-                ).length;
                 return (
                   <div key={account.id}>
                     <div class="bg-slate-900 rounded-lg p-4 border border-slate-700 hover:border-slate-600 transition-colors">
@@ -278,7 +264,6 @@ const AccountsList = ({
                           </button>
                           <button
                             onClick={() => {
-                              setExpandedMessageId(null);
                               setMessagesFor(
                                 messagesFor === account.id ? null : account.id,
                               );
@@ -287,7 +272,7 @@ const AccountsList = ({
                           >
                             {messagesFor === account.id
                               ? "Hide"
-                              : `Messages (${account.messages.length})`}
+                              : "Messages"}
                           </button>
                           <button
                             onClick={() =>
@@ -331,18 +316,6 @@ const AccountsList = ({
                       </div>
                       <div class="flex gap-4 text-sm">
                         <span class="text-slate-400">
-                          <span class="text-blue-400 font-medium">
-                            {inbound}
-                          </span>{" "}
-                          received
-                        </span>
-                        <span class="text-slate-400">
-                          <span class="text-emerald-400 font-medium">
-                            {outbound}
-                          </span>{" "}
-                          sent
-                        </span>
-                        <span class="text-slate-400">
                           <span class="text-purple-400 font-medium">
                             {account.webhooks.length}
                           </span>{" "}
@@ -375,175 +348,10 @@ const AccountsList = ({
                       />
                     )}
                     {messagesFor === account.id && (
-                      <div class="mt-2 p-4 bg-slate-900/50 border border-slate-700 rounded-lg space-y-2">
-                        <div class="text-xs text-slate-400 font-medium uppercase tracking-wider flex justify-between">
-                          <span>Messages</span>
-                          {expandedMessageId && (
-                            <button
-                              onClick={() => setExpandedMessageId(null)}
-                              class="text-blue-400 hover:text-blue-300 lowercase"
-                            >
-                              collapse all
-                            </button>
-                          )}
-                        </div>
-                        {account.messages.length === 0
-                          ? (
-                            <div class="text-slate-500 text-center py-4">
-                              No messages yet.
-                            </div>
-                          )
-                          : (
-                            [...account.messages]
-                              .sort(
-                                (
-                                  a: { timestamp: number },
-                                  b: { timestamp: number },
-                                ) => b.timestamp - a.timestamp,
-                              )
-                              .slice(0, 20)
-                              // deno-lint-ignore no-explicit-any
-                              .map((msg: any) => {
-                                const isExpanded = expandedMessageId === msg.id;
-                                return (
-                                  <div
-                                    key={msg.id}
-                                    class="bg-slate-900 rounded-lg border border-slate-700"
-                                  >
-                                    <div
-                                      onClick={() =>
-                                        setExpandedMessageId(
-                                          isExpanded ? null : msg.id,
-                                        )}
-                                      class={`flex items-center gap-3 p-3 cursor-pointer hover:bg-slate-800/50 transition-colors ${
-                                        isExpanded
-                                          ? "border-b border-slate-700"
-                                          : ""
-                                      }`}
-                                    >
-                                      <span
-                                        class={`text-xs px-2 py-0.5 rounded font-medium ${
-                                          msg.direction === "inbound"
-                                            ? "bg-blue-900/50 text-blue-300"
-                                            : "bg-emerald-900/50 text-emerald-300"
-                                        }`}
-                                      >
-                                        {msg.direction === "inbound"
-                                          ? "IN"
-                                          : "OUT"}
-                                      </span>
-                                      <div class="flex-1 min-w-0">
-                                        <div class="text-sm text-white truncate">
-                                          {msg.subject || "(no subject)"}
-                                        </div>
-                                        <div class="text-xs text-slate-400 truncate">
-                                          {msg.direction === "inbound"
-                                            ? `From: ${msg.from}`
-                                            : `To: ${account.address}`}
-                                        </div>
-                                      </div>
-                                      <div class="text-right flex-shrink-0">
-                                        <span
-                                          class={`text-xs ${
-                                            msg.status === "sent" ||
-                                              msg.status === "delivered"
-                                              ? "text-green-400"
-                                              : msg.status === "failed"
-                                              ? "text-red-400"
-                                              : "text-slate-400"
-                                          }`}
-                                        >
-                                          {msg.status}
-                                        </span>
-                                        <div class="text-xs text-slate-500 mt-0.5">
-                                          {new Date(msg.timestamp)
-                                            .toLocaleTimeString(
-                                              [],
-                                              {
-                                                hour: "2-digit",
-                                                minute: "2-digit",
-                                              },
-                                            )}
-                                        </div>
-                                      </div>
-                                    </div>
-                                    {isExpanded && (
-                                      <div class="p-3 space-y-3 text-sm">
-                                        <div class="space-y-1 text-slate-300">
-                                          <div class="flex gap-2">
-                                            <span class="text-slate-500 w-12 flex-shrink-0">
-                                              From
-                                            </span>
-                                            <span class="text-white">
-                                              {msg.from}
-                                            </span>
-                                          </div>
-                                          <div class="flex gap-2">
-                                            <span class="text-slate-500 w-12 flex-shrink-0">
-                                              To
-                                            </span>
-                                            <span class="text-white">
-                                              {Array.isArray(msg.to)
-                                                ? msg.to.join(", ")
-                                                : String(msg.to)}
-                                            </span>
-                                          </div>
-                                          {msg.cc?.length > 0 && (
-                                            <div class="flex gap-2">
-                                              <span class="text-slate-500 w-12 flex-shrink-0">
-                                                CC
-                                              </span>
-                                              <span class="text-white">
-                                                {msg.cc.join(", ")}
-                                              </span>
-                                            </div>
-                                          )}
-                                          {msg.bcc?.length > 0 && (
-                                            <div class="flex gap-2">
-                                              <span class="text-slate-500 w-12 flex-shrink-0">
-                                                BCC
-                                              </span>
-                                              <span class="text-white">
-                                                {msg.bcc.join(", ")}
-                                              </span>
-                                            </div>
-                                          )}
-                                          <div class="flex gap-2">
-                                            <span class="text-slate-500 w-12 flex-shrink-0">
-                                              Date
-                                            </span>
-                                            <span class="text-white">
-                                              {new Date(
-                                                msg.timestamp,
-                                              ).toLocaleString()}
-                                            </span>
-                                          </div>
-                                        </div>
-                                        <div class="border-t border-slate-700 pt-3">
-                                          {msg.bodyHtml ? (
-                                            <div
-                                              class="text-slate-200 prose prose-invert prose-sm max-w-none break-words"
-                                              dangerouslySetInnerHTML={{
-                                                __html: msg.bodyHtml,
-                                              }}
-                                            />
-                                          ) : msg.bodyText ? (
-                                            <pre class="text-slate-200 whitespace-pre-wrap font-sans break-words">
-                                              {msg.bodyText}
-                                            </pre>
-                                          ) : (
-                                            <div class="text-slate-500 italic">
-                                              No content
-                                            </div>
-                                          )}
-                                        </div>
-                                      </div>
-                                    )}
-                                  </div>
-                                );
-                              })
-                          )}
-                      </div>
+                      <AccountMessagesList
+                        accountId={account.id}
+                        accountAddress={account.address}
+                      />
                     )}
                   </div>
                 );

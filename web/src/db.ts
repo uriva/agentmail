@@ -10,5 +10,5 @@ const db = init({
   devtool: false,
 });
 
-export const { useQuery, tx, transact, useAuth, auth } = db;
+export const { useQuery, useInfiniteQuery, tx, transact, useAuth, auth } = db;
 export { db };
