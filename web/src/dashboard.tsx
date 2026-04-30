@@ -404,16 +404,23 @@ const AccountsList = ({
                                   >
                                     {msg.direction === "inbound" ? "IN" : "OUT"}
                                   </span>
-                                  <div class="flex-1 min-w-0">
-                                    <div class="text-sm text-white truncate">
-                                      {msg.subject || "(no subject)"}
-                                    </div>
-                                    <div class="text-xs text-slate-400 truncate">
-                                      {msg.direction === "inbound"
-                                        ? `From: ${msg.from}`
-                                        : `To: ${account.address}`}
-                                    </div>
-                                  </div>
+									<div class="flex-1 min-w-0">
+									<div class="text-sm text-white truncate">
+										{msg.subject || "(no subject)"}
+									</div>
+									<div class="text-xs text-slate-400 truncate">
+										{msg.direction === "inbound"
+											? `From: ${msg.from}`
+											: `To: ${account.address}`}
+									</div>
+									{msg.bodyText && (
+										<div class="text-xs text-slate-500 truncate mt-0.5">
+											{msg.bodyText.length > 120
+												? msg.bodyText.slice(0, 120) + "..."
+												: msg.bodyText}
+										</div>
+									)}
+									</div>
                                   <div class="text-right flex-shrink-0">
                                     <span
                                       class={`text-xs ${
