@@ -52,9 +52,12 @@ reason not to. Trust the types.
 This is a Deno project. Dependencies are in `deno.json`, there is no
 `package.json`.
 
-The server (`src/main.ts`) is deployed to Deno Deploy via CI/CD (GitHub
-integration). Pushing to main triggers automatic deployment. Do not run
-`deno deploy` locally.
+**Deployment & CI/CD:**
+The server (`src/main.ts`) is deployed to Deno Deploy via Deno Deploy's native GitHub integration.
+- Pushing to `main` triggers an automatic deployment directly from Deno Deploy.
+- **DO NOT** try to set up or generate GitHub Actions workflows for deployment.
+- **DO NOT** run `deno deploy` or `deployctl` locally to push updates.
+- If a recently pushed feature is not showing up, check the Deno Deploy dashboard logs, as the automated build may have failed there.
 
 # Project structure
 
