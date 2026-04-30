@@ -6,9 +6,9 @@
     "jsr:@std/encoding@0.224.0": "0.224.0",
     "jsr:@uri/gamla@*": "0.0.14",
     "npm:@deno/vite-plugin@^1.0.5": "1.0.6_vite@7.3.1__picomatch@4.0.3",
-    "npm:@instantdb/admin@0.22.141": "0.22.141",
-    "npm:@instantdb/core@0.22.141": "0.22.141",
-    "npm:@instantdb/react@0.22.141": "0.22.141_react@19.2.4",
+    "npm:@instantdb/admin@1.0.21": "1.0.21",
+    "npm:@instantdb/core@1.0.21": "1.0.21",
+    "npm:@instantdb/react@1.0.21": "1.0.21_react@19.2.5",
     "npm:@preact/preset-vite@2.10.2": "2.10.2_@babel+core@7.29.0_vite@7.3.1__picomatch@4.0.3_preact@10.26.7",
     "npm:@preact/signals@2.1.1": "2.1.1_preact@10.26.7",
     "npm:@tailwindcss/vite@4.2.1": "4.2.1_vite@7.3.1__picomatch@4.0.3",
@@ -476,21 +476,13 @@
         "heap"
       ]
     },
-    "@instantdb/admin@0.22.141": {
-      "integrity": "sha512-oV8py9VmR4JLSyeOgkbsV3JGDOFzITvesHj5CG5xb5VcEV36Yw77WbnnU0RQi03M++GLfofjlQMu547UqXs+Ag==",
+    "@instantdb/admin@1.0.21": {
+      "integrity": "sha512-HOnE6i+lq/LNOouaSqatHYGwKLSowgMCM0aBYiIieDo45x8DHN5Lx2sDnanad4eNzA4OBVffI2ExBDRIh+opQg==",
       "dependencies": [
-        "@instantdb/core@0.22.141",
-        "@instantdb/version@0.22.141",
+        "@instantdb/core@1.0.21",
+        "@instantdb/eventsource",
+        "@instantdb/version@1.0.21",
         "cookie",
-        "eventsource",
-        "uuid"
-      ]
-    },
-    "@instantdb/core@0.22.141": {
-      "integrity": "sha512-tbVc6GeOSiYr04KkI4uSeu/IUAQBmh/i0CAW+WB/bJz1k5A7zJDqrC1Cc400imMgbeSjymDh1T1/rHdyB1tMvw==",
-      "dependencies": [
-        "@instantdb/version@0.22.141",
-        "mutative",
         "uuid"
       ]
     },
@@ -502,6 +494,20 @@
         "uuid"
       ]
     },
+    "@instantdb/core@1.0.21": {
+      "integrity": "sha512-JDzFJZiQb9Vj0SR/6sJ4R0mXea/LhKU27vOj3H6U39WrIbzCqvk3T2vBsy4VfimSRSDHgOTis+0sZjDr7aa9/Q==",
+      "dependencies": [
+        "@instantdb/version@1.0.21",
+        "mutative",
+        "uuid"
+      ]
+    },
+    "@instantdb/eventsource@4.1.0-2": {
+      "integrity": "sha512-k2uzhsRzdD7hzV3fv+eoCRNeluZcj4pDfUKKAhvIS6xshc7zHkaM9/m3vxBgaYoNVmvOyaGp84TcHG0/Bp7k4g==",
+      "dependencies": [
+        "eventsource-parser"
+      ]
+    },
     "@instantdb/platform@0.22.142": {
       "integrity": "sha512-gaLWpz7/1wv6nRnkKnhzHJJQCE62Eb8UKYx5kzRcfBLPPFtDW7VKVABMhhqiAdpdQlFsAdhnlI4ESCdc/Fh9Ug==",
       "dependencies": [
@@ -511,29 +517,29 @@
         "@instantdb/version@0.22.142"
       ]
     },
-    "@instantdb/react-common@0.22.141_react@19.2.4": {
-      "integrity": "sha512-BcEFOH2gGz8NO0E3g8+DmAu6E4xy8T2LvMcFOxWmCnWiGLb2Qnatn8p6kR+xUDdwKAApypDnBbJZc0UGJU47+g==",
+    "@instantdb/react-common@1.0.21_react@19.2.5": {
+      "integrity": "sha512-3xVUM36WwEvjq7Vc3F+2j/c2z6nydHqHXXDeIvEGMBPQ+j38osQIKUzxyQYA0fDBFDnlReZsbZ05lKgdPn5stQ==",
       "dependencies": [
-        "@instantdb/core@0.22.141",
-        "@instantdb/version@0.22.141",
+        "@instantdb/core@1.0.21",
+        "@instantdb/version@1.0.21",
         "react"
       ]
     },
-    "@instantdb/react@0.22.141_react@19.2.4": {
-      "integrity": "sha512-kD6mJ2tPP08iWVp7HqJi5Sx65QSMNhRmWAY8A4CoI1X3dLAlg8QjwnkO7ujBg4UHOpNipOnQQR0DZQoCyv2xMg==",
+    "@instantdb/react@1.0.21_react@19.2.5": {
+      "integrity": "sha512-qq3Z4QK/cMVV6SugM0DmWMqW16dBhKeeIMLxlutRFUTl87JqdBnrOLWMwUf57hJIJK7RBR7rbRFxARuDwa5AOA==",
       "dependencies": [
-        "@instantdb/core@0.22.141",
+        "@instantdb/core@1.0.21",
         "@instantdb/react-common",
-        "@instantdb/version@0.22.141",
+        "@instantdb/version@1.0.21",
         "eventsource",
         "react"
       ]
     },
-    "@instantdb/version@0.22.141": {
-      "integrity": "sha512-SQ4mqfHj3TunEEXN6lRo4/l5FdL605knzgdkEPISA//2IOeBVwxU5oOkDXKrwHF8GHl31rpP3zBGcVmYH8jCmA=="
-    },
     "@instantdb/version@0.22.142": {
       "integrity": "sha512-C2HTo95PllT0b47EFDBC9/XILHwUbaDL/3pE2Q8aI0htB+1gf1Drodz6T4d2BNHJkdELYuDEK6ZpyPIMZqaV7Q=="
+    },
+    "@instantdb/version@1.0.21": {
+      "integrity": "sha512-55Vr4KKaAeRoyajE8g9FiAe6POvSFOSeebdPn4NWdCwodAX+ILSz75+0U0thQqa6RImp84LJkooRlyF/hUMH5g=="
     },
     "@jridgewell/gen-mapping@0.3.13": {
       "integrity": "sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA==",
@@ -1279,8 +1285,8 @@
     "estree-walker@2.0.2": {
       "integrity": "sha512-Rfkk/Mp/DL7JVje3u18FxFujQlTNR2q6QfMSMB7AvCBx91NGj/ba3kCfza0f6dVDbw7YlRf/nDrn7pQrCCyQ/w=="
     },
-    "eventsource-parser@3.0.6": {
-      "integrity": "sha512-Vo1ab+QXPzZ4tCa8SwIHJFaSzy4R6SHf7BY79rFBDf0idraZWAkYrDjDj8uWaSm3S2TK+hJ7/t1CEmZ7jXw+pg=="
+    "eventsource-parser@3.0.8": {
+      "integrity": "sha512-70QWGkr4snxr0OXLRWsFLeRBIRPuQOvt4s8QYjmUlmlkyTZkRqS7EDVRZtzU3TiyDbXSzaOeF0XUKy8PchzukQ=="
     },
     "eventsource@4.1.0": {
       "integrity": "sha512-2GuF51iuHX6A9xdTccMTsNb7VO0lHZihApxhvQzJB5A03DvHDd2FQepodbMaztPBmBcE/ox7o2gqaxGhYB9LhQ==",
@@ -1653,8 +1659,8 @@
     "query-selector-shadow-dom@1.0.1": {
       "integrity": "sha512-lT5yCqEBgfoMYpf3F2xQRK7zEr1rhIIZuceDK6+xRkJQ4NMbHTwXqk4NkwDwQMNqXgG9r9fyHnzwNVs6zV5KRw=="
     },
-    "react@19.2.4": {
-      "integrity": "sha512-9nfp2hYpCwOjAN+8TZFGhtWEwgvWHXqESH8qT89AT/lWklpLON22Lc8pEtnpsZz7VmawabSU0gCjnj8aC0euHQ=="
+    "react@19.2.5": {
+      "integrity": "sha512-llUJLzz1zTUBrskt2pwZgLq59AemifIftw4aB7JxOqf1HY2FDaGDxgwpAPVzHU1kdWabH7FauP4i1oEeer2WCA=="
     },
     "resolve-pkg-maps@1.0.0": {
       "integrity": "sha512-seS2Tj26TBVOC2NIc2rOe2y2ZO7efxITtLZcGSOnHHNOQ7CkiUBfw0Iw2ck6xkIhPwLhKNLS8BO+hEpngQlqzw=="
@@ -1923,9 +1929,9 @@
     "dependencies": [
       "jsr:@uri/gamla@*",
       "npm:@deno/vite-plugin@^1.0.5",
-      "npm:@instantdb/admin@0.22.141",
-      "npm:@instantdb/core@0.22.141",
-      "npm:@instantdb/react@0.22.141",
+      "npm:@instantdb/admin@1.0.21",
+      "npm:@instantdb/core@1.0.21",
+      "npm:@instantdb/react@1.0.21",
       "npm:@preact/preset-vite@2.10.2",
       "npm:@preact/signals@2.1.1",
       "npm:@tailwindcss/vite@4.2.1",
