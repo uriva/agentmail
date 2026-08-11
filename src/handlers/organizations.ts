@@ -33,6 +33,21 @@ export const createOrganization = async (
     );
   }
 
+  // Check phone verification
+  const { $users: users } = await db.query({
+    $users: { $: { where: { id: userId } } },
+  });
+  const userRecord = users[0];
+  if (!userRecord?.phoneVerified) {
+    return Response.json(
+      {
+        error: "Phone verification is required to create an organization.",
+        code: "PHONE_VERIFICATION_REQUIRED",
+      },
+      { status: 403 },
+    );
+  }
+
   // Check if user already owns an org (billing user)
   const { organizations: existing } = await db.query({
     organizations: { $: { where: { "billingUser.id": userId } } },

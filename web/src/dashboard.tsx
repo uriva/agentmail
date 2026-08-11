@@ -1,7 +1,8 @@
 import type { ComponentChildren } from "preact";
-import { useState } from "preact/hooks";
+import { useEffect, useState } from "preact/hooks";
 import { useAuth, useQuery } from "./db.ts";
 import { AccountMessagesList } from "./AccountMessagesList.tsx";
+import { PhoneVerification } from "./PhoneVerification.tsx";
 
 // @ts-ignore: Vite injects import.meta.env at build time
 const API_BASE: string = import.meta.env.VITE_API_BASE_URL ?? "";
@@ -1183,6 +1184,23 @@ const Dashboard = () => {
   const [newOrgName, setNewOrgName] = useState("");
   const [showNewOrgForm, setShowNewOrgForm] = useState(false);
 
+  const userToken = user?.refresh_token ?? "";
+  const [phoneVerified, setPhoneVerified] = useState<boolean | null>(null);
+  const [checkingPhone, setCheckingPhone] = useState(true);
+
+  useEffect(() => {
+    if (!userToken) return;
+    fetch(`${API_BASE}/v1/phone/status`, {
+      headers: { Authorization: `Bearer ${userToken}` },
+    })
+      .then((res) => res.json())
+      .then((resData) => {
+        setPhoneVerified(Boolean(resData.data?.phoneVerified));
+      })
+      .catch(() => setPhoneVerified(false))
+      .finally(() => setCheckingPhone(false));
+  }, [userToken]);
+
   const { isLoading, data } = useQuery({
     organizations: {
       $: { where: { "members.id": user?.id ?? "" } },
@@ -1227,11 +1245,20 @@ const Dashboard = () => {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || checkingPhone) {
     return (
       <div class="flex items-center justify-center h-64">
         <div class="text-slate-400">Loading dashboard...</div>
       </div>
+    );
+  }
+
+  if (phoneVerified === false) {
+    return (
+      <PhoneVerification
+        userToken={userToken}
+        onVerified={() => setPhoneVerified(true)}
+      />
     );
   }
 
@@ -1265,8 +1292,6 @@ const Dashboard = () => {
       </div>
     );
   }
-
-  const userToken = user?.refresh_token ?? "";
 
   return (
     <div class="space-y-6">

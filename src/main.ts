@@ -29,6 +29,11 @@ import {
   renameOrganization,
 } from "./handlers/organizations.ts";
 import { inviteMember, listMembers, removeMember } from "./handlers/members.ts";
+import {
+  getPhoneStatus,
+  sendPhoneCode,
+  verifyPhoneCode,
+} from "./handlers/phoneVerification.ts";
 
 // --- Types ---
 
@@ -227,6 +232,16 @@ const routes: readonly Route[] = [
     createAccountApiKey,
     "apiKeyOrUserToken",
   ),
+
+  // Phone Verification
+  route("POST", "/v1/phone/send-code", sendPhoneCode, "userTokenOptionalOrg"),
+  route(
+    "POST",
+    "/v1/phone/verify-code",
+    verifyPhoneCode,
+    "userTokenOptionalOrg",
+  ),
+  route("GET", "/v1/phone/status", getPhoneStatus, "userTokenOptionalOrg"),
 
   // Organizations (user-token auth — org may not exist yet)
   route(

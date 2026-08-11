@@ -4,6 +4,8 @@ const _schema = i.schema({
   entities: {
     $users: i.entity({
       email: i.string().unique().indexed(),
+      phone: i.string().optional().indexed(),
+      phoneVerified: i.boolean().optional(),
     }),
     organizations: i.entity({
       name: i.string(),

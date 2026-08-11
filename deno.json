@@ -33,7 +33,9 @@
     "build": "deno task build:web",
     "runtime": {
       "entrypoint": "src/main.ts"
-    }
+    },
+    "org": "uriva",
+    "app": "agentmail"
   },
   "nodeModulesDir": "auto",
   "compilerOptions": {
@@ -42,3 +44,9 @@
     "jsxImportSource": "preact"
   }
 }
+
+
+
+
+
+
