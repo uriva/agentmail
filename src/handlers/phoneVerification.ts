@@ -33,7 +33,23 @@ const sendPhoneCode = async (req: Request): Promise<Response> => {
     );
   }
 
-  await startTwilioVerification(phone.trim());
+  const formattedPhone = phone.trim();
+
+  // Ensure phone number is not already used by another verified account
+  const { $users: existingUsers } = await db.query({
+    $users: { $: { where: { phone: formattedPhone, phoneVerified: true } } },
+  });
+  if (existingUsers.some((u) => u.id !== userId)) {
+    return Response.json(
+      {
+        error: "This phone number is already linked to another account",
+        code: "PHONE_ALREADY_USED",
+      },
+      { status: 400 },
+    );
+  }
+
+  await startTwilioVerification(formattedPhone);
 
   return Response.json({
     data: { success: true, message: "Verification code sent" },
@@ -60,7 +76,23 @@ const verifyPhoneCode = async (req: Request): Promise<Response> => {
     );
   }
 
-  const isApproved = await checkTwilioVerification(phone.trim(), code.trim());
+  const formattedPhone = phone.trim();
+
+  // Ensure phone number is not already used by another verified account
+  const { $users: existingUsers } = await db.query({
+    $users: { $: { where: { phone: formattedPhone, phoneVerified: true } } },
+  });
+  if (existingUsers.some((u) => u.id !== userId)) {
+    return Response.json(
+      {
+        error: "This phone number is already linked to another account",
+        code: "PHONE_ALREADY_USED",
+      },
+      { status: 400 },
+    );
+  }
+
+  const isApproved = await checkTwilioVerification(formattedPhone, code.trim());
   if (!isApproved) {
     return Response.json(
       { error: "Invalid or expired verification code", code: "INVALID_CODE" },
@@ -68,7 +100,6 @@ const verifyPhoneCode = async (req: Request): Promise<Response> => {
     );
   }
 
-  const formattedPhone = phone.trim();
   await db.transact([
     db.tx.$users[userId]!.update({
       phone: formattedPhone,
