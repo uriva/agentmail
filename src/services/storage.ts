@@ -104,7 +104,7 @@ const uploadFile = async (
         Authorization: `Bearer ${token}`,
         "Content-Type": contentType,
       },
-      body: data,
+      body: data as unknown as BodyInit,
     },
   );
   if (!res.ok) {

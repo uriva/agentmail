@@ -5,6 +5,29 @@ import { FORWARD_EMAIL_DOMAIN, sendEmail } from "../services/forwardEmail.ts";
 import { uploadFile } from "../services/storage.ts";
 import { captureEvent } from "../services/posthog.ts";
 
+const SPAM_PATTERNS = [
+  "페이지 소유권 확인",
+  "Meta 비즈니스 지원",
+  "비즈니스 신원 확인",
+  "커뮤니티 표준",
+  "영구적으로 비활성화",
+  "지금 인증하기",
+  "clearcare.fr",
+  "meta support",
+  "facebook support",
+  "meta platforms",
+  "community support",
+  "account verification required",
+  "verify your page",
+  "security alert",
+  "account suspended",
+];
+
+const containsSpam = (input: SendEmailInput): boolean => {
+  const content = `${input.subject ?? ""} ${input.text ?? ""} ${input.html ?? ""}`.toLowerCase();
+  return SPAM_PATTERNS.some((pattern) => content.includes(pattern.toLowerCase()));
+};
+
 const sendMessage = async (
   req: Request,
   params: Record<string, string>,
@@ -29,6 +52,13 @@ const sendMessage = async (
   await requireKarmaForSend(orgId);
 
   const input = (await req.json()) as SendEmailInput;
+
+  if (containsSpam(input)) {
+    return Response.json(
+      { error: "Message rejected: content flagged as spam or phishing", code: "SPAM_REJECTED" },
+      { status: 400 },
+    );
+  }
   const from = account.address;
 
   // Upload attachments to GCS

@@ -14,7 +14,42 @@ import { captureEvent } from "../services/posthog.ts";
 const WEBHOOK_RECEIVER_URL = Deno.env.get("INBOUND_WEBHOOK_URL") ??
   "https://api.theagentmail.net/inbound";
 
-const RESERVED_ADDRESSES = new Set(["uri", "support"]);
+const RESERVED_KEYWORDS = [
+  "meta",
+  "facebook",
+  "instagram",
+  "whatsapp",
+  "google",
+  "microsoft",
+  "apple",
+  "amazon",
+  "paypal",
+  "stripe",
+  "support",
+  "security",
+  "admin",
+  "billing",
+  "verification",
+  "official",
+  "helpdesk",
+  "service",
+  "system",
+  "notification",
+  "alert",
+  "verify",
+  "uri",
+];
+
+const isReservedOrSuspicious = (
+  localPart: string,
+  displayName?: string,
+): boolean => {
+  const normalizedPart = localPart.toLowerCase();
+  const normalizedDisplay = (displayName ?? "").toLowerCase();
+  return RESERVED_KEYWORDS.some(
+    (kw) => normalizedPart.includes(kw) || normalizedDisplay.includes(kw),
+  );
+};
 
 const createAccount = async (
   req: Request,
@@ -27,9 +62,9 @@ const createAccount = async (
   ).toLowerCase();
   const address = `${localPart}@${FORWARD_EMAIL_DOMAIN}`;
 
-  if (RESERVED_ADDRESSES.has(localPart.toLowerCase())) {
+  if (isReservedOrSuspicious(localPart, input.displayName)) {
     return Response.json(
-      { error: "This address is reserved", code: "RESERVED_ADDRESS" },
+      { error: "This address or display name is reserved or restricted", code: "RESERVED_ADDRESS" },
       { status: 400 },
     );
   }

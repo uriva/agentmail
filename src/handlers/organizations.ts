@@ -67,11 +67,20 @@ export const createOrganization = async (
     db.tx.organizations[orgId]!.link({ billingUser: userId }),
   ]);
 
-  // Seed with welcome karma (money_paid event as signup bonus)
-  await recordKarmaEvent(orgId, "money_paid", {
-    reason: "welcome_bonus",
-    description: "Welcome to AgentMail! Here's 100 karma to get started.",
-  });
+  // Seed with welcome karma (10 karma welcome bonus)
+  const welcomeEventId = id();
+  await db.transact([
+    db.tx.karmaEvents[welcomeEventId]!.update({
+      type: "money_paid",
+      amount: 10,
+      timestamp: Date.now(),
+      metadata: {
+        reason: "welcome_bonus",
+        description: "Welcome to AgentMail! Here is 10 welcome karma.",
+      },
+    }),
+    db.tx.karmaEvents[welcomeEventId]!.link({ organization: orgId }),
+  ]);
 
   captureEvent(orgId, "organization_created", { userId, name });
 
