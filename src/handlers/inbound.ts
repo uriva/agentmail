@@ -89,23 +89,38 @@ const verifySvixSignature = async (
   const svixTimestamp = req.headers.get("svix-timestamp");
   const svixSignature = req.headers.get("svix-signature");
   if (!svixId || !svixTimestamp || !svixSignature) return false;
-  const secretBytes = new Uint8Array(
-    decodeBase64(secret.startsWith("whsec_") ? secret.slice(6) : secret),
-  );
-  const key = await crypto.subtle.importKey(
-    "raw",
-    secretBytes,
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  const signed = await crypto.subtle.sign(
-    "HMAC",
-    key,
-    new TextEncoder().encode(`${svixId}.${svixTimestamp}.${body}`),
-  );
-  const expectedSig = `v1,${encodeBase64(signed)}`;
-  return svixSignature.split(" ").includes(expectedSig);
+
+  const rawSecret = secret.startsWith("whsec_") ? secret.slice(6) : secret;
+  const payloadToSign = `${svixId}.${svixTimestamp}.${body}`;
+
+  const keysToTry: BufferSource[] = [];
+  try {
+    keysToTry.push(new Uint8Array(decodeBase64(rawSecret)));
+  } catch {
+    // ignore base64 parse error
+  }
+  keysToTry.push(new TextEncoder().encode(rawSecret));
+  keysToTry.push(new TextEncoder().encode(secret));
+
+  for (const secretBytes of keysToTry) {
+    const key = await crypto.subtle.importKey(
+      "raw",
+      secretBytes,
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"],
+    );
+    const signed = await crypto.subtle.sign(
+      "HMAC",
+      key,
+      new TextEncoder().encode(payloadToSign),
+    );
+    const expectedSig = `v1,${encodeBase64(signed)}`;
+    if (svixSignature.split(" ").includes(expectedSig)) {
+      return true;
+    }
+  }
+  return false;
 };
 
 const verifyForwardEmailSignature = async (
