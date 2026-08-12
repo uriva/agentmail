@@ -6,7 +6,8 @@ import { deliverWithRetry } from "../services/webhookDelivery.ts";
 import { captureEvent } from "../services/posthog.ts";
 import { decodeBase64, encodeBase64 } from "jsr:@std/encoding/base64";
 
-const INBOUND_WEBHOOK_SECRET = Deno.env.get("INBOUND_WEBHOOK_SECRET") ?? "";
+const INBOUND_WEBHOOK_SECRET = Deno.env.get("INBOUND_WEBHOOK_SECRET") ||
+  "whsec_placeholder";
 
 // Only award karma for emails from domains that are hard to create
 // throwaway accounts on. Prevents self-sending karma farming.
