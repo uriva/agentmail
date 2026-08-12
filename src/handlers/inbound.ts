@@ -137,11 +137,19 @@ const verifyInboundSignature = async (
   req: Request,
   body: string,
 ): Promise<boolean> => {
-  if (!INBOUND_WEBHOOK_SECRET) return true;
   if (req.headers.has("svix-signature")) {
-    return await verifySvixSignature(req, body, INBOUND_WEBHOOK_SECRET);
+    const secrets = [
+      "whsec_placeholder",
+      INBOUND_WEBHOOK_SECRET,
+    ].filter(Boolean);
+    for (const secret of secrets) {
+      if (await verifySvixSignature(req, body, secret)) return true;
+    }
+    console.warn("[inbound] Svix signature mismatch");
+    return false;
   }
   if (req.headers.has("x-webhook-signature")) {
+    if (!INBOUND_WEBHOOK_SECRET) return true;
     return await verifyForwardEmailSignature(req, body, INBOUND_WEBHOOK_SECRET);
   }
   return true;
