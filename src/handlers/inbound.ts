@@ -222,11 +222,24 @@ const normalizeAttachments = (rawAtts: any[]): InboundAttachment[] =>
 // deno-lint-ignore no-explicit-any
 const fetchResendInboundEmail = async (emailId: string): Promise<any> => {
   const resendApiKey = Deno.env.get("RESEND_API_KEY") ?? "";
-  if (!resendApiKey || !emailId) return null;
+  if (!resendApiKey || !emailId) {
+    console.log("[inbound] fetchResendInboundEmail missing key or id", {
+      hasKey: !!resendApiKey,
+      emailId,
+    });
+    return null;
+  }
   const res = await fetch(`https://api.resend.com/emails/inbound/${emailId}`, {
     headers: { Authorization: `Bearer ${resendApiKey}` },
   });
-  if (!res.ok) return null;
+  if (!res.ok) {
+    console.log(
+      "[inbound] fetchResendInboundEmail failed",
+      res.status,
+      await res.text(),
+    );
+    return null;
+  }
   return await res.json();
 };
 
