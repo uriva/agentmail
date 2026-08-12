@@ -220,8 +220,30 @@ const normalizeAttachments = (rawAtts: any[]): InboundAttachment[] =>
   });
 
 // deno-lint-ignore no-explicit-any
-const normalizePayload = (raw: any): InboundEmail => {
-  const data = raw?.type === "email.received" && raw.data ? raw.data : raw;
+const fetchResendInboundEmail = async (emailId: string): Promise<any> => {
+  const resendApiKey = Deno.env.get("RESEND_API_KEY") ?? "";
+  if (!resendApiKey || !emailId) return null;
+  const res = await fetch(`https://api.resend.com/emails/inbound/${emailId}`, {
+    headers: { Authorization: `Bearer ${resendApiKey}` },
+  });
+  if (!res.ok) return null;
+  return await res.json();
+};
+
+// deno-lint-ignore no-explicit-any
+const resolveResendPayload = async (raw: any): Promise<any> => {
+  const baseData = raw?.type === "email.received" && raw.data ? raw.data : raw;
+  const emailId = baseData?.email_id ?? baseData?.id;
+  if (raw?.type === "email.received" && emailId) {
+    const fetched = await fetchResendInboundEmail(emailId);
+    return fetched ? { ...baseData, ...fetched } : baseData;
+  }
+  return baseData;
+};
+
+// deno-lint-ignore no-explicit-any
+const normalizePayload = async (raw: any): Promise<InboundEmail> => {
+  const data = await resolveResendPayload(raw);
   const from = extractFromString(data.from);
   const to = extractAddresses(data.to);
   const finalTo = to.length > 0 ? to : (data.recipients ?? []);
@@ -240,7 +262,7 @@ const normalizePayload = (raw: any): InboundEmail => {
     headers: typeof data.headers === "object" && !Array.isArray(data.headers)
       ? data.headers
       : undefined,
-    messageId: data.messageId ?? data.email_id ?? data.id,
+    messageId: data.messageId ?? data.message_id ?? data.email_id ?? data.id,
     inReplyTo: data.inReplyTo ?? data.in_reply_to,
     references,
     attachments: data.attachments?.length
@@ -292,7 +314,7 @@ const handleInbound = async (
         { status: 400 },
       );
     }
-    const email = normalizePayload(payload);
+    const email = await normalizePayload(payload);
 
     console.log("[inbound] Received email", {
       from: email.from,
