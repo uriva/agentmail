@@ -35,7 +35,7 @@ const sendEmail = async (params: SendEmailParams): Promise<unknown> => {
       ...(params.cc && { cc: params.cc }),
       ...(params.bcc && { bcc: params.bcc }),
       subject: params.subject,
-      ...(params.text && { text: params.text }),
+      text: params.text || params.html || params.subject || " ",
       ...(params.html && { html: params.html }),
       ...((params.inReplyTo || params.references) && {
         headers: {
