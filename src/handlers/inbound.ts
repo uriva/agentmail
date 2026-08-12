@@ -5,9 +5,9 @@ import { uploadFile } from "../services/storage.ts";
 import { deliverWithRetry } from "../services/webhookDelivery.ts";
 import { captureEvent } from "../services/posthog.ts";
 import { decodeBase64, encodeBase64 } from "jsr:@std/encoding/base64";
+import { coerce } from "gamla";
 
-const INBOUND_WEBHOOK_SECRET = Deno.env.get("INBOUND_WEBHOOK_SECRET") ||
-  "whsec_placeholder";
+const INBOUND_WEBHOOK_SECRET = coerce(Deno.env.get("INBOUND_WEBHOOK_SECRET"));
 
 // Only award karma for emails from domains that are hard to create
 // throwaway accounts on. Prevents self-sending karma farming.
@@ -153,18 +153,11 @@ const verifyInboundSignature = async (
   body: string,
 ): Promise<boolean> => {
   if (req.headers.has("svix-signature")) {
-    const secrets = [
-      "whsec_placeholder",
-      INBOUND_WEBHOOK_SECRET,
-    ].filter(Boolean);
-    for (const secret of secrets) {
-      if (await verifySvixSignature(req, body, secret)) return true;
-    }
-    console.warn("[inbound] Svix signature mismatch");
-    return false;
+    const valid = await verifySvixSignature(req, body, INBOUND_WEBHOOK_SECRET);
+    if (!valid) console.warn("[inbound] Svix signature mismatch");
+    return valid;
   }
   if (req.headers.has("x-webhook-signature")) {
-    if (!INBOUND_WEBHOOK_SECRET) return true;
     return await verifyForwardEmailSignature(req, body, INBOUND_WEBHOOK_SECRET);
   }
   return true;

@@ -1,4 +1,6 @@
-const resendApiKey = Deno.env.get("RESEND_API_KEY") ?? "";
+import { coerce } from "gamla";
+
+const resendApiKey = coerce(Deno.env.get("RESEND_API_KEY"));
 const baseUrl = "https://api.resend.com";
 
 const authHeader = () => `Bearer ${resendApiKey}`;
