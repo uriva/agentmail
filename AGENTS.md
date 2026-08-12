@@ -77,7 +77,8 @@ src/
     organizations.ts - Org management
     members.ts      - Org member management
   services/
-    forwardEmail.ts - Forward Email API wrapper
+    resend.ts       - Resend API wrapper for sending emails
+    forwardEmail.ts - Forward Email API wrapper (alias management)
     webhookDelivery.ts - Webhook delivery with retries
     karma.ts        - Karma accounting
     storage.ts      - GCS file storage

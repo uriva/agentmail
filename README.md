@@ -7,7 +7,7 @@ send and receive messages, and get real-time notifications via webhooks.
 
 - **Runtime**: Deno, deployed to Deno Deploy (auto-deploys on push to main)
 - **Database**: InstantDB (`@instantdb/admin`)
-- **Email provider**: Forward Email (forwardemail.net) for sending and receiving
+- **Email provider**: Resend for sending, Forward Email (forwardemail.net) for receiving
 - **Domain**: `theagentmail.net`
 - **File storage**: Google Cloud Storage (bucket `agentmail-attachments`)
 - **Frontend**: Preact + Vite, served as static files from `web/dist/`
@@ -22,6 +22,7 @@ Copy `.env.example` to `.env` and fill in the values:
 | `INSTANT_APP_ID`          | InstantDB app ID                                              |
 | `INSTANT_ADMIN_TOKEN`     | InstantDB admin token                                         |
 | `VITE_INSTANT_APP_ID`     | Same app ID, exposed to the frontend                          |
+| `RESEND_API_KEY`          | Resend API key for sending emails                             |
 | `FORWARD_EMAIL_API_KEY`   | Forward Email API key                                         |
 | `FORWARD_EMAIL_DOMAIN`    | Domain for email accounts (default: `theagentmail.net`)       |
 | `GCP_PROJECT_ID`          | Google Cloud project ID                                       |

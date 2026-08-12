@@ -66,46 +66,4 @@ const deleteAlias = (aliasId: string): Promise<unknown> =>
 const getAlias = (aliasId: string): Promise<unknown> =>
   request(`/domains/${FORWARD_EMAIL_DOMAIN}/aliases/${aliasId}`);
 
-// Sending email
-type SendEmailParams = {
-  readonly from: string;
-  readonly to: readonly string[];
-  readonly cc?: readonly string[];
-  readonly bcc?: readonly string[];
-  readonly subject: string;
-  readonly text?: string;
-  readonly html?: string;
-  readonly inReplyTo?: string;
-  readonly references?: string;
-  readonly attachments?: readonly {
-    readonly filename: string;
-    readonly contentType: string;
-    readonly content: string;
-  }[];
-};
-
-const sendEmail = (params: SendEmailParams): Promise<unknown> =>
-  request("/emails", {
-    method: "POST",
-    body: JSON.stringify({
-      from: params.from,
-      to: params.to.join(", "),
-      ...(params.cc && { cc: params.cc.join(", ") }),
-      ...(params.bcc && { bcc: params.bcc.join(", ") }),
-      subject: params.subject,
-      ...(params.text && { text: params.text }),
-      ...(params.html && { html: params.html }),
-      ...(params.inReplyTo && { in_reply_to: params.inReplyTo }),
-      ...(params.references && { references: params.references }),
-      ...(params.attachments && {
-        attachments: params.attachments.map((a) => ({
-          filename: a.filename,
-          contentType: a.contentType,
-          content: a.content,
-          encoding: "base64",
-        })),
-      }),
-    }),
-  });
-
-export { createAlias, deleteAlias, FORWARD_EMAIL_DOMAIN, getAlias, sendEmail };
+export { createAlias, deleteAlias, FORWARD_EMAIL_DOMAIN, getAlias };

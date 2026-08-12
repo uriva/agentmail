@@ -8,8 +8,8 @@ import {
   createAlias,
   deleteAlias,
   FORWARD_EMAIL_DOMAIN,
-  sendEmail,
 } from "../services/forwardEmail.ts";
+import { sendEmail } from "../services/resend.ts";
 import { captureEvent } from "../services/posthog.ts";
 
 const WEBHOOK_RECEIVER_URL = Deno.env.get("INBOUND_WEBHOOK_URL") ??
