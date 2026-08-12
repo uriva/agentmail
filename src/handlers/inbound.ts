@@ -79,19 +79,44 @@ const hasUnansweredInbound = (
   return relevant.length > 0 && relevant[0]!.direction === "inbound";
 };
 
-const verifyInboundSignature = async (
+const verifySvixSignature = async (
   req: Request,
   body: string,
+  secret: string,
 ): Promise<boolean> => {
-  // Forward Email signs webhook POSTs with a domain-specific key
-  // (Domains → Settings → "Webhook Signature Payload Verification Key").
-  // INBOUND_WEBHOOK_SECRET must be set to that key on Deno Deploy.
-  if (!INBOUND_WEBHOOK_SECRET) return true;
-  const signature = req.headers.get("x-webhook-signature") ?? "";
-  if (!signature) return true;
+  const svixId = req.headers.get("svix-id");
+  const svixTimestamp = req.headers.get("svix-timestamp");
+  const svixSignature = req.headers.get("svix-signature");
+  if (!svixId || !svixTimestamp || !svixSignature) return false;
+  const secretBytes = new Uint8Array(
+    decodeBase64(secret.startsWith("whsec_") ? secret.slice(6) : secret),
+  );
   const key = await crypto.subtle.importKey(
     "raw",
-    new TextEncoder().encode(INBOUND_WEBHOOK_SECRET),
+    secretBytes,
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const signed = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    new TextEncoder().encode(`${svixId}.${svixTimestamp}.${body}`),
+  );
+  const expectedSig = `v1,${encodeBase64(signed)}`;
+  return svixSignature.split(" ").includes(expectedSig);
+};
+
+const verifyForwardEmailSignature = async (
+  req: Request,
+  body: string,
+  secret: string,
+): Promise<boolean> => {
+  const signature = req.headers.get("x-webhook-signature");
+  if (!signature) return false;
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
     { name: "HMAC", hash: "SHA-256" },
     false,
     ["sign"],
@@ -104,9 +129,19 @@ const verifyInboundSignature = async (
   const expectedHex = Array.from(new Uint8Array(expected))
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
-  if (signature !== expectedHex) {
-    console.warn("[inbound] Webhook signature mismatch");
-    return false;
+  return signature === expectedHex;
+};
+
+const verifyInboundSignature = async (
+  req: Request,
+  body: string,
+): Promise<boolean> => {
+  if (!INBOUND_WEBHOOK_SECRET) return true;
+  if (req.headers.has("svix-signature")) {
+    return await verifySvixSignature(req, body, INBOUND_WEBHOOK_SECRET);
+  }
+  if (req.headers.has("x-webhook-signature")) {
+    return await verifyForwardEmailSignature(req, body, INBOUND_WEBHOOK_SECRET);
   }
   return true;
 };
