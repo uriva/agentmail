@@ -148,22 +148,20 @@ const extractFromString = (field: any): string => {
 // deno-lint-ignore no-explicit-any
 const normalizeAttachments = (rawAtts: any[]): InboundAttachment[] =>
   rawAtts.map((att) => {
-    // If content is already a base64 string, use it directly
     if (typeof att.content === "string") {
       return {
-        filename: att.filename ?? "attachment",
-        contentType: att.contentType ?? "application/octet-stream",
+        filename: att.filename ?? att.name ?? "attachment",
+        contentType: att.contentType ?? att.content_type ?? "application/octet-stream",
         size: att.size ?? 0,
         content: att.content,
       };
     }
-    // Forward Email sends { type: "Buffer", data: [byte, byte, ...] }
     const bytes = att.content?.data
       ? new Uint8Array(att.content.data)
       : new Uint8Array(0);
     return {
-      filename: att.filename ?? "attachment",
-      contentType: att.contentType ?? "application/octet-stream",
+      filename: att.filename ?? att.name ?? "attachment",
+      contentType: att.contentType ?? att.content_type ?? "application/octet-stream",
       size: att.size ?? bytes.length,
       content: encodeBase64(bytes),
     };
@@ -171,30 +169,30 @@ const normalizeAttachments = (rawAtts: any[]): InboundAttachment[] =>
 
 // deno-lint-ignore no-explicit-any
 const normalizePayload = (raw: any): InboundEmail => {
-  const from = extractFromString(raw.from);
-  const to = extractAddresses(raw.to);
-  // Fall back to recipients array if to is empty (webhook-style delivery)
-  const finalTo = to.length > 0 ? to : (raw.recipients ?? []);
-  const cc = extractAddresses(raw.cc);
-  const references = Array.isArray(raw.references)
-    ? raw.references.join(" ")
-    : (raw.references ?? undefined);
+  const data = raw?.type === "email.received" && raw.data ? raw.data : raw;
+  const from = extractFromString(data.from);
+  const to = extractAddresses(data.to);
+  const finalTo = to.length > 0 ? to : (data.recipients ?? []);
+  const cc = extractAddresses(data.cc);
+  const references = Array.isArray(data.references)
+    ? data.references.join(" ")
+    : (data.references ?? undefined);
 
   return {
     from,
     to: finalTo,
     cc: cc.length > 0 ? cc : undefined,
-    subject: raw.subject ?? "",
-    text: raw.text,
-    html: raw.html,
-    headers: typeof raw.headers === "object" && !Array.isArray(raw.headers)
-      ? raw.headers
+    subject: data.subject ?? "",
+    text: data.text,
+    html: data.html,
+    headers: typeof data.headers === "object" && !Array.isArray(data.headers)
+      ? data.headers
       : undefined,
-    messageId: raw.messageId,
-    inReplyTo: raw.inReplyTo,
+    messageId: data.messageId ?? data.email_id ?? data.id,
+    inReplyTo: data.inReplyTo ?? data.in_reply_to,
     references,
-    attachments: raw.attachments?.length
-      ? normalizeAttachments(raw.attachments)
+    attachments: data.attachments?.length
+      ? normalizeAttachments(data.attachments)
       : undefined,
   };
 };
