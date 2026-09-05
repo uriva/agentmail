@@ -37,7 +37,6 @@
     "org": "uriva",
     "app": "agentmail"
   },
-  "nodeModulesDir": "auto",
   "compilerOptions": {
     "strict": true,
     "jsx": "react-jsx",
