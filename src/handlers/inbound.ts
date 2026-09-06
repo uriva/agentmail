@@ -4,6 +4,7 @@ import { recordKarmaEvent } from "../services/karma.ts";
 import { uploadFile } from "../services/storage.ts";
 import { deliverWithRetry } from "../services/webhookDelivery.ts";
 import { captureEvent } from "../services/posthog.ts";
+import { sendEmail } from "../services/resend.ts";
 import { decodeBase64, encodeBase64 } from "jsr:@std/encoding/base64";
 import { coerce } from "gamla";
 
@@ -219,6 +220,67 @@ const normalizeAttachments = (rawAtts: any[]): InboundAttachment[] =>
     };
   });
 
+const supportEmailAddress = "support@theagentmail.net";
+const supportForwardDestination = Deno.env.get("SUPPORT_FORWARD_EMAIL") ??
+  "uri.valevski@gmail.com";
+
+const isSupportRecipient = (recipient: string) =>
+  extractAddress(recipient) === supportEmailAddress;
+
+const forwardSupportEmail = (email: InboundEmail) => {
+  console.log(
+    "[inbound] Forwarding support email to",
+    supportForwardDestination,
+  );
+  return sendEmail({
+    from: "AgentMail Support <support@theagentmail.net>",
+    to: [supportForwardDestination],
+    replyTo: email.from,
+    subject: email.subject || "(no subject)",
+    text: email.text,
+    html: email.html,
+    inReplyTo: email.inReplyTo,
+    references: email.references,
+    attachments: email.attachments?.map((
+      { filename, contentType, content },
+    ) => ({
+      filename,
+      contentType,
+      content,
+    })),
+  });
+};
+
+const fetchResendEmailData = async (apiKey: string, emailId: string) => {
+  const receivingRes = await fetch(
+    `https://api.resend.com/emails/receiving/${emailId}`,
+    { headers: { Authorization: `Bearer ${apiKey}` } },
+  );
+  if (receivingRes.ok) return receivingRes.json();
+  const inboundRes = await fetch(
+    `https://api.resend.com/emails/inbound/${emailId}`,
+    { headers: { Authorization: `Bearer ${apiKey}` } },
+  );
+  return inboundRes.ok ? inboundRes.json() : null;
+};
+
+const fetchAttachmentContent = async (att: { download_url?: string }) => {
+  if (!att.download_url) return att;
+  const dl = await fetch(att.download_url);
+  const buf = new Uint8Array(await dl.arrayBuffer());
+  return { ...att, content: encodeBase64(buf) };
+};
+
+const fetchResendAttachments = async (apiKey: string, emailId: string) => {
+  const res = await fetch(
+    `https://api.resend.com/emails/receiving/${emailId}/attachments`,
+    { headers: { Authorization: `Bearer ${apiKey}` } },
+  );
+  if (!res.ok) return [];
+  const list = await res.json();
+  return Promise.all((list.data ?? []).map(fetchAttachmentContent));
+};
+
 // deno-lint-ignore no-explicit-any
 const fetchResendInboundEmail = async (emailId: string): Promise<any> => {
   const resendApiKey = Deno.env.get("RESEND_API_KEY") ?? "";
@@ -229,18 +291,18 @@ const fetchResendInboundEmail = async (emailId: string): Promise<any> => {
     });
     return null;
   }
-  const res = await fetch(`https://api.resend.com/emails/inbound/${emailId}`, {
-    headers: { Authorization: `Bearer ${resendApiKey}` },
-  });
-  if (!res.ok) {
-    console.log(
-      "[inbound] fetchResendInboundEmail failed",
-      res.status,
-      await res.text(),
-    );
+  const email = await fetchResendEmailData(resendApiKey, emailId);
+  if (!email) {
+    console.log("[inbound] fetchResendInboundEmail failed for", emailId);
     return null;
   }
-  return await res.json();
+  const attachments = email.attachments?.length
+    ? await fetchResendAttachments(resendApiKey, emailId)
+    : [];
+  return {
+    ...email,
+    ...(attachments.length ? { attachments } : {}),
+  };
 };
 
 // deno-lint-ignore no-explicit-any
@@ -337,7 +399,16 @@ const handleInbound = async (
     });
 
     // Find target account(s) by recipient address
-    const recipients = [...email.to, ...(email.cc ?? [])];
+    const recipients = [
+      ...email.to,
+      ...(email.cc ?? []),
+      ...extractAddresses(payload?.received_for ?? payload?.data?.received_for),
+    ];
+
+    if (recipients.some(isSupportRecipient)) {
+      await forwardSupportEmail(email);
+    }
+
     let matched = 0;
     for (const recipient of recipients) {
       const address = extractAddress(recipient);

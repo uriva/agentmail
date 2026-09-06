@@ -15,6 +15,7 @@ type SendEmailParams = {
   readonly html?: string;
   readonly inReplyTo?: string;
   readonly references?: string;
+  readonly replyTo?: string | readonly string[];
   readonly attachments?: readonly {
     readonly filename: string;
     readonly contentType?: string;
@@ -32,6 +33,7 @@ const sendEmail = async (params: SendEmailParams): Promise<unknown> => {
     body: JSON.stringify({
       from: params.from,
       to: params.to,
+      ...(params.replyTo && { reply_to: params.replyTo }),
       ...(params.cc && { cc: params.cc }),
       ...(params.bcc && { bcc: params.bcc }),
       subject: params.subject,
@@ -47,6 +49,7 @@ const sendEmail = async (params: SendEmailParams): Promise<unknown> => {
         attachments: params.attachments.map((a) => ({
           filename: a.filename,
           content: a.content,
+          ...(a.contentType && { content_type: a.contentType }),
         })),
       }),
     }),
