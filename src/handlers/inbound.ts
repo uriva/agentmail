@@ -227,6 +227,42 @@ const supportForwardDestination = Deno.env.get("SUPPORT_FORWARD_EMAIL") ??
 const isSupportRecipient = (recipient: string) =>
   extractAddress(recipient) === supportEmailAddress;
 
+const stripHtml = (html: string) =>
+  html
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const formatAttachmentSummary = (att: InboundAttachment) =>
+  `- ${att.filename} (${att.contentType}, ${att.size} bytes)`;
+
+const formatAttachmentsSection = (attachments?: readonly InboundAttachment[]) =>
+  attachments?.length
+    ? `\nAttachments:\n${attachments.map(formatAttachmentSummary).join("\n")}\n`
+    : "";
+
+const extractSupportBody = ({ text, html }: InboundEmail) =>
+  text || (typeof html === "string" ? stripHtml(html) : "(no text content)");
+
+const formatSupportNotification = (email: InboundEmail) =>
+  `[Support Notification]
+A new message was received for ${supportEmailAddress}.
+
+From: ${email.from}
+To: ${email.to.join(", ")}
+Subject: ${email.subject || "(no subject)"}${formatAttachmentsSection(email.attachments)}
+--------------------------------------------------
+${extractSupportBody(email)}
+--------------------------------------------------
+
+Reply directly to this email to respond to ${email.from}.`;
+
 const forwardSupportEmail = (email: InboundEmail) => {
   console.log(
     "[inbound] Forwarding support email to",
@@ -236,18 +272,10 @@ const forwardSupportEmail = (email: InboundEmail) => {
     from: "AgentMail Support <support@theagentmail.net>",
     to: [supportForwardDestination],
     replyTo: email.from,
-    subject: email.subject || "(no subject)",
-    text: email.text,
-    html: email.html,
+    subject: `[Support Request] ${email.subject || "(no subject)"}`,
+    text: formatSupportNotification(email),
     inReplyTo: email.inReplyTo,
     references: email.references,
-    attachments: email.attachments?.map((
-      { filename, contentType, content },
-    ) => ({
-      filename,
-      contentType,
-      content,
-    })),
   });
 };
 
