@@ -6,6 +6,7 @@
     "jsr:@std/encoding@0.224.0": "0.224.0",
     "jsr:@uri/gamla@*": "0.0.14",
     "npm:@deno/vite-plugin@^1.0.5": "1.0.6_vite@7.3.1__picomatch@4.0.3",
+    "npm:@instantdb/admin@*": "1.0.65",
     "npm:@instantdb/admin@1.0.65": "1.0.65",
     "npm:@instantdb/core@1.0.65": "1.0.65",
     "npm:@instantdb/react@1.0.65": "1.0.65_react@19.2.8",

@@ -10,6 +10,7 @@ const _schema = i.schema({
     organizations: i.entity({
       name: i.string(),
       createdAt: i.number().indexed(),
+      admin: i.boolean().optional(),
     }),
     apiKeys: i.entity({
       keyHash: i.string().unique(),
