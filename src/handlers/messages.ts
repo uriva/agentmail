@@ -1,7 +1,6 @@
 import { db, id } from "../db.ts";
 import type { ApiResponse, SendEmailInput } from "../types.ts";
 import { recordKarmaEvent, requireKarmaForSend } from "../services/karma.ts";
-import { FORWARD_EMAIL_DOMAIN } from "../services/forwardEmail.ts";
 import { sendEmail } from "../services/resend.ts";
 import { uploadFile } from "../services/storage.ts";
 import { captureEvent } from "../services/posthog.ts";

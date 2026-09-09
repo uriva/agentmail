@@ -2,6 +2,9 @@ import { coerce } from "gamla";
 
 const resendApiKey = coerce(Deno.env.get("RESEND_API_KEY"));
 const baseUrl = "https://api.resend.com";
+const emailDomain = Deno.env.get("EMAIL_DOMAIN") ??
+  Deno.env.get("FORWARD_EMAIL_DOMAIN") ??
+  "theagentmail.net";
 
 const authHeader = () => `Bearer ${resendApiKey}`;
 
@@ -65,5 +68,5 @@ const sendEmail = async (params: SendEmailParams): Promise<unknown> => {
   return res.json();
 };
 
-export { sendEmail };
+export { emailDomain, sendEmail };
 export type { SendEmailParams };

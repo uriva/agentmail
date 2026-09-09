@@ -258,7 +258,7 @@ const routes: readonly Route[] = [
   route("GET", "/v1/members", listMembers, "userToken"),
   route("DELETE", "/v1/members/:memberId", removeMember, "userToken"),
 
-  // Inbound (from Forward Email, no auth — uses webhook secret)
+  // Inbound (from Resend, no auth — uses webhook secret)
   route("POST", "/inbound", handleInbound, "none"),
 
   // Health

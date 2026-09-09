@@ -4,16 +4,8 @@ import {
   recordKarmaEvent,
   requireKarmaForAccountCreation,
 } from "../services/karma.ts";
-import {
-  createAlias,
-  deleteAlias,
-  FORWARD_EMAIL_DOMAIN,
-} from "../services/forwardEmail.ts";
-import { sendEmail } from "../services/resend.ts";
+import { emailDomain, sendEmail } from "../services/resend.ts";
 import { captureEvent } from "../services/posthog.ts";
-
-const WEBHOOK_RECEIVER_URL = Deno.env.get("INBOUND_WEBHOOK_URL") ??
-  "https://api.theagentmail.net/inbound";
 
 const RESERVED_KEYWORDS = [
   "meta",
@@ -63,7 +55,7 @@ const notifyOverseer = (
       const memberEmails =
         org?.members?.map((m) => m.email).filter(Boolean).join(", ") || "Unknown";
       return sendEmail({
-        from: `notifications@${FORWARD_EMAIL_DOMAIN}`,
+        from: `notifications@${emailDomain}`,
         to: [overseerEmail],
         subject: `[AgentMail Overseer] New email address created: ${address}`,
         text: `A new email address has been created in AgentMail.
@@ -100,7 +92,7 @@ const createAccount = async (
   const localPart = (
     input.address.includes("@") ? input.address.split("@")[0]! : input.address
   ).toLowerCase();
-  const address = `${localPart}@${FORWARD_EMAIL_DOMAIN}`;
+  const address = `${localPart}@${emailDomain}`;
 
   if (isReservedOrSuspicious(localPart, input.displayName)) {
     return Response.json(
@@ -109,10 +101,17 @@ const createAccount = async (
     );
   }
 
-  await requireKarmaForAccountCreation(orgId);
+  const { accounts: existingAccounts } = await db.query({
+    accounts: { $: { where: { address } } },
+  });
+  if (existingAccounts.length > 0) {
+    return Response.json(
+      { error: "This email address is already in use", code: "ADDRESS_EXISTS" },
+      { status: 409 },
+    );
+  }
 
-  // Create alias in Forward Email pointing to our inbound webhook
-  await createAlias(localPart, [WEBHOOK_RECEIVER_URL]);
+  await requireKarmaForAccountCreation(orgId);
 
   const accountId = id();
   await db.transact([
@@ -201,13 +200,6 @@ const deleteAccount = async (
       { error: "Account not found", code: "NOT_FOUND" },
       { status: 404 },
     );
-  }
-
-  const localPart = account.address.split("@")[0]!;
-  try {
-    await deleteAlias(localPart);
-  } catch {
-    // Alias may not exist in Forward Email, proceed with local deletion
   }
 
   await db.transact([db.tx.accounts[account.id]!.delete()]);

@@ -7,7 +7,7 @@ send and receive messages, and get real-time notifications via webhooks.
 
 - **Runtime**: Deno, deployed to Deno Deploy (auto-deploys on push to main)
 - **Database**: InstantDB (`@instantdb/admin`)
-- **Email provider**: Resend for sending, Forward Email (forwardemail.net) for receiving
+- **Email provider**: Resend for sending and receiving
 - **Domain**: `theagentmail.net`
 - **File storage**: Google Cloud Storage (bucket `agentmail-attachments`)
 - **Frontend**: Preact + Vite, served as static files from `web/dist/`
@@ -23,14 +23,13 @@ Copy `.env.example` to `.env` and fill in the values:
 | `INSTANT_ADMIN_TOKEN`     | InstantDB admin token                                         |
 | `VITE_INSTANT_APP_ID`     | Same app ID, exposed to the frontend                          |
 | `RESEND_API_KEY`          | Resend API key for sending emails                             |
-| `FORWARD_EMAIL_API_KEY`   | Forward Email API key                                         |
-| `FORWARD_EMAIL_DOMAIN`    | Domain for email accounts (default: `theagentmail.net`)       |
+| `EMAIL_DOMAIN`            | Domain for email accounts (default: `theagentmail.net`)       |
 | `GCP_PROJECT_ID`          | Google Cloud project ID                                       |
 | `GCP_STORAGE_BUCKET`      | GCS bucket for attachments (default: `agentmail-attachments`) |
 | `GCP_SERVICE_ACCOUNT_KEY` | GCP service account key JSON                                  |
 | `POSTHOG_API_KEY`         | PostHog API key                                               |
 | `POSTHOG_HOST`            | PostHog ingest URL                                            |
-| `INBOUND_WEBHOOK_SECRET`  | Forward Email webhook signature key (from domain settings)    |
+| `INBOUND_WEBHOOK_SECRET`  | Resend webhook Svix secret (from webhook settings)            |
 
 ```bash
 deno task dev        # Run server with watch mode
@@ -220,8 +219,8 @@ and spent on sending emails and creating accounts.
 
 ## Inbound email flow
 
-1. Forward Email receives mail for `*@theagentmail.net`
-2. Forward Email POSTs the parsed email to `POST /inbound` (webhook alias)
+1. Resend receives mail for `*@theagentmail.net`
+2. Resend POSTs the email event to `POST /inbound`
 3. AgentMail verifies the webhook signature (`INBOUND_WEBHOOK_SECRET`)
 4. Normalizes the mailparser payload (handles structured address objects,
    Buffer-style attachments, `html: false` for missing HTML, etc.)
