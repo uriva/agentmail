@@ -13,6 +13,29 @@ const apiHeaders = (userToken: string, orgId: string) => ({
   "X-Org-Id": orgId,
 });
 
+const Spinner = ({ class: className = "w-4 h-4" }: { class?: string }) => (
+  <svg
+    class={`animate-spin ${className}`}
+    xmlns="http://www.w3.org/2000/svg"
+    fill="none"
+    viewBox="0 0 24 24"
+  >
+    <circle
+      class="opacity-25"
+      cx="12"
+      cy="12"
+      r="10"
+      stroke="currentColor"
+      stroke-width="4"
+    />
+    <path
+      class="opacity-75"
+      fill="currentColor"
+      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+    />
+  </svg>
+);
+
 const Card = ({
   title,
   children,
@@ -43,30 +66,93 @@ const StatNumber = ({
   </div>
 );
 
-const KarmaSection = ({ orgId }: { orgId: string }) => {
-  const { isLoading, error, data } = useQuery({
-    karmaEvents: { $: { where: { "organization.id": orgId } } },
-  });
+const KarmaSection = ({
+  orgId,
+  userToken,
+  refreshTrigger,
+}: {
+  orgId: string;
+  userToken: string;
+  refreshTrigger?: number;
+}) => {
+  const [karmaData, setKarmaData] = useState<{
+    balance: number;
+    sent: number;
+    received: number;
+    accountsCreated: number;
+  } | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  if (isLoading) return <div class="text-slate-400">Loading karma...</div>;
-  if (error) {
-    return <div class="text-red-400">Error loading karma: {error.message}</div>;
+  const fetchKarma = async () => {
+    if (!userToken || !orgId) return;
+    try {
+      const res = await fetch(`${API_BASE}/v1/karma`, {
+        headers: apiHeaders(userToken, orgId),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to load karma");
+      }
+      const json = await res.json();
+      const events: { type: string; amount: number }[] =
+        json.data?.events ?? [];
+      const balance: number = json.data?.balance ?? 0;
+      setKarmaData({
+        balance,
+        sent: events.filter((e) => e.type === "email_sent").length,
+        received: events.filter((e) => e.type === "email_received").length,
+        accountsCreated: events.filter((e) => e.type === "account_created").length,
+      });
+      setError(null);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Error loading karma");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    setIsLoading(true);
+    fetchKarma();
+    const interval = setInterval(fetchKarma, 15000);
+    return () => clearInterval(interval);
+  }, [orgId, userToken, refreshTrigger]);
+
+  if (isLoading && !karmaData) {
+    return (
+      <Card title="Karma">
+        <div class="flex items-center gap-2 text-slate-400">
+          <Spinner />
+          <span>Loading karma...</span>
+        </div>
+      </Card>
+    );
   }
 
-  const events = data?.karmaEvents ?? [];
-  const balance = events.reduce(
-    (sum: number, e: { amount: number }) => sum + e.amount,
-    0,
-  );
-  const sent = events.filter(
-    (e: { type: string }) => e.type === "email_sent",
-  ).length;
-  const received = events.filter(
-    (e: { type: string }) => e.type === "email_received",
-  ).length;
-  const accountsCreated = events.filter(
-    (e: { type: string }) => e.type === "account_created",
-  ).length;
+  if (error && !karmaData) {
+    return (
+      <Card title="Karma">
+        <div class="flex items-center justify-between text-red-400">
+          <span>Error loading karma: {error}</span>
+          <button
+            onClick={() => {
+              setIsLoading(true);
+              fetchKarma();
+            }}
+            class="px-3 py-1 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </Card>
+    );
+  }
+
+  const balance = karmaData?.balance ?? 0;
+  const sent = karmaData?.sent ?? 0;
+  const received = karmaData?.received ?? 0;
+  const accountsCreated = karmaData?.accountsCreated ?? 0;
 
   const balanceColor = balance > 50
     ? "text-green-400"
@@ -99,9 +185,11 @@ const KarmaSection = ({ orgId }: { orgId: string }) => {
 const AccountsList = ({
   orgId,
   userToken,
+  onAccountChanged,
 }: {
   orgId: string;
   userToken: string;
+  onAccountChanged?: () => void;
 }) => {
   const { isLoading, error, data } = useQuery({
     accounts: {
@@ -131,6 +219,8 @@ const AccountsList = ({
       if (!res.ok) {
         const err = await res.json();
         alert(err.error || "Failed to delete account");
+      } else {
+        onAccountChanged?.();
       }
       setConfirmDeleteId(null);
     } catch {
@@ -159,6 +249,7 @@ const AccountsList = ({
       }
       setNewAddress("");
       setNewDisplayName("");
+      onAccountChanged?.();
     } catch (e: unknown) {
       setCreateError(e instanceof Error ? e.message : "Unknown error");
     } finally {
@@ -197,9 +288,10 @@ const AccountsList = ({
         <button
           onClick={handleCreateAccount}
           disabled={creating || !newAddress.trim()}
-          class="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white text-sm font-medium rounded-lg transition-colors flex-shrink-0"
+          class="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white text-sm font-medium rounded-lg transition-colors flex-shrink-0 flex items-center justify-center gap-2"
         >
-          {creating ? "Creating..." : "Create Account"}
+          {creating && <Spinner />}
+          <span>{creating ? "Creating..." : "Create Account"}</span>
         </button>
       </div>
       {createError && <div class="mb-4 text-red-400 text-sm">{createError}
@@ -634,9 +726,10 @@ const AccountApiKey = ({
         <button
           onClick={handleCreate}
           disabled={creating}
-          class="w-full px-3 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white text-sm font-medium rounded-lg transition-colors"
+          class="w-full px-3 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
         >
-          {creating ? "Creating..." : "Generate API Key"}
+          {creating && <Spinner />}
+          <span>{creating ? "Creating..." : "Generate API Key"}</span>
         </button>
       )}
 
@@ -864,9 +957,10 @@ const ApiKeySection = ({
         <button
           onClick={handleCreate}
           disabled={creating}
-          class="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white text-sm font-medium rounded-lg transition-colors flex-shrink-0"
+          class="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white text-sm font-medium rounded-lg transition-colors flex-shrink-0 flex items-center justify-center gap-2"
         >
-          {creating ? "Creating..." : "Create Token"}
+          {creating && <Spinner />}
+          <span>{creating ? "Creating..." : "Create Token"}</span>
         </button>
       </div>
       {createError && <div class="mb-4 text-red-400 text-sm">{createError}
@@ -1183,6 +1277,7 @@ const Dashboard = () => {
   const [orgError, setOrgError] = useState<string | null>(null);
   const [newOrgName, setNewOrgName] = useState("");
   const [showNewOrgForm, setShowNewOrgForm] = useState(false);
+  const [karmaRefreshKey, setKarmaRefreshKey] = useState(0);
 
   const userToken = user?.refresh_token ?? "";
   const [phoneVerified, setPhoneVerified] = useState<boolean | null>(null);
@@ -1283,9 +1378,10 @@ const Dashboard = () => {
           <button
             onClick={handleCreateOrg}
             disabled={creatingOrg}
-            class="px-6 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white font-medium rounded-lg transition-colors"
+            class="px-6 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
           >
-            {creatingOrg ? "Setting up..." : "Get Started"}
+            {creatingOrg && <Spinner />}
+            <span>{creatingOrg ? "Setting up..." : "Get Started"}</span>
           </button>
         </div>
         {orgError && <div class="mt-4 text-red-400 text-sm">{orgError}</div>}
@@ -1323,9 +1419,10 @@ const Dashboard = () => {
             <button
               onClick={handleCreateOrg}
               disabled={creatingOrg}
-              class="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white text-sm font-medium rounded-lg transition-colors flex-shrink-0"
+              class="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white text-sm font-medium rounded-lg transition-colors flex-shrink-0 flex items-center justify-center gap-2"
             >
-              {creatingOrg ? "Creating..." : "Create"}
+              {creatingOrg && <Spinner />}
+              <span>{creatingOrg ? "Creating..." : "Create"}</span>
             </button>
             <button
               onClick={() => setShowNewOrgForm(false)}
@@ -1340,8 +1437,16 @@ const Dashboard = () => {
 
       {activeOrgId && (
         <>
-          <KarmaSection orgId={activeOrgId} />
-          <AccountsList orgId={activeOrgId} userToken={userToken} />
+          <KarmaSection
+            orgId={activeOrgId}
+            userToken={userToken}
+            refreshTrigger={karmaRefreshKey}
+          />
+          <AccountsList
+            orgId={activeOrgId}
+            userToken={userToken}
+            onAccountChanged={() => setKarmaRefreshKey((k) => k + 1)}
+          />
 
           <div>
             <h2 class="text-lg font-semibold text-white mb-4">Admin</h2>
