@@ -1,3 +1,12 @@
+import { KARMA_AMOUNTS, signupKarma } from "../../src/karma-constants.ts";
+
+const signupAccounts = Math.floor(
+  signupKarma / Math.abs(KARMA_AMOUNTS.account_created),
+);
+const packAccounts = Math.floor(
+  KARMA_AMOUNTS.money_paid / Math.abs(KARMA_AMOUNTS.account_created),
+);
+
 const Pricing = () => (
   <div class="max-w-3xl mx-auto">
     <h1 class="text-3xl font-bold text-white mb-4 text-center">Pricing</h1>
@@ -12,9 +21,11 @@ const Pricing = () => (
         <div class="text-4xl font-bold text-white mb-1">$0</div>
         <div class="text-slate-500 text-sm mb-6">to get started</div>
         <ul class="text-slate-300 text-sm space-y-3">
-          <li>100 karma on signup</li>
-          <li>10 email accounts</li>
-          <li>100 sends</li>
+          <li>{signupKarma} karma on signup</li>
+          <li>
+            {signupAccounts} email account{signupAccounts === 1 ? "" : "s"}
+          </li>
+          <li>{signupKarma} sends</li>
           <li>Full API access</li>
           <li>Webhooks</li>
           <li>No time limit</li>
@@ -25,9 +36,13 @@ const Pricing = () => (
           Karma packs
         </div>
         <div class="text-4xl font-bold text-white mb-1">$5</div>
-        <div class="text-slate-500 text-sm mb-6">per 100 karma</div>
+        <div class="text-slate-500 text-sm mb-6">
+          per {KARMA_AMOUNTS.money_paid} karma
+        </div>
         <ul class="text-slate-300 text-sm space-y-3">
-          <li>100 sends or 10 accounts per pack</li>
+          <li>
+            {KARMA_AMOUNTS.money_paid} sends or {packAccounts} accounts per pack
+          </li>
           <li>Buy as many as you need</li>
           <li>Karma never expires</li>
           <li>Earn karma back from replies</li>

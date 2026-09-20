@@ -9,8 +9,9 @@ const KARMA_AMOUNTS: Record<KarmaEventType, number> = {
 };
 
 const INITIAL_KARMA = KARMA_AMOUNTS.money_paid;
+const signupKarma = 100;
 
 const formatKarma = (amount: number): string =>
   amount > 0 ? `+${amount}` : `${amount}`;
 
-export { formatKarma, INITIAL_KARMA, KARMA_AMOUNTS };
+export { formatKarma, INITIAL_KARMA, KARMA_AMOUNTS, signupKarma };
