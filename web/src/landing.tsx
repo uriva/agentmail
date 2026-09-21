@@ -3,6 +3,7 @@ import {
   formatKarma,
   INITIAL_KARMA,
   KARMA_AMOUNTS,
+  signupKarma,
 } from "../../src/karma-constants.ts";
 import { useAuth } from "./db.ts";
 
@@ -99,8 +100,9 @@ const Landing = () => {
             </p>
             <p class="text-slate-300">
               AgentMail is a shared domain with reputation management built in.
-              One API call to create an address. Karma keeps the domain clean.
-              Your agent gets a real, trusted mailbox it can use as its own.
+              One API call to create an address. Built-in AI scanning keeps the
+              domain clean. Your agent gets a real, trusted mailbox it can use
+              as its own.
             </p>
           </div>
         </div>
@@ -137,79 +139,66 @@ const Landing = () => {
             </div>
             <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-6 text-center">
               <div class="text-3xl mb-3">3</div>
-              <h3 class="text-white font-medium mb-2">Stay sustainable</h3>
+              <h3 class="text-white font-medium mb-2">Automated protection</h3>
               <p class="text-slate-400 text-sm">
-                Karma rewards genuine conversations. Agents with healthy reply
-                rates sustain themselves indefinitely.
+                Every outbound email is scanned by JEV. Phishing and spam blasts
+                get stopped instantly, protecting deliverability for everyone.
               </p>
             </div>
           </div>
         </div>
       </Section>
 
-      {/* Karma */}
+      {/* Domain Protection & Credits */}
       <Section>
         <div class="max-w-2xl mx-auto">
           <h2 class="text-3xl font-bold text-white mb-4 text-center">
-            Karma solves spam
+            How we keep the domain clean
           </h2>
           <p class="text-slate-400 text-center mb-4 max-w-xl mx-auto">
-            Everyone shares one domain. If someone uses it for mass email, the
-            domain reputation tanks and everyone's mail lands in junk. So we
-            need a way to prevent that without manually reviewing every message.
+            Everyone shares one domain. If someone uses it for mass marketing
+            blasts or phishing, the domain reputation tanks and everyone's mail
+            lands in junk.
           </p>
           <p class="text-slate-400 text-center mb-4 max-w-xl mx-auto">
-            Karma is a simple credit system. Sending costs karma. Receiving
-            earns it back. An agent that sends emails people actually reply to
-            sustains itself. One that blasts into the void runs out and gets
-            blocked. This naturally selects for agents that behave like real
-            people having real conversations, not like marketing tools.
-          </p>
-          <p class="text-slate-400 text-center mb-4 max-w-xl mx-auto">
-            Karma is only awarded for replies from trusted email providers
-            (Gmail, Outlook, Yahoo, iCloud, ProtonMail, etc.). Emails from
-            throwaway domains don't count. And you only earn karma once per
-            sender until your agent replies back. No gaming the system by having
-            someone send you 100 emails.
+            Instead of manual reviews or awkward reciprocal games, every
+            outbound email is evaluated in real time by JEV before it leaves the
+            server. Phishing, credential harvesting, and cold spam blasts are
+            blocked immediately. Legitimate agent communications, notifications,
+            and human conversations go through cleanly.
           </p>
           <p class="text-slate-400 text-center mb-8 max-w-xl mx-auto">
-            You start with {INITIAL_KARMA} karma when you pay. That's{" "}
-            {INITIAL_KARMA} sends, or {Math.floor(
-              INITIAL_KARMA / Math.abs(KARMA_AMOUNTS.account_created),
-            )}{" "}
-            accounts, or some mix. Delete an account and get the karma back. An
-            agent with a healthy reply rate sustains itself indefinitely.
+            Credits keep resource usage fair. You start with {signupKarma}{" "}
+            free credits on signup. That's {signupKarma} sends, or {Math.floor(
+              signupKarma / Math.abs(KARMA_AMOUNTS.account_created),
+            )} accounts. Delete an account and get{" "}
+            {KARMA_AMOUNTS.account_deleted} credits back.
           </p>
           <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
             <KarmaRow
               event="money_paid"
               amount={KARMA_AMOUNTS.money_paid}
-              description="Purchase karma credits"
-            />
-            <KarmaRow
-              event="email_received"
-              amount={KARMA_AMOUNTS.email_received}
-              description="Someone replies from a trusted domain (once per sender until you reply back)"
-            />
-            <KarmaRow
-              event="account_deleted"
-              amount={KARMA_AMOUNTS.account_deleted}
-              description="Delete an email address (partial karma refund)"
-            />
-            <KarmaRow
-              event="email_sent"
-              amount={KARMA_AMOUNTS.email_sent}
-              description="Your agent sends an email"
+              description="Purchase credit pack"
             />
             <KarmaRow
               event="account_created"
               amount={KARMA_AMOUNTS.account_created}
               description="Create a new email address"
             />
+            <KarmaRow
+              event="account_deleted"
+              amount={KARMA_AMOUNTS.account_deleted}
+              description="Delete an email address (partial credit refund)"
+            />
+            <KarmaRow
+              event="email_sent"
+              amount={KARMA_AMOUNTS.email_sent}
+              description="Your agent sends a clean email"
+            />
           </div>
           <p class="text-slate-500 text-center mt-6 text-sm max-w-xl mx-auto">
-            When karma hits zero, sends and account creation are blocked until
-            you buy more or earn it back through genuine conversations.
+            When credits run out, sends and address creation pause until you top
+            up.
           </p>
         </div>
       </Section>

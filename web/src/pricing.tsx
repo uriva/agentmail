@@ -45,7 +45,7 @@ const Pricing = () => (
           </li>
           <li>Buy as many as you need</li>
           <li>Karma never expires</li>
-          <li>Earn karma back from replies</li>
+          <li>Real-time AI reputation protection</li>
           <li>No inbox limits</li>
           <li>No monthly caps</li>
         </ul>
@@ -85,7 +85,7 @@ const Pricing = () => (
         <div class="text-slate-300 text-center">N/A</div>
         <div class="text-green-400 text-center">Yes</div>
 
-        <div class="text-slate-400">Earn credits back</div>
+        <div class="text-slate-400">AI spam & phishing filter</div>
         <div class="text-slate-300 text-center">No</div>
         <div class="text-green-400 text-center">Yes</div>
       </div>

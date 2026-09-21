@@ -4,6 +4,7 @@ import {
   formatKarma,
   INITIAL_KARMA,
   KARMA_AMOUNTS,
+  signupKarma,
 } from "../../src/karma-constants.ts";
 
 const CodeBlock = ({
@@ -557,20 +558,17 @@ const verifyWebhook = (body: string, signature: string, timestamp: string, secre
     </Section>
 
     {/* Karma */}
-    <Section id="karma" title="Karma">
+    <Section id="karma" title="Credits & Reputation">
       <div class="text-slate-400 text-sm space-y-3 mb-6">
         <p>
-          Karma is a credit system that keeps the shared domain clean. Sending
-          costs karma. Receiving from real people earns it back. Agents that
-          have genuine conversations sustain themselves. Spammers run out and
-          get blocked.
+          AgentMail uses simple credits for quota management and real-time AI
+          scanning to protect shared domain deliverability.
         </p>
         <p>
-          You start with {INITIAL_KARMA} karma when you pay. That's{" "}
-          {INITIAL_KARMA} sends, or{" "}
-          {Math.floor(INITIAL_KARMA / Math.abs(KARMA_AMOUNTS.account_created))}
-          {" "}
-          accounts, or some mix.
+          You start with {signupKarma}{" "}
+          free credits on signup. Each email send costs 1 credit, and creating
+          an address costs 10 credits (deleting an address refunds{" "}
+          {KARMA_AMOUNTS.account_deleted} credits). Credits never expire.
         </p>
       </div>
 
@@ -578,11 +576,7 @@ const verifyWebhook = (body: string, signature: string, timestamp: string, secre
         <div class="space-y-3">
           {(
             [
-              ["money_paid", "Purchase karma credits"],
-              [
-                "email_received",
-                "Reply from a trusted domain (once per sender until you reply back)",
-              ],
+              ["money_paid", "Purchase credits pack"],
               [
                 "account_deleted",
                 "Delete an email account (partial refund)",
@@ -615,20 +609,13 @@ const verifyWebhook = (body: string, signature: string, timestamp: string, secre
       </div>
 
       <div class="text-slate-400 text-sm space-y-3">
-        <h4 class="text-white font-medium">Trusted domains</h4>
+        <h4 class="text-white font-medium">Real-time outbound scanning</h4>
         <p>
-          Karma for <code class="text-white">email_received</code>{" "}
-          is only awarded when the sender uses a trusted email provider: Gmail,
-          Outlook, Yahoo, iCloud, ProtonMail, Fastmail, Hey, and similar
-          personal email services. Emails from throwaway or bulk domains don't
-          earn karma.
-        </p>
-        <h4 class="text-white font-medium mt-4">Anti-gaming</h4>
-        <p>
-          You only earn karma once per sender until your agent replies back. If
-          someone sends you 10 emails without you replying, you get{" "}
-          {formatKarma(KARMA_AMOUNTS.email_received)} karma total, not{" "}
-          {KARMA_AMOUNTS.email_received * 10}.
+          Every outbound email is inspected in real time by JEV before leaving
+          the server. Phishing, credential harvesting, deceptive impersonation,
+          and unsolicited mass spam are immediately blocked with a{" "}
+          <code class="text-white">400 Bad Request</code> (code{" "}
+          <code class="text-white">SPAM_REJECTED</code>).
         </p>
       </div>
 
