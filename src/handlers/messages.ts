@@ -4,6 +4,7 @@ import { recordKarmaEvent, requireKarmaForSend } from "../services/karma.ts";
 import { sendEmail } from "../services/resend.ts";
 import { uploadFile } from "../services/storage.ts";
 import { captureEvent } from "../services/posthog.ts";
+import { scanOutboundEmail } from "../services/jev.ts";
 
 const SPAM_PATTERNS = [
   "페이지 소유권 확인",
@@ -24,8 +25,12 @@ const SPAM_PATTERNS = [
 ];
 
 const containsSpam = (input: SendEmailInput): boolean => {
-  const content = `${input.subject ?? ""} ${input.text ?? ""} ${input.html ?? ""}`.toLowerCase();
-  return SPAM_PATTERNS.some((pattern) => content.includes(pattern.toLowerCase()));
+  const content = `${input.subject ?? ""} ${input.text ?? ""} ${
+    input.html ?? ""
+  }`.toLowerCase();
+  return SPAM_PATTERNS.some((pattern) =>
+    content.includes(pattern.toLowerCase())
+  );
 };
 
 const sendMessage = async (
@@ -55,7 +60,22 @@ const sendMessage = async (
 
   if (containsSpam(input)) {
     return Response.json(
-      { error: "Message rejected: content flagged as spam or phishing", code: "SPAM_REJECTED" },
+      {
+        error: "Message rejected: content flagged as spam or phishing",
+        code: "SPAM_REJECTED",
+      },
+      { status: 400 },
+    );
+  }
+
+  const scanResult = await scanOutboundEmail(input, orgId);
+  if (!scanResult.allowed) {
+    return Response.json(
+      {
+        error: scanResult.reason ??
+          "Message rejected: content flagged as spam or phishing",
+        code: "SPAM_REJECTED",
+      },
       { status: 400 },
     );
   }

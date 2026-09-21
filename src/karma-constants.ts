@@ -2,7 +2,7 @@ import type { KarmaEventType } from "./types.ts";
 
 const KARMA_AMOUNTS: Record<KarmaEventType, number> = {
   email_sent: -1,
-  email_received: 2,
+  email_received: 0,
   account_created: -10,
   account_deleted: 5,
   money_paid: 100,

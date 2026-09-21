@@ -1,6 +1,5 @@
 import { db, id } from "../db.ts";
 import type { InboundAttachment, InboundEmail } from "../types.ts";
-import { recordKarmaEvent } from "../services/karma.ts";
 import { uploadFile } from "../services/storage.ts";
 import { deliverWithRetry } from "../services/webhookDelivery.ts";
 import { captureEvent } from "../services/posthog.ts";
@@ -10,75 +9,9 @@ import { coerce } from "gamla";
 
 const INBOUND_WEBHOOK_SECRET = coerce(Deno.env.get("INBOUND_WEBHOOK_SECRET"));
 
-// Only award karma for emails from domains that are hard to create
-// throwaway accounts on. Prevents self-sending karma farming.
-const TRUSTED_SENDER_DOMAINS = new Set([
-  "gmail.com",
-  "googlemail.com",
-  "outlook.com",
-  "hotmail.com",
-  "live.com",
-  "yahoo.com",
-  "ymail.com",
-  "protonmail.com",
-  "proton.me",
-  "icloud.com",
-  "me.com",
-  "mac.com",
-  "aol.com",
-  "zoho.com",
-  "fastmail.com",
-  "hey.com",
-  "pm.me",
-  "tutanota.com",
-  "tuta.com",
-  "gmx.com",
-  "gmx.net",
-  "mail.com",
-  "yandex.com",
-  "qq.com",
-  "163.com",
-  "126.com",
-]);
-
 const extractAddress = (raw: string): string => {
   const addr = raw.includes("<") ? raw.match(/<(.+)>/)?.[1] ?? raw : raw;
   return addr.toLowerCase().trim();
-};
-
-const extractDomain = (from: string): string =>
-  extractAddress(from).split("@")[1] ?? "";
-
-const isFromTrustedDomain = (from: string): boolean =>
-  TRUSTED_SENDER_DOMAINS.has(extractDomain(from));
-
-// Check if the agent has an unanswered inbound from this sender.
-// If so, no karma — you only earn karma once per inbound until you reply.
-const hasUnansweredInbound = (
-  messages: {
-    from: string;
-    to: unknown;
-    direction: string;
-    timestamp: number;
-  }[],
-  senderAddress: string,
-): boolean => {
-  const relevant = messages
-    .filter((m) => {
-      if (m.direction === "inbound") {
-        return extractAddress(m.from) === senderAddress;
-      }
-      if (m.direction === "outbound") {
-        const toList = m.to as string[];
-        return toList.some((t) => extractAddress(t) === senderAddress);
-      }
-      return false;
-    })
-    .sort((a, b) => b.timestamp - a.timestamp);
-
-  // If the most recent exchange with this sender is an inbound,
-  // the agent hasn't replied yet — no karma.
-  return relevant.length > 0 && relevant[0]!.direction === "inbound";
 };
 
 const verifySvixSignature = async (
@@ -204,7 +137,8 @@ const normalizeAttachments = (rawAtts: any[]): InboundAttachment[] =>
     if (typeof att.content === "string") {
       return {
         filename: att.filename ?? att.name ?? "attachment",
-        contentType: att.contentType ?? att.content_type ?? "application/octet-stream",
+        contentType: att.contentType ?? att.content_type ??
+          "application/octet-stream",
         size: att.size ?? 0,
         content: att.content,
       };
@@ -214,7 +148,8 @@ const normalizeAttachments = (rawAtts: any[]): InboundAttachment[] =>
       : new Uint8Array(0);
     return {
       filename: att.filename ?? att.name ?? "attachment",
-      contentType: att.contentType ?? att.content_type ?? "application/octet-stream",
+      contentType: att.contentType ?? att.content_type ??
+        "application/octet-stream",
       size: att.size ?? bytes.length,
       content: encodeBase64(bytes),
     };
@@ -256,7 +191,9 @@ A new message was received for ${supportEmailAddress}.
 
 From: ${email.from}
 To: ${email.to.join(", ")}
-Subject: ${email.subject || "(no subject)"}${formatAttachmentsSection(email.attachments)}
+Subject: ${email.subject || "(no subject)"}${
+    formatAttachmentsSection(email.attachments)
+  }
 --------------------------------------------------
 ${extractSupportBody(email)}
 --------------------------------------------------
@@ -534,27 +471,6 @@ const handleInbound = async (
       }
 
       await db.transact(txOps);
-
-      // Record karma only if:
-      // 1. Sender is from a trusted domain (prevents self-send farming)
-      // 2. No unanswered inbound from this sender (one karma per turn)
-      const senderAddr = extractAddress(email.from);
-      const trusted = isFromTrustedDomain(email.from);
-      const unanswered = hasUnansweredInbound(
-        account.messages as {
-          from: string;
-          to: unknown;
-          direction: string;
-          timestamp: number;
-        }[],
-        senderAddr,
-      );
-      if (trusted && !unanswered) {
-        await recordKarmaEvent(orgId, "email_received", {
-          messageId,
-          from: email.from,
-        });
-      }
 
       captureEvent(orgId, "email_received", {
         from: email.from,
