@@ -22,6 +22,7 @@ Copy `.env.example` to `.env` and fill in the values:
 | `INSTANT_APP_ID`          | InstantDB app ID                                              |
 | `INSTANT_ADMIN_TOKEN`     | InstantDB admin token                                         |
 | `VITE_INSTANT_APP_ID`     | Same app ID, exposed to the frontend                          |
+| `VITE_POSTHOG_KEY`        | PostHog project API key for frontend analytics                |
 | `RESEND_API_KEY`          | Resend API key for sending emails                             |
 | `EMAIL_DOMAIN`            | Domain for email accounts (default: `theagentmail.net`)       |
 | `GCP_PROJECT_ID`          | Google Cloud project ID                                       |
