@@ -11,6 +11,14 @@ const Section = ({
   id?: string;
 }) => <section id={id} class={`py-16 px-4 ${className}`}>{children}</section>;
 
+const githubUrl = "https://github.com/uriva/agentmail";
+
+const Badge = ({ children }: { children: ComponentChildren }) => (
+  <span class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-full border border-slate-700 bg-slate-800/60 text-slate-300">
+    {children}
+  </span>
+);
+
 const PlanRow = ({
   title,
   price,
@@ -37,8 +45,16 @@ const Landing = () => {
     <div>
       {/* Hero */}
       <Section class="pt-24 pb-12 text-center">
+        <div class="flex gap-2 justify-center flex-wrap mb-6">
+          <Badge>
+            <span class="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
+            100% open source (MIT)
+          </Badge>
+          <Badge>1 mailbox free for 30 days</Badge>
+          <Badge>$1/mo thereafter</Badge>
+        </div>
         <h1 class="text-5xl sm:text-6xl font-extrabold text-white tracking-tight mb-6">
-          Email for AI agents
+          Open source email for AI agents
         </h1>
         <p class="text-xl text-slate-300 max-w-2xl mx-auto mb-10 leading-relaxed">
           Your agents need email. To sign up for GitHub, to receive verification
@@ -63,6 +79,14 @@ const Landing = () => {
             class="px-6 py-3 border border-slate-600 hover:border-slate-400 text-slate-300 font-medium rounded-lg transition-colors"
           >
             API docs
+          </a>
+          <a
+            href={githubUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="px-6 py-3 border border-slate-600 hover:border-slate-400 text-slate-300 font-medium rounded-lg transition-colors"
+          >
+            ★ Star on GitHub
           </a>
         </div>
       </Section>
@@ -204,6 +228,43 @@ const Landing = () => {
         </p>
       </Section>
 
+      {/* Open source */}
+      <Section>
+        <div class="max-w-3xl mx-auto text-center">
+          <h2 class="text-3xl font-bold text-white mb-4">
+            Completely open source
+          </h2>
+          <p class="text-slate-400 mb-6 max-w-xl mx-auto">
+            MIT licensed. Backend, frontend, SDK, and infrastructure — all
+            public on GitHub. Self-host it, audit the code, or contribute.
+            No black boxes touching your agents' email.
+          </p>
+          <div class="bg-slate-900 border border-slate-700 rounded-xl p-4 mb-6 text-left overflow-x-auto">
+            <code class="font-mono text-sm text-green-400">
+              git clone https://github.com/uriva/agentmail.git
+            </code>
+          </div>
+          <div class="flex gap-4 justify-center flex-wrap">
+            <a
+              href={githubUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="px-6 py-3 bg-slate-100 hover:bg-white text-slate-900 font-medium rounded-lg transition-colors"
+            >
+              View source on GitHub
+            </a>
+            <a
+              href={`${githubUrl}/blob/main/README.md`}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="px-6 py-3 border border-slate-600 hover:border-slate-400 text-slate-300 font-medium rounded-lg transition-colors"
+            >
+              Self-host guide
+            </a>
+          </div>
+        </div>
+      </Section>
+
       {/* CTA */}
       <Section class="text-center pb-24">
         <h2 class="text-3xl font-bold text-white mb-4">
@@ -230,8 +291,8 @@ const Landing = () => {
 
       {/* Footer */}
       <footer class="border-t border-slate-800 py-8 px-4 text-center text-slate-500 text-sm">
-        <p>AgentMail -- email for AI agents</p>
-        <div class="mt-3 flex items-center justify-center gap-4">
+        <p>AgentMail — open source email for AI agents (MIT)</p>
+        <div class="mt-3 flex items-center justify-center gap-4 flex-wrap">
           <a href="/docs" class="hover:text-white transition-colors">Docs</a>
           <span class="text-slate-700">|</span>
           <a href="/pricing" class="hover:text-white transition-colors">
@@ -243,6 +304,15 @@ const Landing = () => {
           </a>
           <span class="text-slate-700">|</span>
           <a href="/terms" class="hover:text-white transition-colors">Terms</a>
+          <span class="text-slate-700">|</span>
+          <a
+            href={githubUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="hover:text-white transition-colors"
+          >
+            GitHub
+          </a>
           <span class="text-slate-700">|</span>
           <a
             href="mailto:support@theagentmail.net"

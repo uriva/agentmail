@@ -22,6 +22,14 @@ const Header = () => {
           >
             Docs
           </a>
+          <a
+            href="https://github.com/uriva/agentmail"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-sm text-slate-400 hover:text-white transition-colors"
+          >
+            GitHub
+          </a>
           {user
             ? (
               <>
