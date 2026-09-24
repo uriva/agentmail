@@ -39,8 +39,11 @@ const notifyOverseer = (
   address: string,
   displayName: string | undefined,
   orgId: string,
-) =>
-  db
+) => {
+  if (Deno.env.get("DENO_ENV") === "test" || !overseerEmail) {
+    return Promise.resolve();
+  }
+  return db
     .query({
       organizations: {
         $: { where: { id: orgId } },
@@ -71,6 +74,7 @@ Created At: ${new Date().toISOString()}`,
     .catch((err) =>
       console.error("[notifyOverseer] Failed to send notification email:", err),
     );
+};
 
 const isReservedOrSuspicious = (
   localPart: string,
@@ -111,17 +115,75 @@ const createAccount = async (
     );
   }
 
-  await requireKarmaForAccountCreation(orgId);
+  const { organizations } = await db.query({
+    organizations: {
+      $: { where: { id: orgId } },
+      billingUser: {},
+      members: {},
+    },
+  });
+  const org = organizations[0];
+  const isAdmin = Boolean(org?.admin);
 
+  const currentBalance = org?.balance ?? 0;
+  const isTrial = !isAdmin && !org?.trialUsed;
+
+  if (isTrial) {
+    const isPhoneVerified = Boolean(
+      org?.billingUser?.phoneVerified ||
+        org?.members?.some((m) => m.phoneVerified),
+    );
+    if (!isPhoneVerified) {
+      return Response.json(
+        {
+          error:
+            "Phone verification is required to claim your free 1-month trial",
+          code: "PHONE_VERIFICATION_REQUIRED",
+        },
+        { status: 403 },
+      );
+    }
+  } else if (!isAdmin) {
+    if (currentBalance < 1) {
+      return Response.json(
+        {
+          error:
+            "Mailboxes cost $1/month. Please top up your balance.",
+          code: "INSUFFICIENT_BALANCE",
+        },
+        { status: 402 },
+      );
+    }
+  }
+
+  const now = Date.now();
+  const expiresAt = now + 30 * 24 * 60 * 60 * 1000;
   const accountId = id();
-  await db.transact([
+
+  // deno-lint-ignore no-explicit-any
+  const txOps: any[] = [
     db.tx.accounts[accountId]!.update({
       address,
       displayName: input.displayName ?? "",
-      createdAt: Date.now(),
+      createdAt: now,
+      expiresAt,
+      isFrozen: false,
+      sendsThisMonth: 0,
+      sendPeriodStart: now,
     }),
     db.tx.accounts[accountId]!.link({ organization: orgId }),
-  ]);
+  ];
+
+  if (!isAdmin) {
+    txOps.push(
+      db.tx.organizations[orgId]!.update({
+        balance: isTrial ? currentBalance : currentBalance - 1,
+        ...(isTrial ? { trialUsed: true } : {}),
+      }),
+    );
+  }
+
+  await db.transact(txOps);
 
   await recordKarmaEvent(orgId, "account_created", { accountId, address });
   captureEvent(orgId, "account_created", { address });
@@ -129,7 +191,14 @@ const createAccount = async (
 
   return Response.json(
     {
-      data: { id: accountId, address, displayName: input.displayName ?? null },
+      data: {
+        id: accountId,
+        address,
+        displayName: input.displayName ?? null,
+        expiresAt,
+        isFrozen: false,
+        sendsThisMonth: 0,
+      },
     } satisfies ApiResponse<unknown>,
     { status: 201 },
   );
@@ -150,6 +219,9 @@ const listAccounts = async (
         address: a.address,
         displayName: a.displayName || null,
         createdAt: a.createdAt,
+        expiresAt: a.expiresAt,
+        isFrozen: Boolean(a.isFrozen),
+        sendsThisMonth: a.sendsThisMonth ?? 0,
       })),
     } satisfies ApiResponse<unknown>,
   );
@@ -179,6 +251,9 @@ const getAccount = async (
         address: account.address,
         displayName: account.displayName || null,
         createdAt: account.createdAt,
+        expiresAt: account.expiresAt,
+        isFrozen: Boolean(account.isFrozen),
+        sendsThisMonth: account.sendsThisMonth ?? 0,
       },
     } satisfies ApiResponse<unknown>,
   );

@@ -1,10 +1,4 @@
 import type { ComponentChildren } from "preact";
-import {
-  formatKarma,
-  INITIAL_KARMA,
-  KARMA_AMOUNTS,
-  signupKarma,
-} from "../../src/karma-constants.ts";
 import { useAuth } from "./db.ts";
 
 const Section = ({
@@ -17,27 +11,21 @@ const Section = ({
   id?: string;
 }) => <section id={id} class={`py-16 px-4 ${className}`}>{children}</section>;
 
-const KarmaRow = ({
-  event,
-  amount,
+const PlanRow = ({
+  title,
+  price,
   description,
 }: {
-  event: string;
-  amount: number;
+  title: string;
+  price: string;
   description: string;
 }) => (
   <div class="flex items-center justify-between py-3 border-b border-slate-700 last:border-0">
     <div>
-      <span class="text-white font-mono text-sm">{event}</span>
+      <span class="text-white font-medium text-sm">{title}</span>
       <p class="text-slate-400 text-xs mt-0.5">{description}</p>
     </div>
-    <span
-      class={`font-mono font-bold text-sm ${
-        amount > 0 ? "text-green-400" : "text-red-400"
-      }`}
-    >
-      {formatKarma(amount)}
-    </span>
+    <span class="font-mono font-bold text-sm text-green-400">{price}</span>
   </div>
 );
 
@@ -168,37 +156,34 @@ const Landing = () => {
             and human conversations go through cleanly.
           </p>
           <p class="text-slate-400 text-center mb-8 max-w-xl mx-auto">
-            Credits keep resource usage fair. You start with {signupKarma}{" "}
-            free credits on signup. That's {signupKarma} sends, or {Math.floor(
-              signupKarma / Math.abs(KARMA_AMOUNTS.account_created),
-            )} accounts. Delete an account and get{" "}
-            {KARMA_AMOUNTS.account_deleted} credits back.
+            Simple, honest pricing. 1 mailbox free for 1 month upon phone verification.
+            Rent mailboxes for just $1/month thereafter with a $5 minimum top-up.
           </p>
           <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
-            <KarmaRow
-              event="money_paid"
-              amount={KARMA_AMOUNTS.money_paid}
-              description="Purchase credit pack"
+            <PlanRow
+              title="1 Month Free Trial"
+              price="$0"
+              description="1 mailbox free for 30 days upon phone verification, 1,000 sends included"
             />
-            <KarmaRow
-              event="account_created"
-              amount={KARMA_AMOUNTS.account_created}
-              description="Create a new email address"
+            <PlanRow
+              title="Mailbox Rental"
+              price="$1 / mo"
+              description="Per active mailbox, 1,000 sends/mo included, unlimited inbound & webhooks"
             />
-            <KarmaRow
-              event="account_deleted"
-              amount={KARMA_AMOUNTS.account_deleted}
-              description="Delete an email address (partial credit refund)"
+            <PlanRow
+              title="Balance Top-Up"
+              price="$5 min"
+              description="Prepaid balance covers 5 mailbox-months, funds never expire"
             />
-            <KarmaRow
-              event="email_sent"
-              amount={KARMA_AMOUNTS.email_sent}
-              description="Your agent sends a clean email"
+            <PlanRow
+              title="Inbound & Webhooks"
+              price="Free"
+              description="Receive emails, download attachments, and trigger webhooks at zero cost"
             />
           </div>
           <p class="text-slate-500 text-center mt-6 text-sm max-w-xl mx-auto">
-            When credits run out, sends and address creation pause until you top
-            up.
+            When balance runs out, mailboxes are paused until topped up. Inbound emails
+            are preserved during a grace period.
           </p>
         </div>
       </Section>

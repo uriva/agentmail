@@ -11,6 +11,9 @@ const _schema = i.schema({
       name: i.string(),
       createdAt: i.number().indexed(),
       admin: i.boolean().optional(),
+      balance: i.number().optional(),
+      trialUsed: i.boolean().optional(),
+      processedCheckoutSessions: i.json().optional(),
     }),
     apiKeys: i.entity({
       keyHash: i.string().unique(),
@@ -23,6 +26,11 @@ const _schema = i.schema({
       address: i.string().unique().indexed(),
       displayName: i.string().optional(),
       createdAt: i.number().indexed(),
+      expiresAt: i.number().optional().indexed(),
+      isFrozen: i.boolean().optional(),
+      sendsThisMonth: i.number().optional(),
+      sendPeriodStart: i.number().optional(),
+      warningEmailSentAt: i.number().optional(),
     }),
     messages: i.entity({
       from: i.string().indexed(),

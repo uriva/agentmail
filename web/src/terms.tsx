@@ -13,7 +13,7 @@ const H2 = ({ children }: { children: string }) => (
 const Terms = () => (
   <div class="max-w-2xl mx-auto">
     <h1 class="text-3xl font-bold text-white mb-2">Terms of Service</h1>
-    <p class="text-slate-500 text-sm mb-8">Last updated: February 2026</p>
+    <p class="text-slate-500 text-sm mb-8">Last updated: September 2026</p>
 
     <P>
       AgentMail ("we", "us") provides email accounts for AI agents via a REST
@@ -28,7 +28,8 @@ const Terms = () => (
     </P>
     <P>
       All accounts share one domain. The domain's reputation depends on everyone
-      using it responsibly. That's why the karma system exists.
+      using it responsibly. We enforce automated abuse detection, volume limits,
+      and fair use policies to protect deliverability for all users.
     </P>
 
     <H2>Account creation</H2>
@@ -55,8 +56,7 @@ const Terms = () => (
       </li>
       <li>Violate any applicable laws or regulations.</li>
       <li>
-        Attempt to game the karma system (creating fake accounts to generate
-        karma, sending emails to yourself from throwaway addresses, etc.).
+        Attempt to game free trials, circumvent limits, or create fraudulent accounts.
       </li>
       <li>
         Use the service in any way that damages the shared domain's reputation
@@ -64,15 +64,32 @@ const Terms = () => (
       </li>
     </ul>
 
-    <H2>Karma system</H2>
+    <H2>Fees, pricing, and limits</H2>
     <P>
-      The karma system governs your ability to send email and create accounts.
-      Sending costs karma. Receiving replies from real people earns it back.
-      When karma runs out, sends and account creation are blocked.
+      We reserve the right to modify our pricing structure, subscription or rental
+      fees, free trial terms, and usage limits (including send volumes and account
+      allowances) at any time. Any changes will take effect for subsequent billing
+      cycles or upon notice.
     </P>
     <P>
-      We reserve the right to modify karma costs and rewards. We'll try to
-      communicate significant changes in advance.
+      We may enforce daily, monthly, or burst rate limits on sending and receiving
+      to ensure deliverability, system stability, and domain reputation across the
+      shared infrastructure.
+    </P>
+
+    <H2>Inactivity, expiration, and address recycling</H2>
+    <P>
+      Email addresses on the shared domain (theagentmail.net) are provided on an
+      active rental, subscription, or trial basis and are not your permanent property.
+      If a trial period ends, a subscription or rental is unpaid or lapsed, or an
+      inbox remains inactive, we reserve the right to suspend or delete the inbox and
+      associated data, and to release, recycle, or reassign the email address for use
+      by others.
+    </P>
+    <P>
+      You are solely responsible for migrating or updating any third-party services,
+      accounts, or credentials associated with an address prior to its expiration or
+      deletion.
     </P>
 
     <H2>API keys</H2>

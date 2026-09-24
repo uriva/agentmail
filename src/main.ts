@@ -24,6 +24,13 @@ import {
   listApiKeys,
 } from "./handlers/apiKeys.ts";
 import {
+  createCheckout,
+  getBillingBalance,
+  handleStripeWebhook,
+  syncCheckout,
+} from "./handlers/billing.ts";
+import { runBillingRenewalCheck } from "./services/billingCron.ts";
+import {
   createOrganization,
   listOrganizations,
   renameOrganization,
@@ -220,6 +227,11 @@ const routes: readonly Route[] = [
   // Karma
   route("GET", "/v1/karma", getKarmaBalance, "apiKeyOrUserToken"),
 
+  // Billing
+  route("POST", "/v1/billing/checkout", createCheckout, "apiKeyOrUserToken"),
+  route("POST", "/v1/billing/sync", syncCheckout, "apiKeyOrUserToken"),
+  route("GET", "/v1/billing/balance", getBillingBalance, "apiKeyOrUserToken"),
+
   // API Keys (user-token auth — from dashboard)
   route("POST", "/v1/api-keys", createApiKey, "userToken"),
   route("GET", "/v1/api-keys", listApiKeys, "userToken"),
@@ -260,6 +272,10 @@ const routes: readonly Route[] = [
 
   // Inbound (from Resend, no auth — uses webhook secret)
   route("POST", "/inbound", handleInbound, "none"),
+
+  // Stripe Webhook (no auth — uses Stripe webhook signature)
+  route("POST", "/stripe-webhook", handleStripeWebhook, "none"),
+  route("POST", "/v1/billing/stripe-webhook", handleStripeWebhook, "none"),
 
   // Health
   route(
@@ -517,6 +533,7 @@ const handler = async (req: Request): Promise<Response> => {
     const url = new URL(req.url);
     const isApiPath = url.pathname.startsWith("/v1/") ||
       url.pathname === "/inbound" ||
+      url.pathname === "/stripe-webhook" ||
       url.pathname === "/health";
     if (!isApiPath && req.method === "GET") {
       const staticResponse = await handleStatic(req);
@@ -525,5 +542,7 @@ const handler = async (req: Request): Promise<Response> => {
   }
   return response;
 };
+
+Deno.cron("mailbox-renewal-check", "0 * * * *", runBillingRenewalCheck);
 
 Deno.serve({ port: Number(Deno.env.get("PORT") ?? 8000) }, handler);

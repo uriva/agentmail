@@ -1,11 +1,5 @@
 import type { ComponentChildren } from "preact";
 import { useEffect, useRef } from "preact/hooks";
-import {
-  formatKarma,
-  INITIAL_KARMA,
-  KARMA_AMOUNTS,
-  signupKarma,
-} from "../../src/karma-constants.ts";
 
 const CodeBlock = ({
   code,
@@ -113,7 +107,7 @@ const Docs = () => (
         <TocLink href="#messages">Messages</TocLink>
         <TocLink href="#attachments">Attachments</TocLink>
         <TocLink href="#webhooks">Webhooks</TocLink>
-        <TocLink href="#karma">Karma</TocLink>
+        <TocLink href="#billing">Billing & Limits</TocLink>
         <TocLink href="#organizations">Organizations</TocLink>
         <TocLink href="#errors">Errors</TocLink>
         <TocLink href="#sdk">TypeScript SDK</TocLink>
@@ -243,10 +237,7 @@ const Docs = () => (
       <Endpoint
         method="POST"
         path="/v1/accounts"
-        description={`Create a new email account. Costs ${
-          Math.abs(KARMA_AMOUNTS.account_created)
-        } karma.`}
-        karma={`${formatKarma(KARMA_AMOUNTS.account_created)} karma`}
+        description="Create a new email account. First account is free for 30 days upon phone verification. Additional accounts cost $1/month from your prepaid balance."
       >
         <p class="text-xs text-slate-500 mb-2">Request body</p>
         <CodeBlock
@@ -264,7 +255,10 @@ const Docs = () => (
     "id": "abc123",
     "address": "my-agent@theagentmail.net",
     "displayName": "My Agent",
-    "createdAt": 1709136000000
+    "createdAt": 1709136000000,
+    "expiresAt": 1711728000000,
+    "isFrozen": false,
+    "sendsThisMonth": 0
   }
 }`}
         />
@@ -288,7 +282,10 @@ const Docs = () => (
       "id": "abc123",
       "address": "my-agent@theagentmail.net",
       "displayName": "My Agent",
-      "createdAt": 1709136000000
+      "createdAt": 1709136000000,
+      "expiresAt": 1711728000000,
+      "isFrozen": false,
+      "sendsThisMonth": 0
     }
   ]
 }`}
@@ -304,8 +301,7 @@ const Docs = () => (
       <Endpoint
         method="DELETE"
         path="/v1/accounts/:accountId"
-        description={`Delete an email account. Refunds ${KARMA_AMOUNTS.account_deleted} karma. With an account token: DELETE /v1/account`}
-        karma={`${formatKarma(KARMA_AMOUNTS.account_deleted)} karma`}
+        description="Delete an email account. With an account token: DELETE /v1/account"
       >
         <p class="text-slate-500 text-xs">
           Messages are retained for reference. The address becomes available for
@@ -319,10 +315,7 @@ const Docs = () => (
       <Endpoint
         method="POST"
         path="/v1/accounts/:accountId/messages"
-        description={`Send an email from this account. Costs ${
-          Math.abs(KARMA_AMOUNTS.email_sent)
-        } karma. With an account token: POST /v1/messages`}
-        karma={`${formatKarma(KARMA_AMOUNTS.email_sent)} karma`}
+        description="Send an email from this account. 1,000 sends/month included per mailbox. With an account token: POST /v1/messages"
       >
         <p class="text-xs text-slate-500 mb-2">Request body</p>
         <CodeBlock
@@ -557,59 +550,22 @@ const verifyWebhook = (body: string, signature: string, timestamp: string, secre
       </div>
     </Section>
 
-    {/* Karma */}
-    <Section id="karma" title="Credits & Reputation">
+    {/* Billing & Limits */}
+    <Section id="billing" title="Billing & Limits">
       <div class="text-slate-400 text-sm space-y-3 mb-6">
         <p>
-          AgentMail uses simple credits for quota management and real-time AI
-          scanning to protect shared domain deliverability.
+          AgentMail offers straightforward mailbox rentals with transparent volume allowances:
         </p>
-        <p>
-          You start with {signupKarma}{" "}
-          free credits on signup. Each email send costs 1 credit, and creating
-          an address costs 10 credits (deleting an address refunds{" "}
-          {KARMA_AMOUNTS.account_deleted} credits). Credits never expire.
-        </p>
+        <ul class="list-disc list-inside space-y-1 text-slate-300">
+          <li><strong>Free trial:</strong> 1 mailbox free for 1 month upon phone verification.</li>
+          <li><strong>Rental:</strong> $1/month per active mailbox. $5 minimum deposit into your prepaid wallet (covers 5 mailbox-months).</li>
+          <li><strong>Sends:</strong> 1,000 sends/month included per mailbox. Contact support if you need higher limits.</li>
+          <li><strong>Inbound & Webhooks:</strong> Completely free and unlimited.</li>
+        </ul>
       </div>
 
-      <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-6 mb-6">
-        <div class="space-y-3">
-          {(
-            [
-              ["money_paid", "Purchase credits pack"],
-              [
-                "account_deleted",
-                "Delete an email account (partial refund)",
-              ],
-              ["email_sent", "Send an email"],
-              ["account_created", "Create a new email account"],
-            ] as const
-          ).map(([type, desc]) => {
-            const amount = KARMA_AMOUNTS[type];
-            return (
-              <div
-                key={type}
-                class="flex items-center justify-between py-2 border-b border-slate-700 last:border-0"
-              >
-                <div>
-                  <span class="text-white font-mono text-sm">{type}</span>
-                  <p class="text-slate-400 text-xs mt-0.5">{desc}</p>
-                </div>
-                <span
-                  class={`font-mono font-bold text-sm ${
-                    amount > 0 ? "text-green-400" : "text-red-400"
-                  }`}
-                >
-                  {formatKarma(amount)}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      <div class="text-slate-400 text-sm space-y-3">
-        <h4 class="text-white font-medium">Real-time outbound scanning</h4>
+      <div class="text-slate-400 text-sm space-y-3 mb-6">
+        <h4 class="text-white font-medium">Real-time outbound protection</h4>
         <p>
           Every outbound email is inspected in real time by JEV before leaving
           the server. Phishing, credential harvesting, deceptive impersonation,
@@ -620,30 +576,41 @@ const verifyWebhook = (body: string, signature: string, timestamp: string, secre
       </div>
 
       <Endpoint
+        method="POST"
+        path="/v1/billing/checkout"
+        description="Create a Stripe checkout session to top up $5.00 into your organization's prepaid balance."
+      >
+        <p class="text-xs text-slate-500 mb-2">Request body (optional)</p>
+        <CodeBlock
+          lang="json"
+          code={`{
+  "successUrl": "https://my-app.example.com/billing?status=success",
+  "cancelUrl": "https://my-app.example.com/billing?status=cancelled"
+}`}
+        />
+        <p class="text-xs text-slate-500 mt-4 mb-2">Response (200)</p>
+        <CodeBlock
+          lang="json"
+          code={`{
+  "data": {
+    "checkoutUrl": "https://checkout.stripe.com/c/pay/cs_..."
+  }
+}`}
+        />
+      </Endpoint>
+
+      <Endpoint
         method="GET"
-        path="/v1/karma"
-        description="Get your organization's karma balance and event history."
+        path="/v1/billing/balance"
+        description="Check your organization's prepaid wallet balance."
       >
         <p class="text-xs text-slate-500 mb-2">Response</p>
         <CodeBlock
           lang="json"
           code={`{
   "data": {
-    "balance": 87,
-    "events": [
-      {
-        "id": "evt_1",
-        "type": "money_paid",
-        "amount": ${KARMA_AMOUNTS.money_paid},
-        "timestamp": 1709136000000
-      },
-      {
-        "id": "evt_2",
-        "type": "account_created",
-        "amount": ${KARMA_AMOUNTS.account_created},
-        "timestamp": 1709136100000
-      }
-    ]
+    "balance": 5.0,
+    "admin": false
   }
 }`}
         />
@@ -655,7 +622,7 @@ const verifyWebhook = (body: string, signature: string, timestamp: string, secre
       <div class="text-slate-400 text-sm space-y-3 mb-6">
         <p>
           Each organization has one billing user (the creator) and can have
-          additional admins. Karma and accounts belong to the organization, not
+          additional admins. Balance and accounts belong to the organization, not
           individual users.
         </p>
         <p>

@@ -1,6 +1,6 @@
 import { db, id } from "../db.ts";
 import type { ApiResponse, SendEmailInput } from "../types.ts";
-import { recordKarmaEvent, requireKarmaForSend } from "../services/karma.ts";
+import { recordKarmaEvent } from "../services/karma.ts";
 import { sendEmail } from "../services/resend.ts";
 import { uploadFile } from "../services/storage.ts";
 import { captureEvent } from "../services/posthog.ts";
@@ -54,7 +54,32 @@ const sendMessage = async (
     );
   }
 
-  await requireKarmaForSend(orgId);
+  const now = Date.now();
+  if (account.isFrozen || (account.expiresAt && account.expiresAt < now)) {
+    return Response.json(
+      {
+        error: "Mailbox is expired or inactive. Please top up your balance.",
+        code: "ACCOUNT_EXPIRED",
+      },
+      { status: 402 },
+    );
+  }
+
+  const periodLengthMs = 30 * 24 * 60 * 60 * 1000;
+  const isNewPeriod = !account.sendPeriodStart ||
+    now - account.sendPeriodStart > periodLengthMs;
+  const sendsInCurrentPeriod = isNewPeriod ? 0 : (account.sendsThisMonth ?? 0);
+
+  if (sendsInCurrentPeriod >= 1000) {
+    return Response.json(
+      {
+        error:
+          "Monthly send limit reached (1,000 sends/month). Contact support@theagentmail.net if you need more.",
+        code: "SEND_LIMIT_REACHED",
+      },
+      { status: 429 },
+    );
+  }
 
   const input = (await req.json()) as SendEmailInput;
 
@@ -144,6 +169,10 @@ const sendMessage = async (
       references: input.references ?? "",
     }),
     db.tx.messages[messageId]!.link({ account: accountId }),
+    db.tx.accounts[accountId]!.update({
+      sendsThisMonth: sendsInCurrentPeriod + 1,
+      sendPeriodStart: isNewPeriod ? now : account.sendPeriodStart,
+    }),
   ];
 
   // Link attachments

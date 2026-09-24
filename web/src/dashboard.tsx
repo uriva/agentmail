@@ -66,7 +66,7 @@ const StatNumber = ({
   </div>
 );
 
-const KarmaSection = ({
+const BillingSection = ({
   orgId,
   userToken,
   refreshTrigger,
@@ -75,107 +75,154 @@ const KarmaSection = ({
   userToken: string;
   refreshTrigger?: number;
 }) => {
-  const [karmaData, setKarmaData] = useState<{
-    balance: number;
-    sent: number;
-    received: number;
-    accountsCreated: number;
-  } | null>(null);
+  const [balance, setBalance] = useState<number | null>(null);
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isTopupLoading, setIsTopupLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [syncSuccess, setSyncSuccess] = useState(false);
 
-  const fetchKarma = async () => {
+  const fetchBalance = async () => {
     if (!userToken || !orgId) return;
     try {
-      const res = await fetch(`${API_BASE}/v1/karma`, {
+      const res = await fetch(`${API_BASE}/v1/billing/balance`, {
         headers: apiHeaders(userToken, orgId),
       });
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.error || "Failed to load karma");
+        throw new Error(err.error || "Failed to load balance");
       }
       const json = await res.json();
-      const events: { type: string; amount: number }[] =
-        json.data?.events ?? [];
-      const balance: number = json.data?.balance ?? 0;
-      setKarmaData({
-        balance,
-        sent: events.filter((e) => e.type === "email_sent").length,
-        received: events.filter((e) => e.type === "email_received").length,
-        accountsCreated: events.filter((e) => e.type === "account_created").length,
-      });
+      setBalance(json.data?.balance ?? 0);
+      setIsAdmin(Boolean(json.data?.admin));
       setError(null);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Error loading karma");
+      setError(e instanceof Error ? e.message : "Error loading balance");
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const checkoutStatus = urlParams.get("checkout");
+    const sessionId = urlParams.get("session_id");
+
+    if (checkoutStatus === "success" && sessionId && userToken && orgId) {
+      fetch(`${API_BASE}/v1/billing/sync`, {
+        method: "POST",
+        headers: apiHeaders(userToken, orgId),
+        body: JSON.stringify({ sessionId }),
+      })
+        .then((r) => r.json())
+        .then((res) => {
+          if (res.data?.success) {
+            setSyncSuccess(true);
+            setBalance(res.data.balance);
+            setTimeout(() => setSyncSuccess(false), 5000);
+          }
+          fetchBalance();
+        })
+        .catch(console.error)
+        .finally(() => {
+          window.history.replaceState({}, "", window.location.pathname);
+        });
+    }
+  }, [orgId, userToken]);
+
+  useEffect(() => {
     setIsLoading(true);
-    fetchKarma();
-    const interval = setInterval(fetchKarma, 15000);
+    fetchBalance();
+    const interval = setInterval(fetchBalance, 15000);
     return () => clearInterval(interval);
   }, [orgId, userToken, refreshTrigger]);
 
-  if (isLoading && !karmaData) {
+  const handleTopup = async () => {
+    setIsTopupLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/v1/billing/checkout`, {
+        method: "POST",
+        headers: apiHeaders(userToken, orgId),
+        body: JSON.stringify({
+          successUrl:
+            `${window.location.origin}/app?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
+          cancelUrl: `${window.location.origin}/app`,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.data?.checkoutUrl) {
+        throw new Error(json.error || "Failed to start checkout");
+      }
+      window.location.href = json.data.checkoutUrl;
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Checkout failed");
+      setIsTopupLoading(false);
+    }
+  };
+
+  if (isLoading && balance === null) {
     return (
-      <Card title="Karma">
+      <Card title="Billing & Balance">
         <div class="flex items-center gap-2 text-slate-400">
           <Spinner />
-          <span>Loading karma...</span>
+          <span>Loading balance...</span>
         </div>
       </Card>
     );
   }
 
-  if (error && !karmaData) {
-    return (
-      <Card title="Karma">
-        <div class="flex items-center justify-between text-red-400">
-          <span>Error loading karma: {error}</span>
-          <button
-            onClick={() => {
-              setIsLoading(true);
-              fetchKarma();
-            }}
-            class="px-3 py-1 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded transition-colors"
-          >
-            Retry
-          </button>
-        </div>
-      </Card>
-    );
-  }
-
-  const balance = karmaData?.balance ?? 0;
-  const sent = karmaData?.sent ?? 0;
-  const received = karmaData?.received ?? 0;
-  const accountsCreated = karmaData?.accountsCreated ?? 0;
-
-  const balanceColor = balance > 50
+  const currentBalance = balance ?? 0;
+  const balanceColor = isAdmin
+    ? "text-blue-400"
+    : currentBalance > 2
     ? "text-green-400"
-    : balance > 10
+    : currentBalance > 0
     ? "text-yellow-400"
     : "text-red-400";
 
   return (
-    <Card title="Karma">
-      <div class="grid grid-cols-2 sm:grid-cols-4 gap-6">
-        <StatNumber
-          value={balance.toFixed(1)}
-          label="Balance"
-          color={balanceColor}
-        />
-        <StatNumber value={sent} label="Emails Sent" />
-        <StatNumber value={received} label="Emails Received" />
-        <StatNumber value={accountsCreated} label="Accounts Created" />
+    <Card title="Billing & Balance">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-6 flex-1">
+          <StatNumber
+            value={isAdmin ? "Unlimited" : `$${currentBalance.toFixed(2)}`}
+            label="Prepaid Balance"
+            color={balanceColor}
+          />
+          <StatNumber value="$1.00" label="Cost / Mailbox / Mo" />
+          <StatNumber value="1,000" label="Sends / Mo Included" />
+        </div>
+        {!isAdmin && (
+          <div class="flex flex-col gap-2">
+            <button
+              onClick={handleTopup}
+              disabled={isTopupLoading}
+              class="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2 shadow-sm"
+            >
+              {isTopupLoading ? <Spinner /> : <span>+ Add $5.00 Balance</span>}
+            </button>
+            <span class="text-xs text-slate-500 text-center">
+              Funds never expire
+            </span>
+          </div>
+        )}
       </div>
-      {balance <= 0 && (
+
+      {syncSuccess && (
+        <div class="mt-4 p-3 bg-emerald-900/30 border border-emerald-700 rounded-lg text-emerald-300 text-sm">
+          Payment successful! Your balance has been updated.
+        </div>
+      )}
+
+      {error && (
+        <div class="mt-4 text-xs text-red-400">
+          {error}
+        </div>
+      )}
+
+      {!isAdmin && currentBalance <= 0 && (
         <div class="mt-4 p-3 bg-red-900/30 border border-red-700 rounded-lg text-red-300 text-sm">
-          Your karma balance is depleted. Sends and account creation are
-          blocked.
+          Your balance is $0.00. Expired mailboxes will be paused until topped up.
         </div>
       )}
     </Card>
@@ -321,16 +368,45 @@ const AccountsList = ({
                 return (
                   <div key={account.id}>
                     <div class="bg-slate-900 rounded-lg p-4 border border-slate-700 hover:border-slate-600 transition-colors">
-                      <div class="flex items-center justify-between mb-2">
-                        <div>
+                      <div class="flex items-center justify-between mb-2 flex-wrap gap-2">
+                        <div class="flex items-center gap-2 flex-wrap">
                           <span class="text-white font-mono text-sm">
                             {account.address}
                           </span>
                           {account.displayName && (
-                            <span class="text-slate-400 text-sm ml-2">
+                            <span class="text-slate-400 text-sm">
                               ({account.displayName})
                             </span>
                           )}
+                          {account.isFrozen ? (
+                            <span class="text-xs px-2 py-0.5 bg-red-900/60 text-red-300 rounded border border-red-700">
+                              Paused (Balance Empty)
+                            </span>
+                          ) : account.expiresAt ? (
+                            (() => {
+                              const daysLeft = Math.max(
+                                0,
+                                Math.ceil(
+                                  (account.expiresAt - Date.now()) /
+                                    (24 * 60 * 60 * 1000),
+                                ),
+                              );
+                              return (
+                                <span
+                                  class={`text-xs px-2 py-0.5 rounded border ${
+                                    daysLeft <= 3
+                                      ? "bg-amber-900/40 text-amber-300 border-amber-700"
+                                      : "bg-emerald-900/30 text-emerald-300 border-emerald-800"
+                                  }`}
+                                >
+                                  Active ({daysLeft}d left)
+                                </span>
+                              );
+                            })()
+                          ) : null}
+                          <span class="text-xs text-slate-400 font-mono">
+                            {account.sendsThisMonth ?? 0}/1,000 sends
+                          </span>
                         </div>
                         <div class="flex items-center gap-3">
                           <span class="text-xs text-slate-500">
@@ -1437,7 +1513,7 @@ const Dashboard = () => {
 
       {activeOrgId && (
         <>
-          <KarmaSection
+          <BillingSection
             orgId={activeOrgId}
             userToken={userToken}
             refreshTrigger={karmaRefreshKey}
