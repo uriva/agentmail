@@ -7,6 +7,7 @@ const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY") ?? "";
 const stripe = new Stripe(STRIPE_SECRET_KEY || "dummy_key");
 
 const TOPUP_AMOUNT_DOLLARS = 5;
+const AGENTMAIL_PRICE_ID = "price_1UJ8BkHiG8UAKPQvUc3tTdJN";
 
 const createTopupCheckoutSession = async ({
   orgId,
@@ -24,20 +25,21 @@ const createTopupCheckoutSession = async ({
     client_reference_id: orgId,
     metadata: {
       orgId,
+      product: "agentmail",
       type: "balance_topup",
       amount: String(TOPUP_AMOUNT_DOLLARS),
+    },
+    payment_intent_data: {
+      description: "AgentMail Prepaid Balance ($5.00)",
+      metadata: {
+        product: "agentmail",
+        orgId,
+      },
     },
     mode: "payment",
     line_items: [
       {
-        price_data: {
-          currency: "usd",
-          product_data: {
-            name: "AgentMail Balance ($5.00)",
-            description: "5 mailbox-months (or $1/month per active mailbox)",
-          },
-          unit_amount: TOPUP_AMOUNT_DOLLARS * 100,
-        },
+        price: AGENTMAIL_PRICE_ID,
         quantity: 1,
       },
     ],
