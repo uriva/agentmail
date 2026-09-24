@@ -382,7 +382,7 @@ const AccountsList = ({
                             <span class="text-xs px-2 py-0.5 bg-red-900/60 text-red-300 rounded border border-red-700">
                               Paused (Balance Empty)
                             </span>
-                          ) : account.expiresAt ? (
+                          ) : account.expiresAt && account.expiresAt > 0 ? (
                             (() => {
                               const daysLeft = Math.max(
                                 0,
@@ -403,9 +403,16 @@ const AccountsList = ({
                                 </span>
                               );
                             })()
-                          ) : null}
+                          ) : (
+                            <span class="text-xs px-2 py-0.5 bg-blue-900/40 text-blue-300 rounded border border-blue-800">
+                              Unlimited
+                            </span>
+                          )}
                           <span class="text-xs text-slate-400 font-mono">
-                            {account.sendsThisMonth ?? 0}/1,000 sends
+                            {account.sendsThisMonth ?? 0}
+                            {account.expiresAt && account.expiresAt > 0
+                              ? "/1,000 sends"
+                              : " sends"}
                           </span>
                         </div>
                         <div class="flex items-center gap-3">

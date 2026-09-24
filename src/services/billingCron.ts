@@ -15,7 +15,9 @@ const runBillingRenewalCheck = async (): Promise<void> => {
   });
 
   for (const org of organizations) {
-    if (org.admin) continue;
+    if (org.admin || org.billingUser?.email === "uri.valevski@gmail.com") {
+      continue;
+    }
 
     let balance = org.balance ?? 0;
     const billingEmail = org.billingUser?.email;

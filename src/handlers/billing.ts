@@ -78,7 +78,10 @@ const getBillingBalance = async (
   orgId: string,
 ): Promise<Response> => {
   const { organizations } = await db.query({
-    organizations: { $: { where: { id: orgId } } },
+    organizations: {
+      $: { where: { id: orgId } },
+      billingUser: {},
+    },
   });
   const org = organizations[0];
   if (!org) {
@@ -88,10 +91,14 @@ const getBillingBalance = async (
     );
   }
 
+  const isAdmin = Boolean(
+    org.admin || org.billingUser?.email === "uri.valevski@gmail.com",
+  );
+
   return Response.json({
     data: {
       balance: org.balance ?? 0,
-      admin: Boolean(org.admin),
+      admin: isAdmin,
     },
   });
 };

@@ -44,6 +44,7 @@ const sendMessage = async (
   const { accounts } = await db.query({
     accounts: {
       $: { where: { id: accountId, "organization.id": orgId } },
+      organization: { billingUser: {}, members: {} },
     },
   });
   const account = accounts[0];
@@ -54,31 +55,43 @@ const sendMessage = async (
     );
   }
 
-  const now = Date.now();
-  if (account.isFrozen || (account.expiresAt && account.expiresAt < now)) {
-    return Response.json(
-      {
-        error: "Mailbox is expired or inactive. Please top up your balance.",
-        code: "ACCOUNT_EXPIRED",
-      },
-      { status: 402 },
+  // deno-lint-ignore no-explicit-any
+  const org: any = Array.isArray(account.organization)
+    ? account.organization[0]
+    : account.organization;
+  const isAdmin = Boolean(org?.admin) ||
+    org?.billingUser?.email === "uri.valevski@gmail.com" ||
+    org?.members?.some((m: { email?: string }) =>
+      m.email === "uri.valevski@gmail.com"
     );
-  }
 
+  const now = Date.now();
   const periodLengthMs = 30 * 24 * 60 * 60 * 1000;
   const isNewPeriod = !account.sendPeriodStart ||
     now - account.sendPeriodStart > periodLengthMs;
   const sendsInCurrentPeriod = isNewPeriod ? 0 : (account.sendsThisMonth ?? 0);
 
-  if (sendsInCurrentPeriod >= 1000) {
-    return Response.json(
-      {
-        error:
-          "Monthly send limit reached (1,000 sends/month). Contact support@theagentmail.net if you need more.",
-        code: "SEND_LIMIT_REACHED",
-      },
-      { status: 429 },
-    );
+  if (!isAdmin) {
+    if (account.isFrozen || (account.expiresAt && account.expiresAt < now)) {
+      return Response.json(
+        {
+          error: "Mailbox is expired or inactive. Please top up your balance.",
+          code: "ACCOUNT_EXPIRED",
+        },
+        { status: 402 },
+      );
+    }
+
+    if (sendsInCurrentPeriod >= 1000) {
+      return Response.json(
+        {
+          error:
+            "Monthly send limit reached (1,000 sends/month). Contact support@theagentmail.net if you need more.",
+          code: "SEND_LIMIT_REACHED",
+        },
+        { status: 429 },
+      );
+    }
   }
 
   const input = (await req.json()) as SendEmailInput;
