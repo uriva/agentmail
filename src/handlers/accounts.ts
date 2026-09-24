@@ -136,6 +136,10 @@ const createAccount = async (
         org?.members?.some((m) => m.phoneVerified),
     );
     if (!isPhoneVerified) {
+      captureEvent(orgId, "account_creation_blocked", {
+        reason: "phone_verification_required",
+        address,
+      });
       return Response.json(
         {
           error:
@@ -147,6 +151,11 @@ const createAccount = async (
     }
   } else if (!isAdmin) {
     if (currentBalance < 1) {
+      captureEvent(orgId, "account_creation_blocked", {
+        reason: "insufficient_balance",
+        balance: currentBalance,
+        address,
+      });
       return Response.json(
         {
           error:

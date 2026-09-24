@@ -3,6 +3,7 @@ import {
   checkTwilioVerification,
   startTwilioVerification,
 } from "../services/twilio.ts";
+import { captureEvent } from "../services/posthog.ts";
 
 const getUserIdFromToken = async (req: Request): Promise<string | null> => {
   const authHeader = req.headers.get("authorization");
@@ -50,6 +51,7 @@ const sendPhoneCode = async (req: Request): Promise<Response> => {
   }
 
   await startTwilioVerification(formattedPhone);
+  captureEvent(userId, "phone_code_sent", { phone: formattedPhone });
 
   return Response.json({
     data: { success: true, message: "Verification code sent" },
@@ -106,6 +108,8 @@ const verifyPhoneCode = async (req: Request): Promise<Response> => {
       phoneVerified: true,
     }),
   ]);
+
+  captureEvent(userId, "phone_verified", { phone: formattedPhone });
 
   return Response.json({
     data: { success: true, phoneVerified: true, phone: formattedPhone },

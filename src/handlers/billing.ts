@@ -5,6 +5,7 @@ import {
   createTopupCheckoutSession,
   stripe,
 } from "../services/stripe.ts";
+import { captureEvent } from "../services/posthog.ts";
 
 const createCheckout = async (
   req: Request,
@@ -31,6 +32,8 @@ const createCheckout = async (
     successUrl: body.successUrl,
     cancelUrl: body.cancelUrl,
   });
+
+  captureEvent(orgId, "checkout_started", { amount: 5, userEmail });
 
   return Response.json({ data: { checkoutUrl } });
 };
