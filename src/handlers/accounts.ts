@@ -40,7 +40,13 @@ const notifyOverseer = (
   displayName: string | undefined,
   orgId: string,
 ) => {
-  if (Deno.env.get("DENO_ENV") === "test" || !overseerEmail) {
+  if (
+    Deno.env.get("DENO_ENV") === "test" ||
+    address.includes("test-") ||
+    address.includes("simulated-") ||
+    address.includes("free-agent-") ||
+    !overseerEmail
+  ) {
     return Promise.resolve();
   }
   return db
@@ -55,6 +61,9 @@ const notifyOverseer = (
       const org = organizations[0];
       const orgName = org?.name ?? "Unknown";
       const billingEmail = org?.billingUser?.email ?? "Unknown";
+      if (billingEmail.endsWith("@example.com")) {
+        return Promise.resolve();
+      }
       const memberEmails =
         org?.members?.map((m) => m.email).filter(Boolean).join(", ") || "Unknown";
       return sendEmail({
