@@ -1,11 +1,8 @@
 import { db, id } from "../db.ts";
 import type { ApiResponse, CreateAccountInput } from "../types.ts";
-import {
-  recordKarmaEvent,
-  requireKarmaForAccountCreation,
-} from "../services/karma.ts";
 import { emailDomain, sendEmail } from "../services/resend.ts";
 import { captureEvent } from "../services/posthog.ts";
+import { planDetails } from "../planData.ts";
 
 const RESERVED_KEYWORDS = [
   "meta",
@@ -107,7 +104,19 @@ const createAccount = async (
   ).toLowerCase();
   const address = `${localPart}@${emailDomain}`;
 
-  if (isReservedOrSuspicious(localPart, input.displayName)) {
+  const { organizations } = await db.query({
+    organizations: {
+      $: { where: { id: orgId } },
+      billingUser: {},
+      members: {},
+    },
+  });
+  const org = organizations[0];
+  const isAdmin = Boolean(org?.admin) ||
+    org?.billingUser?.email === "uri.valevski@gmail.com" ||
+    org?.members?.some((m) => m.email === "uri.valevski@gmail.com");
+
+  if (!isAdmin && isReservedOrSuspicious(localPart, input.displayName)) {
     return Response.json(
       { error: "This address or display name is reserved or restricted", code: "RESERVED_ADDRESS" },
       { status: 400 },
@@ -123,18 +132,6 @@ const createAccount = async (
       { status: 409 },
     );
   }
-
-  const { organizations } = await db.query({
-    organizations: {
-      $: { where: { id: orgId } },
-      billingUser: {},
-      members: {},
-    },
-  });
-  const org = organizations[0];
-  const isAdmin = Boolean(org?.admin) ||
-    org?.billingUser?.email === "uri.valevski@gmail.com" ||
-    org?.members?.some((m) => m.email === "uri.valevski@gmail.com");
 
   const currentBalance = org?.balance ?? 0;
   const isTrial = !isAdmin && !org?.trialUsed;
@@ -177,7 +174,7 @@ const createAccount = async (
   }
 
   const now = Date.now();
-  const expiresAt = now + 30 * 24 * 60 * 60 * 1000;
+  const expiresAt = now + planDetails.limits.trialDays * 24 * 60 * 60 * 1000;
   const accountId = id();
 
   // deno-lint-ignore no-explicit-any
@@ -205,7 +202,6 @@ const createAccount = async (
 
   await db.transact(txOps);
 
-  await recordKarmaEvent(orgId, "account_created", { accountId, address });
   captureEvent(orgId, "account_created", { address });
   await notifyOverseer(address, input.displayName, orgId);
 
@@ -299,10 +295,6 @@ const deleteAccount = async (
 
   await db.transact([db.tx.accounts[account.id]!.delete()]);
 
-  await recordKarmaEvent(orgId, "account_deleted", {
-    accountId: account.id,
-    address: account.address,
-  });
   captureEvent(orgId, "account_deleted", { address: account.address });
 
   return new Response(null, { status: 204 });

@@ -1,10 +1,10 @@
 import { db, id } from "../db.ts";
 import type { ApiResponse, SendEmailInput } from "../types.ts";
-import { recordKarmaEvent } from "../services/karma.ts";
 import { sendEmail } from "../services/resend.ts";
 import { uploadFile } from "../services/storage.ts";
 import { captureEvent } from "../services/posthog.ts";
 import { scanOutboundEmail } from "../services/jev.ts";
+import { planDetails } from "../planData.ts";
 
 const SPAM_PATTERNS = [
   "페이지 소유권 확인",
@@ -82,11 +82,11 @@ const sendMessage = async (
       );
     }
 
-    if (sendsInCurrentPeriod >= 1000) {
+    if (sendsInCurrentPeriod >= planDetails.limits.sendsPerMonthPerMailbox) {
       return Response.json(
         {
           error:
-            "Monthly send limit reached (1,000 sends/month). Contact support@theagentmail.net if you need more.",
+            `Monthly send limit reached (${planDetails.limits.sendsPerMonthPerMailbox.toLocaleString()} sends/month). Contact support@theagentmail.net if you need more.`,
           code: "SEND_LIMIT_REACHED",
         },
         { status: 429 },
@@ -203,7 +203,6 @@ const sendMessage = async (
   }
 
   await db.transact(txOps);
-  await recordKarmaEvent(orgId, "email_sent", { messageId, to: input.to });
   captureEvent(orgId, "email_sent", {
     from,
     to: input.to,

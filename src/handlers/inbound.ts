@@ -3,7 +3,7 @@ import type { InboundAttachment, InboundEmail } from "../types.ts";
 import { uploadFile } from "../services/storage.ts";
 import { deliverWithRetry } from "../services/webhookDelivery.ts";
 import { captureEvent } from "../services/posthog.ts";
-import { sendEmail } from "../services/resend.ts";
+import { scanInboundEmail } from "../services/jev.ts";
 import { decodeBase64, encodeBase64 } from "jsr:@std/encoding/base64";
 import { coerce } from "gamla";
 
@@ -155,67 +155,6 @@ const normalizeAttachments = (rawAtts: any[]): InboundAttachment[] =>
     };
   });
 
-const supportEmailAddress = "support@theagentmail.net";
-const supportForwardDestination = Deno.env.get("SUPPORT_FORWARD_EMAIL") ??
-  "uri.valevski@gmail.com";
-
-const isSupportRecipient = (recipient: string) =>
-  extractAddress(recipient) === supportEmailAddress;
-
-const stripHtml = (html: string) =>
-  html
-    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
-    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/\s+/g, " ")
-    .trim();
-
-const formatAttachmentSummary = (att: InboundAttachment) =>
-  `- ${att.filename} (${att.contentType}, ${att.size} bytes)`;
-
-const formatAttachmentsSection = (attachments?: readonly InboundAttachment[]) =>
-  attachments?.length
-    ? `\nAttachments:\n${attachments.map(formatAttachmentSummary).join("\n")}\n`
-    : "";
-
-const extractSupportBody = ({ text, html }: InboundEmail) =>
-  text || (typeof html === "string" ? stripHtml(html) : "(no text content)");
-
-const formatSupportNotification = (email: InboundEmail) =>
-  `[Support Notification]
-A new message was received for ${supportEmailAddress}.
-
-From: ${email.from}
-To: ${email.to.join(", ")}
-Subject: ${email.subject || "(no subject)"}${
-    formatAttachmentsSection(email.attachments)
-  }
---------------------------------------------------
-${extractSupportBody(email)}
---------------------------------------------------
-
-Reply directly to this email to respond to ${email.from}.`;
-
-const forwardSupportEmail = (email: InboundEmail) => {
-  console.log(
-    "[inbound] Forwarding support email to",
-    supportForwardDestination,
-  );
-  return sendEmail({
-    from: "AgentMail Support <support@theagentmail.net>",
-    to: [supportForwardDestination],
-    replyTo: email.from,
-    subject: `[Support Request] ${email.subject || "(no subject)"}`,
-    text: formatSupportNotification(email),
-    inReplyTo: email.inReplyTo,
-    references: email.references,
-  });
-};
-
 const fetchResendEmailData = async (apiKey: string, emailId: string) => {
   const receivingRes = await fetch(
     `https://api.resend.com/emails/receiving/${emailId}`,
@@ -356,11 +295,21 @@ const handleInbound = async (
     }
     const email = await normalizePayload(payload);
 
+    const scanResult = await scanInboundEmail({
+      from: email.from,
+      to: email.to,
+      subject: email.subject,
+      text: typeof email.text === "string" ? email.text : "",
+      html: typeof email.html === "string" ? email.html : "",
+    });
+    const isSpam = !scanResult.allowed;
+
     console.log("[inbound] Received email", {
       from: email.from,
       to: email.to,
       subject: email.subject,
       attachmentCount: email.attachments?.length ?? 0,
+      isSpam,
     });
 
     // Find target account(s) by recipient address
@@ -369,10 +318,6 @@ const handleInbound = async (
       ...(email.cc ?? []),
       ...extractAddresses(payload?.received_for ?? payload?.data?.received_for),
     ];
-
-    if (recipients.some(isSupportRecipient)) {
-      await forwardSupportEmail(email);
-    }
 
     let matched = 0;
     for (const recipient of recipients) {
@@ -448,7 +393,7 @@ const handleInbound = async (
           bodyText: typeof email.text === "string" ? email.text : "",
           bodyHtml: typeof email.html === "string" ? email.html : "",
           direction: "inbound",
-          status: "received",
+          status: isSpam ? "spam" : "received",
           headers: email.headers ?? {},
           timestamp: Date.now(),
           inReplyTo: email.inReplyTo ?? "",
@@ -476,7 +421,15 @@ const handleInbound = async (
         from: email.from,
         to: address,
         hasAttachments: attachmentRecords.length > 0,
+        isSpam,
       });
+
+      if (isSpam) {
+        console.log(
+          `[inbound] Message ${messageId} flagged as spam by JEV. Skipping webhook delivery.`,
+        );
+        continue;
+      }
 
       // Deliver to agent webhooks — await to prevent isolate eviction before delivery
       // deno-lint-ignore no-explicit-any

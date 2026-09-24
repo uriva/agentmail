@@ -3,6 +3,7 @@
   "specifiers": {
     "jsr:@noble/hashes@2.0.0": "2.0.0",
     "jsr:@std/assert@*": "1.0.19",
+    "jsr:@std/dotenv@*": "0.225.8",
     "jsr:@std/encoding@*": "0.224.0",
     "jsr:@std/encoding@0.224.0": "0.224.0",
     "jsr:@std/internal@^1.0.12": "1.0.14",
@@ -34,6 +35,9 @@
       "dependencies": [
         "jsr:@std/internal"
       ]
+    },
+    "@std/dotenv@0.225.8": {
+      "integrity": "27b8c1a9d00cbf938345a5924487c04d9b27bdd7e7bd1983f54bcf76d0a0174a"
     },
     "@std/encoding@0.224.0": {
       "integrity": "efb6dca97d3e9c31392bd5c8cfd9f9fc9decf5a1f4d1f78af7900a493bcf89b5"

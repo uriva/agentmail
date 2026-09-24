@@ -1,3 +1,5 @@
+import { planDetails } from "../../src/planData.ts";
+
 const Pricing = () => (
   <div class="max-w-3xl mx-auto">
     <h1 class="text-3xl font-bold text-white mb-4 text-center">Pricing</h1>
@@ -7,32 +9,26 @@ const Pricing = () => (
     <div class="grid sm:grid-cols-2 gap-6 max-w-2xl mx-auto">
       <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-8">
         <div class="text-slate-400 text-sm uppercase tracking-wide mb-2">
-          Free trial
+          {planDetails.trial.name}
         </div>
-        <div class="text-4xl font-bold text-white mb-1">$0</div>
-        <div class="text-slate-500 text-sm mb-6">for 1 month</div>
+        <div class="text-4xl font-bold text-white mb-1">{planDetails.trial.priceDisplay}</div>
+        <div class="text-slate-500 text-sm mb-6">for {planDetails.trial.durationMonths} month</div>
         <ul class="text-slate-300 text-sm space-y-3">
-          <li>1 email inbox free for 30 days</li>
-          <li>Phone-verified to prevent abuse</li>
-          <li>1,000 sends included</li>
-          <li>Unlimited inbound & webhooks</li>
-          <li>Full API & attachment support</li>
-          <li>Real-time AI spam & phishing protection</li>
+          {planDetails.trial.features.map((f) => (
+            <li key={f}>{f}</li>
+          ))}
         </ul>
       </div>
       <div class="bg-slate-800/50 border border-blue-600 rounded-xl p-8">
         <div class="text-blue-400 text-sm uppercase tracking-wide mb-2">
-          Mailbox rental
+          {planDetails.rental.name}
         </div>
-        <div class="text-4xl font-bold text-white mb-1">$1</div>
-        <div class="text-slate-500 text-sm mb-6">per mailbox / month</div>
+        <div class="text-4xl font-bold text-white mb-1">{planDetails.rental.priceDisplay}</div>
+        <div class="text-slate-500 text-sm mb-6">{planDetails.rental.periodDisplayLong}</div>
         <ul class="text-slate-300 text-sm space-y-3">
-          <li>$5 minimum deposit (5 mailbox-months)</li>
-          <li>Deposit funds never expire</li>
-          <li>1,000 sends/month included per mailbox</li>
-          <li>Unlimited inbound emails & webhooks</li>
-          <li>Add as many agent mailboxes as you need</li>
-          <li>Self-serve instant Stripe checkout</li>
+          {planDetails.rental.features.map((f) => (
+            <li key={f}>{f}</li>
+          ))}
         </ul>
         <p class="text-slate-400 text-xs mt-6">
           Need higher sending volume? Contact{" "}

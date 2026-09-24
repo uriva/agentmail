@@ -1360,7 +1360,7 @@ const Dashboard = () => {
   const [orgError, setOrgError] = useState<string | null>(null);
   const [newOrgName, setNewOrgName] = useState("");
   const [showNewOrgForm, setShowNewOrgForm] = useState(false);
-  const [karmaRefreshKey, setKarmaRefreshKey] = useState(0);
+  const [balanceRefreshKey, setBalanceRefreshKey] = useState(0);
 
   const userToken = user?.refresh_token ?? "";
   const [phoneVerified, setPhoneVerified] = useState<boolean | null>(null);
@@ -1523,12 +1523,12 @@ const Dashboard = () => {
           <BillingSection
             orgId={activeOrgId}
             userToken={userToken}
-            refreshTrigger={karmaRefreshKey}
+            refreshTrigger={balanceRefreshKey}
           />
           <AccountsList
             orgId={activeOrgId}
             userToken={userToken}
-            onAccountChanged={() => setKarmaRefreshKey((k) => k + 1)}
+            onAccountChanged={() => setBalanceRefreshKey((k) => k + 1)}
           />
 
           <div>

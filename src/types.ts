@@ -1,10 +1,3 @@
-export type KarmaEventType =
-  | "email_sent"
-  | "email_received"
-  | "account_created"
-  | "account_deleted"
-  | "money_paid";
-
 export type MessageDirection = "inbound" | "outbound";
 
 export type MessageStatus =
@@ -12,7 +5,8 @@ export type MessageStatus =
   | "sent"
   | "delivered"
   | "failed"
-  | "received";
+  | "received"
+  | "spam";
 
 export type CreateAccountInput = {
   readonly address: string;
@@ -61,19 +55,6 @@ export type InboundAttachment = {
   readonly contentType: string;
   readonly size: number;
   readonly content: string; // base64 encoded
-};
-
-export type KarmaBalance = {
-  readonly balance: number;
-  readonly events: readonly KarmaEventRecord[];
-};
-
-export type KarmaEventRecord = {
-  readonly id: string;
-  readonly type: KarmaEventType;
-  readonly amount: number;
-  readonly timestamp: number;
-  readonly metadata?: Record<string, unknown>;
 };
 
 export type ApiResponse<T> = {

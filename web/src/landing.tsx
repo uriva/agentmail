@@ -1,5 +1,6 @@
 import type { ComponentChildren } from "preact";
 import { useAuth } from "./db.ts";
+import { planDetails } from "../../src/planData.ts";
 
 const githubUrl = "https://github.com/uriva/agentmail";
 
@@ -73,7 +74,7 @@ const faqs = [
   },
   {
     q: "How much does it cost?",
-    a: "One mailbox is free for 30 days after phone verification (1,000 sends included). After that it's $1/month per mailbox with a $5 minimum top-up. Inbound email and webhooks are always free and unlimited.",
+    a: planDetails.faqCostAnswer,
   },
   {
     q: "How do you stop spam from ruining deliverability?",
@@ -114,10 +115,10 @@ const Landing = () => {
                 ● 100% open source · MIT
               </a>
               <span class="font-mono text-xs px-3 py-1.5 rounded-full border border-slate-700 bg-slate-800/60 text-slate-300">
-                1 mailbox free · 30 days
+                {planDetails.trial.badgeText}
               </span>
               <span class="font-mono text-xs px-3 py-1.5 rounded-full border border-slate-700 bg-slate-800/60 text-slate-300">
-                then $1/mo
+                {planDetails.rental.badgeText}
               </span>
             </div>
             <h1 class="display-serif text-5xl sm:text-6xl lg:text-7xl leading-[0.95] text-amber-50 mb-6">
@@ -358,26 +359,26 @@ const Landing = () => {
         <div class="grid sm:grid-cols-3 gap-4">
           {[
             {
-              t: "Trial",
-              p: "$0",
-              s: "1 mailbox · 30 days",
-              d: "Phone-verified. 1,000 sends included. Inbound + webhooks free.",
+              t: planDetails.trial.title,
+              p: planDetails.trial.priceDisplay,
+              s: planDetails.trial.durationDisplay,
+              d: planDetails.trial.summary,
               cta: "Start free",
               hot: false,
             },
             {
-              t: "Mailbox",
-              p: "$1",
-              s: "/mo per active mailbox",
-              d: "1,000 sends/mo included. Pause anytime — inbound preserved in grace.",
+              t: planDetails.rental.title,
+              p: planDetails.rental.priceDisplay,
+              s: planDetails.rental.periodDisplay,
+              d: planDetails.rental.summary,
               cta: "Get started",
               hot: true,
             },
             {
-              t: "Top-up",
-              p: "$5",
-              s: "minimum, never expires",
-              d: "Prepaid balance = 5 mailbox-months. Covers renewals automatically.",
+              t: planDetails.topup.title,
+              p: planDetails.topup.priceDisplay,
+              s: planDetails.topup.periodDisplay,
+              d: planDetails.topup.summary,
               cta: "See how",
               hot: false,
             },

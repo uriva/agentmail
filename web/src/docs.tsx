@@ -1,5 +1,6 @@
 import type { ComponentChildren } from "preact";
 import { useEffect, useRef } from "preact/hooks";
+import { planDetails } from "../../src/planData.ts";
 
 const CodeBlock = ({
   code,
@@ -46,13 +47,11 @@ const Endpoint = ({
   method,
   path,
   description,
-  karma,
   children,
 }: {
   method: string;
   path: string;
   description: string;
-  karma?: string;
   children?: preact.ComponentChildren;
 }) => {
   const methodColor = method === "GET"
@@ -71,7 +70,6 @@ const Endpoint = ({
           {method}
         </span>
         <code class="text-sm text-white">{path}</code>
-        {karma && <span class="text-xs font-mono text-slate-400">{karma}</span>}
       </div>
       <p class="text-slate-400 text-sm mb-3">{description}</p>
       {children}
@@ -202,8 +200,8 @@ const Docs = () => (
             <h4 class="text-white font-medium mb-1">Org tokens</h4>
             <p>
               Full access to all accounts in your organization. Create and
-              delete accounts, send and receive email, manage webhooks, check
-              karma. Created from the dashboard.
+              delete accounts, send and receive email, manage webhooks, and manage
+              balance. Created from the dashboard.
             </p>
           </div>
           <div class="p-4 bg-slate-800/50 rounded-lg border border-slate-700">
@@ -557,9 +555,9 @@ const verifyWebhook = (body: string, signature: string, timestamp: string, secre
           AgentMail offers straightforward mailbox rentals with transparent volume allowances:
         </p>
         <ul class="list-disc list-inside space-y-1 text-slate-300">
-          <li><strong>Free trial:</strong> 1 mailbox free for 1 month upon phone verification.</li>
-          <li><strong>Rental:</strong> $1/month per active mailbox. $5 minimum deposit into your prepaid wallet (covers 5 mailbox-months).</li>
-          <li><strong>Sends:</strong> 1,000 sends/month included per mailbox. Contact support if you need higher limits.</li>
+          <li><strong>Free trial:</strong> {planDetails.trial.summary}</li>
+          <li><strong>Rental:</strong> {planDetails.rental.priceDisplay}{planDetails.rental.periodDisplay}. {planDetails.topup.priceDisplay} minimum deposit into your prepaid wallet (covers 5 mailbox-months).</li>
+          <li><strong>Sends:</strong> {planDetails.limits.sendsPerMonthPerMailbox.toLocaleString()} sends/month included per mailbox. Contact support if you need higher limits.</li>
           <li><strong>Inbound & Webhooks:</strong> Completely free and unlimited.</li>
         </ul>
       </div>
@@ -687,8 +685,8 @@ const verifyWebhook = (body: string, signature: string, timestamp: string, secre
           ["401", "UNAUTHORIZED", "Missing or invalid API key / token"],
           [
             "402",
-            "KARMA_LOW",
-            "Insufficient karma for this action",
+            "INSUFFICIENT_BALANCE",
+            "Insufficient prepaid balance for this action",
           ],
           [
             "403",

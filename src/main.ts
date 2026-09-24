@@ -10,7 +10,6 @@ import {
 } from "./handlers/accounts.ts";
 import { getMessage, listMessages, sendMessage } from "./handlers/messages.ts";
 import { getAttachmentUrl } from "./handlers/attachments.ts";
-import { getKarmaBalance } from "./handlers/karma.ts";
 import {
   createWebhook,
   deleteWebhook,
@@ -41,6 +40,11 @@ import {
   sendPhoneCode,
   verifyPhoneCode,
 } from "./handlers/phoneVerification.ts";
+import {
+  handleLookupMailbox,
+  handleLookupUser,
+  handleSupportPrompt,
+} from "./handlers/supportBot.ts";
 
 // --- Types ---
 
@@ -224,9 +228,6 @@ const routes: readonly Route[] = [
   route("GET", "/v1/webhooks", listWebhooks, "apiKey"),
   route("DELETE", "/v1/webhooks/:webhookId", deleteWebhook, "apiKey"),
 
-  // Karma
-  route("GET", "/v1/karma", getKarmaBalance, "apiKeyOrUserToken"),
-
   // Billing
   route("POST", "/v1/billing/checkout", createCheckout, "apiKeyOrUserToken"),
   route("POST", "/v1/billing/sync", syncCheckout, "apiKeyOrUserToken"),
@@ -276,6 +277,12 @@ const routes: readonly Route[] = [
   // Stripe Webhook (no auth — uses Stripe webhook signature)
   route("POST", "/stripe-webhook", handleStripeWebhook, "none"),
   route("POST", "/v1/billing/stripe-webhook", handleStripeWebhook, "none"),
+
+  // Support Bot (Dynamic prompt & tools for prompt2bot)
+  route("GET", "/v1/support/prompt", handleSupportPrompt, "none"),
+  route("POST", "/v1/support/prompt", handleSupportPrompt, "none"),
+  route("POST", "/v1/support/tools/lookup-user", handleLookupUser, "none"),
+  route("POST", "/v1/support/tools/lookup-mailbox", handleLookupMailbox, "none"),
 
   // Health
   route(

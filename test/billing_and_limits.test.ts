@@ -3,6 +3,11 @@ import { db, id } from "../src/db.ts";
 import { runBillingRenewalCheck } from "../src/services/billingCron.ts";
 import { createAccount } from "../src/handlers/accounts.ts";
 import { sendMessage } from "../src/handlers/messages.ts";
+import {
+  handleLookupMailbox,
+  handleLookupUser,
+  handleSupportPrompt,
+} from "../src/handlers/supportBot.ts";
 
 Deno.env.set("DENO_ENV", "test");
 
@@ -41,6 +46,41 @@ Deno.test("Billing & account expiration flow", async (t) => {
     assertEquals(res.status, 403);
     const json = await res.json();
     assertEquals(json.code, "PHONE_VERIFICATION_REQUIRED");
+  });
+
+  await t.step("Non-admin cannot create reserved address", async () => {
+    const req = new Request("http://localhost/v1/accounts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ address: `support-${testUserId}` }),
+    });
+
+    const res = await createAccount(req, {}, testOrgId);
+    assertEquals(res.status, 400);
+    const json = await res.json();
+    assertEquals(json.code, "RESERVED_ADDRESS");
+  });
+
+  await t.step("Admin can create reserved address", async () => {
+    await db.transact([
+      db.tx.organizations[testOrgId]!.update({ admin: true }),
+    ]);
+
+    const req = new Request("http://localhost/v1/accounts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ address: `support-test-${testUserId}` }),
+    });
+
+    const res = await createAccount(req, {}, testOrgId);
+    assertEquals(res.status, 201);
+    const json = await res.json();
+    assertEquals(json.data.address, `support-test-${testUserId}@theagentmail.net`);
+
+    // Reset admin status for subsequent tests
+    await db.transact([
+      db.tx.organizations[testOrgId]!.update({ admin: false }),
+    ]);
   });
 
   await t.step("Account creation succeeds once phone is verified", async () => {
@@ -138,6 +178,50 @@ Deno.test("Billing & account expiration flow", async (t) => {
     assertEquals(accounts[0].isFrozen, false); // Unfrozen
     assertEquals(accounts[0].sendsThisMonth, 0); // Reset sends
     assertEquals(accounts[0].expiresAt! > Date.now(), true); // Extended
+  });
+
+  await t.step("Support bot prompt returns dynamic prompt text", async () => {
+    const req = new Request("http://localhost/v1/support/prompt", {
+      method: "GET",
+    });
+    const res = await handleSupportPrompt(req);
+    assertEquals(res.status, 200);
+    const text = await res.text();
+    assertEquals(text.includes("support@theagentmail.net"), true);
+  });
+
+  await t.step("Support bot tools lookup user and mailbox information", async () => {
+    // Test lookup_user
+    const userReq = new Request("http://localhost/v1/support/tools/lookup-user", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        payload: {
+          params: { email: `test-${testUserId}@example.com` },
+        },
+      }),
+    });
+    const userRes = await handleLookupUser(userReq);
+    assertEquals(userRes.status, 200);
+    const userData = await userRes.json();
+    assertEquals(userData.found, true);
+    assertEquals(userData.organization.balanceDollars, 4);
+
+    // Test lookup_mailbox
+    const boxReq = new Request("http://localhost/v1/support/tools/lookup-mailbox", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        payload: {
+          params: { address: `bot-${testUserId}@theagentmail.net` },
+        },
+      }),
+    });
+    const boxRes = await handleLookupMailbox(boxReq);
+    assertEquals(boxRes.status, 200);
+    const boxData = await boxRes.json();
+    assertEquals(boxData.found, true);
+    assertEquals(boxData.isFrozen, false);
   });
 
   // Cleanup test entities

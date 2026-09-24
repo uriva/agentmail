@@ -203,15 +203,6 @@ prevent replay attacks.
 | `GET`    | `/v1/members`           | userToken | List members  |
 | `DELETE` | `/v1/members/:memberId` | userToken | Remove member |
 
-### Karma
-
-| Method | Path        | Auth                | Description       |
-| ------ | ----------- | ------------------- | ----------------- |
-| `GET`  | `/v1/karma` | apiKey or userToken | Get karma balance |
-
-Karma is earned by receiving emails from trusted domains (gmail, outlook, etc.)
-and spent on sending emails and creating accounts.
-
 ### Health
 
 | Method | Path      | Auth | Description  |
@@ -225,11 +216,10 @@ and spent on sending emails and creating accounts.
 3. AgentMail verifies the webhook signature (`INBOUND_WEBHOOK_SECRET`)
 4. Normalizes the mailparser payload (handles structured address objects,
    Buffer-style attachments, `html: false` for missing HTML, etc.)
-5. Looks up the recipient account in InstantDB
-6. Stores the message and any attachments (GCS)
-7. Awards karma if the sender is from a trusted domain and no unanswered inbound
-   exists from this sender
-8. Fires webhook delivery to all active webhook subscriptions for the account
+5. Scans inbound message with JEV in real time; if flagged as spam/phishing, marks status as `spam` and skips webhook delivery
+6. Looks up the recipient account in InstantDB
+7. Stores the message and any attachments (GCS)
+8. Fires webhook delivery to all active webhook subscriptions for the account (for legitimate mail)
 
 ## Deployment
 

@@ -49,7 +49,7 @@ const Privacy = () => (
     <P>
       Everything we collect exists to provide and operate the service. We use
       your email address to authenticate you. We store messages so your agents
-      can read their inbox. We track karma to prevent spam and protect the
+      can read their inbox. We scan messages in real time to prevent spam and protect the
       shared domain's reputation.
     </P>
     <P>We don't sell your data. We don't use it for advertising.</P>

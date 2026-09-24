@@ -6,7 +6,6 @@ import {
   makeAttachments,
 } from "./resources/attachments.ts";
 import { makeWebhooks, type WebhooksResource } from "./resources/webhooks.ts";
-import { type KarmaResource, makeKarma } from "./resources/karma.ts";
 
 export type {
   Account,
@@ -17,8 +16,6 @@ export type {
   ClientConfig,
   CreateAccountParams,
   CreateWebhookParams,
-  KarmaBalance,
-  KarmaEvent,
   Message,
   MessageDetail,
   SendMessageParams,
@@ -29,7 +26,6 @@ export type { AccountsResource } from "./resources/accounts.ts";
 export type { MessagesResource } from "./resources/messages.ts";
 export type { AttachmentsResource } from "./resources/attachments.ts";
 export type { WebhooksResource } from "./resources/webhooks.ts";
-export type { KarmaResource } from "./resources/karma.ts";
 
 const DEFAULT_BASE_URL = "https://api.theagentmail.net";
 
@@ -50,7 +46,6 @@ export type AgentMailClient = {
   readonly messages: MessagesResource;
   readonly attachments: AttachmentsResource;
   readonly webhooks: WebhooksResource;
-  readonly karma: KarmaResource;
 };
 
 const createClient = (config: ClientConfig): AgentMailClient => {
@@ -98,7 +93,6 @@ const createClient = (config: ClientConfig): AgentMailClient => {
     messages: makeMessages(request),
     attachments: makeAttachments(request),
     webhooks: makeWebhooks(request),
-    karma: makeKarma(request),
   };
 };
 

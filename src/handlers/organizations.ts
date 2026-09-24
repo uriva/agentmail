@@ -1,5 +1,4 @@
 import { db, id } from "../db.ts";
-import { signupKarma } from "../karma-constants.ts";
 import { captureEvent } from "../services/posthog.ts";
 
 /**
@@ -80,20 +79,6 @@ export const createOrganization = async (
     }),
     db.tx.organizations[orgId]!.link({ members: userId }),
     db.tx.organizations[orgId]!.link({ billingUser: userId }),
-  ]);
-
-  const welcomeEventId = id();
-  await db.transact([
-    db.tx.karmaEvents[welcomeEventId]!.update({
-      type: "money_paid",
-      amount: signupKarma,
-      timestamp: Date.now(),
-      metadata: {
-        reason: "welcome_bonus",
-        description: `Welcome to AgentMail! Here is ${signupKarma} welcome karma.`,
-      },
-    }),
-    db.tx.karmaEvents[welcomeEventId]!.link({ organization: orgId }),
   ]);
 
   captureEvent(orgId, "organization_created", { userId, name });
