@@ -1,6 +1,7 @@
 {
   "name": "@agentmail/api",
   "version": "0.1.0",
+  "minimumDependencyAge": 0,
   "exports": "./src/main.ts",
   "tasks": {
     "dev": "deno run --allow-net --allow-env --allow-read --watch src/main.ts",
@@ -12,6 +13,7 @@
     "push-perms": "npx instant-cli push perms --yes"
   },
   "imports": {
+    "ai-utils": "jsr:@uri/ai-utils@^0.3.34",
     "gamla": "jsr:@uri/gamla",
     "@instantdb/admin": "npm:@instantdb/admin@1.0.65",
     "@instantdb/react": "npm:@instantdb/react@1.0.65",
