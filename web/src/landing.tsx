@@ -19,7 +19,7 @@ const Section = ({
 );
 
 const Eyebrow = ({ children }: { children: ComponentChildren }) => (
-  <p class="font-mono text-[11px] uppercase tracking-[0.25em] text-lime-400/90 mb-5">
+  <p class="font-mono text-[11px] uppercase tracking-[0.25em] text-blue-400 mb-5">
     {children}
   </p>
 );
@@ -110,7 +110,7 @@ const Landing = () => {
                 href={githubUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                class="font-mono text-xs px-3 py-1.5 rounded-full border border-lime-400/30 bg-lime-400/10 text-lime-300 hover:bg-lime-400/20 transition-colors"
+                class="font-mono text-xs px-3 py-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-300 hover:bg-blue-500/20 transition-colors"
               >
                 ● 100% open source · MIT
               </a>
@@ -123,7 +123,7 @@ const Landing = () => {
             </div>
             <h1 class="display-serif text-5xl sm:text-6xl lg:text-7xl leading-[0.95] text-white mb-6">
               Give every agent a{" "}
-              <em class="not-italic text-lime-300">real inbox.</em>
+              <em class="not-italic text-blue-400">real inbox.</em>
             </h1>
             <p class="text-lg text-slate-300/90 max-w-xl mb-4 leading-relaxed">
               Your agents sign up for tools, receive OTPs, file issues, and talk
@@ -141,7 +141,7 @@ const Landing = () => {
             <div class="flex flex-wrap gap-3 mb-8">
               <a
                 href={ctaHref}
-                class="px-6 py-3 bg-lime-300 hover:bg-lime-200 text-slate-950 font-semibold rounded-lg transition-colors"
+                class="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-lg transition-colors shadow-sm"
               >
                 Create an inbox →
               </a>
@@ -149,7 +149,7 @@ const Landing = () => {
                 href={githubUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                class="px-6 py-3 border border-slate-600 hover:border-lime-300/60 hover:text-white text-slate-200 font-medium rounded-lg transition-colors font-mono text-sm flex items-center"
+                class="px-6 py-3 border border-slate-700 hover:border-slate-500 hover:text-white text-slate-200 font-medium rounded-lg transition-colors font-mono text-sm flex items-center"
               >
                 ★ Star on GitHub
               </a>
@@ -183,7 +183,7 @@ const Landing = () => {
               <span class="ml-3 font-mono text-xs text-slate-400">
                 agent — zsh
               </span>
-              <span class="ml-auto font-mono text-[11px] text-lime-300/80 border border-lime-300/20 rounded px-2 py-0.5">
+              <span class="ml-auto font-mono text-[11px] text-blue-400 border border-blue-500/30 rounded px-2 py-0.5">
                 LIVE
               </span>
             </div>
@@ -195,7 +195,7 @@ const Landing = () => {
                 <span class="font-mono text-xs text-slate-300">
                   ✉ deploy-bot@theagentmail.net
                 </span>
-                <span class="font-mono text-[11px] text-lime-300">
+                <span class="font-mono text-[11px] text-blue-400">
                   ● new mail
                 </span>
               </div>
@@ -273,7 +273,7 @@ const Landing = () => {
               class="rounded-2xl border border-slate-700/80 bg-slate-900/70 overflow-hidden flex flex-col"
             >
               <div class="p-5 pb-3">
-                <p class="font-mono text-xs text-lime-300 mb-2">{c.n}</p>
+                <p class="font-mono text-xs text-blue-400 mb-2">{c.n}</p>
                 <h3 class="text-white font-semibold text-lg mb-1">{c.t}</h3>
                 <p class="text-slate-400 text-sm">{c.d}</p>
               </div>
@@ -286,7 +286,7 @@ const Landing = () => {
       </Section>
 
       <Section class="py-14">
-        <div class="grid lg:grid-cols-2 gap-10 items-start rounded-3xl border border-lime-300/15 bg-gradient-to-b from-lime-300/[0.06] to-transparent p-8 sm:p-12">
+        <div class="grid lg:grid-cols-2 gap-10 items-start rounded-3xl border border-slate-800 bg-slate-900/40 p-8 sm:p-12">
           <div>
             <Eyebrow>02 — Why not DIY?</Eyebrow>
             <h2 class="display-serif text-4xl sm:text-5xl text-white mb-6">
@@ -318,7 +318,7 @@ const Landing = () => {
             </ul>
           </div>
           <div class="rounded-2xl border border-white/10 bg-black/50 p-6">
-            <p class="font-mono text-xs text-lime-300 mb-3">
+            <p class="font-mono text-xs text-blue-400 mb-3">
               ✓ THE AGENTMAIL WAY
             </p>
             <p class="text-slate-200 leading-relaxed mb-4">
@@ -362,7 +362,7 @@ const Landing = () => {
           </h2>
           <a
             href="/pricing"
-            class="font-mono text-sm text-lime-300 hover:text-lime-200"
+            class="font-mono text-sm text-blue-400 hover:text-blue-300"
           >
             Full pricing →
           </a>
@@ -398,7 +398,7 @@ const Landing = () => {
               key={c.t}
               class={`rounded-2xl border p-6 flex flex-col ${
                 c.hot
-                  ? "border-lime-300/40 bg-lime-300/[0.07]"
+                  ? "border-blue-500/40 bg-blue-500/[0.05]"
                   : "border-slate-700/80 bg-slate-900/70"
               }`}
             >
@@ -414,7 +414,7 @@ const Landing = () => {
                 href={c.hot ? ctaHref : "/pricing"}
                 class={`mt-auto text-center px-5 py-2.5 rounded-lg font-medium transition-colors ${
                   c.hot
-                    ? "bg-lime-300 hover:bg-lime-200 text-slate-950"
+                    ? "bg-blue-600 hover:bg-blue-500 text-white"
                     : "border border-slate-600 hover:border-slate-400 text-slate-200"
                 }`}
               >
@@ -441,7 +441,7 @@ const Landing = () => {
                 href={githubUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                class="px-6 py-3 bg-lime-300 hover:bg-lime-200 text-slate-950 font-semibold rounded-lg transition-colors"
+                class="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-lg transition-colors"
               >
                 View source
               </a>
@@ -488,7 +488,7 @@ deno task dev:web    # UI on :3000`}
               Still stuck?{" "}
               <a
                 href="mailto:support@theagentmail.net"
-                class="text-lime-300 hover:text-lime-200"
+                class="text-blue-400 hover:text-blue-300"
               >
                 support@theagentmail.net
               </a>{" "}
@@ -500,7 +500,7 @@ deno task dev:web    # UI on :3000`}
               <details key={f.q} class="group py-5">
                 <summary class="cursor-pointer list-none flex justify-between gap-4 text-slate-100 font-medium">
                   {f.q}
-                  <span class="font-mono text-lime-300 group-open:rotate-45 transition-transform shrink-0">
+                  <span class="font-mono text-blue-400 group-open:rotate-45 transition-transform shrink-0">
                     +
                   </span>
                 </summary>
@@ -514,8 +514,8 @@ deno task dev:web    # UI on :3000`}
       </Section>
 
       <Section class="pb-20 pt-6 text-center">
-        <div class="rounded-3xl border border-lime-300/20 bg-gradient-to-b from-lime-300/10 to-transparent px-6 py-14">
-          <p class="font-mono text-xs uppercase tracking-[0.25em] text-lime-300 mb-4">
+        <div class="rounded-3xl border border-slate-800 bg-gradient-to-b from-slate-900/60 to-slate-950/60 px-6 py-14">
+          <p class="font-mono text-xs uppercase tracking-[0.25em] text-blue-400 mb-4">
             Takes ~2 minutes
           </p>
           <h2 class="display-serif text-4xl sm:text-6xl text-white mb-4">
@@ -529,13 +529,13 @@ deno task dev:web    # UI on :3000`}
           <div class="flex gap-3 justify-center flex-wrap">
             <a
               href={ctaHref}
-              class="px-8 py-3.5 bg-lime-300 hover:bg-lime-200 text-slate-950 font-semibold rounded-lg transition-colors text-lg"
+              class="px-8 py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-lg transition-colors text-lg shadow-sm"
             >
               Create an inbox →
             </a>
             <a
               href="/docs"
-              class="px-8 py-3.5 border border-slate-600 hover:border-slate-400 text-slate-200 font-medium rounded-lg transition-colors text-lg"
+              class="px-8 py-3.5 border border-slate-700 hover:border-slate-500 text-slate-200 font-medium rounded-lg transition-colors text-lg"
             >
               Read the docs
             </a>
