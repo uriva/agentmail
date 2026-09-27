@@ -11,11 +11,12 @@
   }
   body {
     background:
-      radial-gradient(1200px 500px at 85% -10%, rgba(190, 242, 100, 0.07), transparent 60%),
-      radial-gradient(900px 500px at -10% 20%, rgba(251, 191, 36, 0.05), transparent 60%),
+      radial-gradient(1200px 500px at 50% -10%, rgba(190, 242, 100, 0.06),
+      transparent 60%),
       #0b1120;
     color: #e2e8f0;
-    font-family: "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
+    font-family: "Avenir Next", "Segoe UI", system-ui, -apple-system,
+      sans-serif;
   }
   button {
     cursor: pointer;
@@ -37,7 +38,8 @@
 }
 
 .terminal-card {
-  background: linear-gradient(180deg, rgba(21, 30, 48, 0.95), rgba(8, 12, 24, 0.98));
+  background: linear-gradient(180deg, rgba(21, 30, 48, 0.95), rgba(8, 12, 24,
+    0.98));
   border: 1px solid rgba(190, 242, 100, 0.18);
   box-shadow:
     0 0 0 1px rgba(0, 0, 0, 0.4),
@@ -61,7 +63,8 @@
 }
 
 .marquee-wrap {
-  mask-image: linear-gradient(90deg, transparent, black 8%, black 92%, transparent);
+  mask-image: linear-gradient(90deg, transparent, black 8%, black 92%,
+    transparent);
 }
 
 .marquee {

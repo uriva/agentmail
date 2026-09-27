@@ -121,18 +121,18 @@ const Landing = () => {
                 {planDetails.rental.badgeText}
               </span>
             </div>
-            <h1 class="display-serif text-5xl sm:text-6xl lg:text-7xl leading-[0.95] text-amber-50 mb-6">
+            <h1 class="display-serif text-5xl sm:text-6xl lg:text-7xl leading-[0.95] text-white mb-6">
               Give every agent a{" "}
               <em class="not-italic text-lime-300">real inbox.</em>
             </h1>
             <p class="text-lg text-slate-300/90 max-w-xl mb-4 leading-relaxed">
-              Your agents sign up for tools, receive OTPs, file issues, and
-              talk to humans. They need email that acts like a person — not a
+              Your agents sign up for tools, receive OTPs, file issues, and talk
+              to humans. They need email that acts like a person — not a
               newsletter pipe.
             </p>
             <p class="text-slate-400 max-w-xl mb-8">
               One API call. A real{" "}
-              <span class="font-mono text-amber-100">
+              <span class="font-mono text-white">
                 @theagentmail.net
               </span>{" "}
               mailbox with sending, receiving, webhooks, and attachments. No
@@ -168,7 +168,7 @@ const Landing = () => {
               ].map(([v, l]) => (
                 <div key={l}>
                   <dt class="sr-only">{l}</dt>
-                  <dd class="font-mono text-2xl text-amber-50">{v}</dd>
+                  <dd class="font-mono text-2xl text-white">{v}</dd>
                   <dd class="text-xs text-slate-500 mt-1">{l}</dd>
                 </div>
               ))}
@@ -177,9 +177,9 @@ const Landing = () => {
 
           <div class="terminal-card rounded-2xl overflow-hidden">
             <div class="flex items-center gap-1.5 px-4 py-3 border-b border-white/10">
-              <TerminalDot color="bg-red-400/80" />
-              <TerminalDot color="bg-amber-300/80" />
-              <TerminalDot color="bg-lime-300/80" />
+              <TerminalDot color="bg-slate-700 border border-slate-600" />
+              <TerminalDot color="bg-slate-700 border border-slate-600" />
+              <TerminalDot color="bg-slate-700 border border-slate-600" />
               <span class="ml-3 font-mono text-xs text-slate-400">
                 agent — zsh
               </span>
@@ -200,7 +200,7 @@ const Landing = () => {
                 </span>
               </div>
               <div class="px-4 py-3 flex gap-3 items-start inbox-pulse">
-                <div class="w-8 h-8 rounded-full bg-amber-200 text-slate-900 font-bold text-sm flex items-center justify-center shrink-0">
+                <div class="w-8 h-8 rounded-full bg-slate-800 text-slate-100 border border-slate-700 font-bold text-sm flex items-center justify-center shrink-0">
                   G
                 </div>
                 <div class="min-w-0">
@@ -208,8 +208,8 @@ const Landing = () => {
                     GitHub — Your verification code: 481516
                   </p>
                   <p class="text-xs text-slate-400 mt-1">
-                    Your agent reads the OTP via API and finishes signup
-                    itself. No human in the loop.
+                    Your agent reads the OTP via API and finishes signup itself.
+                    No human in the loop.
                   </p>
                   <p class="font-mono text-[11px] text-slate-500 mt-2">
                     200 OK · webhook delivered in 0.4s
@@ -228,16 +228,17 @@ const Landing = () => {
             signups&ensp;·&ensp;support inboxes&ensp;·&ensp;deploy
             notifications&ensp;·&ensp;human handoffs&ensp;·&ensp;webhook
             pipelines&ensp;·&ensp;attachments&ensp;·&ensp;OTPs & verification
-            codes&ensp;·&ensp;GitHub / Slack / Linear signups&ensp;·&ensp;support
-            inboxes&ensp;·&ensp;deploy notifications&ensp;·&ensp;human
-            handoffs&ensp;·&ensp;webhook pipelines&ensp;·&ensp;attachments
+            codes&ensp;·&ensp;GitHub / Slack / Linear
+            signups&ensp;·&ensp;support inboxes&ensp;·&ensp;deploy
+            notifications&ensp;·&ensp;human handoffs&ensp;·&ensp;webhook
+            pipelines&ensp;·&ensp;attachments
           </p>
         </div>
       </Section>
 
       <Section class="py-14">
         <Eyebrow>01 — How it works</Eyebrow>
-        <h2 class="display-serif text-4xl sm:text-5xl text-amber-50 mb-4 max-w-2xl">
+        <h2 class="display-serif text-4xl sm:text-5xl text-white mb-4 max-w-2xl">
           Three calls. One working inbox.
         </h2>
         <p class="text-slate-400 max-w-xl mb-10">
@@ -288,19 +289,28 @@ const Landing = () => {
         <div class="grid lg:grid-cols-2 gap-10 items-start rounded-3xl border border-lime-300/15 bg-gradient-to-b from-lime-300/[0.06] to-transparent p-8 sm:p-12">
           <div>
             <Eyebrow>02 — Why not DIY?</Eyebrow>
-            <h2 class="display-serif text-4xl sm:text-5xl text-amber-50 mb-6">
+            <h2 class="display-serif text-4xl sm:text-5xl text-white mb-6">
               Disposable email gets blocked. Personal email gets hijacked.
             </h2>
             <ul class="space-y-4">
               {[
-                ["Your inbox", "Hand an agent your Gmail and you've lost control of password resets, billing, and your identity."],
-                ["A domain per agent", "DNS, SPF, DKIM, warmup, deliverability firefighting — times every agent you spin up."],
-                ["Disposable services", "Burner domains are blocklisted everywhere that matters. OTPs never arrive."],
+                [
+                  "Your inbox",
+                  "Hand an agent your Gmail and you've lost control of password resets, billing, and your identity.",
+                ],
+                [
+                  "A domain per agent",
+                  "DNS, SPF, DKIM, warmup, deliverability firefighting — times every agent you spin up.",
+                ],
+                [
+                  "Disposable services",
+                  "Burner domains are blocklisted everywhere that matters. OTPs never arrive.",
+                ],
               ].map(([t, d]) => (
                 <li key={t} class="flex gap-3">
-                  <span class="font-mono text-red-300 mt-0.5">✕</span>
+                  <span class="font-mono text-slate-500 mt-0.5">✕</span>
                   <p class="text-slate-300 text-sm leading-relaxed">
-                    <strong class="text-white font-semibold">{t} — </strong>
+                    <strong class="text-white font-semibold">{t} —</strong>
                     {d}
                   </p>
                 </li>
@@ -331,13 +341,14 @@ const Landing = () => {
                   key={l}
                   class="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-center"
                 >
-                  <p class="font-mono text-xl text-amber-50">{v}</p>
+                  <p class="font-mono text-xl text-white">{v}</p>
                   <p class="text-[11px] text-slate-500 mt-1">{l}</p>
                 </div>
               ))}
             </div>
             <p class="text-[11px] text-slate-600 mt-3">
-              *Illustrative target for legitimate agent traffic, not a guarantee.
+              *Illustrative target for legitimate agent traffic, not a
+              guarantee.
             </p>
           </div>
         </div>
@@ -346,7 +357,7 @@ const Landing = () => {
       <Section class="py-14">
         <Eyebrow>03 — Pricing</Eyebrow>
         <div class="flex flex-wrap items-end justify-between gap-4 mb-8">
-          <h2 class="display-serif text-4xl sm:text-5xl text-amber-50">
+          <h2 class="display-serif text-4xl sm:text-5xl text-white">
             Honest pricing.
           </h2>
           <a
@@ -418,7 +429,7 @@ const Landing = () => {
         <div class="grid lg:grid-cols-2 gap-10 items-center rounded-3xl border border-slate-700/80 bg-slate-900/60 p-8 sm:p-12 overflow-hidden">
           <div>
             <Eyebrow>04 — Open source</Eyebrow>
-            <h2 class="display-serif text-4xl sm:text-5xl text-amber-50 mb-4">
+            <h2 class="display-serif text-4xl sm:text-5xl text-white mb-4">
               No black boxes on your agents' email.
             </h2>
             <p class="text-slate-400 mb-6 max-w-md">
@@ -430,7 +441,7 @@ const Landing = () => {
                 href={githubUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                class="px-6 py-3 bg-amber-50 hover:bg-white text-slate-950 font-semibold rounded-lg transition-colors"
+                class="px-6 py-3 bg-lime-300 hover:bg-lime-200 text-slate-950 font-semibold rounded-lg transition-colors"
               >
                 View source
               </a>
@@ -446,9 +457,9 @@ const Landing = () => {
           </div>
           <div class="rounded-2xl bg-black/60 border border-white/10 overflow-hidden">
             <div class="flex items-center gap-1.5 px-4 py-3 border-b border-white/10">
-              <TerminalDot color="bg-red-400/80" />
-              <TerminalDot color="bg-amber-300/80" />
-              <TerminalDot color="bg-lime-300/80" />
+              <TerminalDot color="bg-slate-700 border border-slate-600" />
+              <TerminalDot color="bg-slate-700 border border-slate-600" />
+              <TerminalDot color="bg-slate-700 border border-slate-600" />
               <span class="ml-3 font-mono text-xs text-slate-400">
                 clone + run
               </span>
@@ -470,7 +481,7 @@ deno task dev:web    # UI on :3000`}
         <div class="grid lg:grid-cols-[0.9fr_1.1fr] gap-10">
           <div>
             <Eyebrow>05 — FAQ</Eyebrow>
-            <h2 class="display-serif text-4xl sm:text-5xl text-amber-50 mb-4">
+            <h2 class="display-serif text-4xl sm:text-5xl text-white mb-4">
               Asked by agent builders.
             </h2>
             <p class="text-slate-400 max-w-sm">
@@ -507,7 +518,7 @@ deno task dev:web    # UI on :3000`}
           <p class="font-mono text-xs uppercase tracking-[0.25em] text-lime-300 mb-4">
             Takes ~2 minutes
           </p>
-          <h2 class="display-serif text-4xl sm:text-6xl text-amber-50 mb-4">
+          <h2 class="display-serif text-4xl sm:text-6xl text-white mb-4">
             Ship the agent.
             <br />
             We'll hold its mail.
