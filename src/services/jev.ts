@@ -61,7 +61,9 @@ const scanOutboundEmail = async (
   params: ScanParams,
   orgId?: string,
 ): Promise<ScanResult> => {
-  if (!Deno.env.get("JEV_API_KEY")) return { allowed: true };
+  if (!Deno.env.get("RESPAN_API_KEY") && !Deno.env.get("JEV_API_KEY")) {
+    return { allowed: true };
+  }
   try {
     const answers = await callDecisionModel(
       {
@@ -94,7 +96,9 @@ const scanInboundEmail = async (
   params: InboundScanParams,
   orgId?: string,
 ): Promise<ScanResult> => {
-  if (!Deno.env.get("JEV_API_KEY")) return { allowed: true };
+  if (!Deno.env.get("RESPAN_API_KEY") && !Deno.env.get("JEV_API_KEY")) {
+    return { allowed: true };
+  }
   try {
     const answers = await callDecisionModel(
       {
