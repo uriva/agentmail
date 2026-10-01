@@ -557,8 +557,9 @@ const verifyWebhook = (body: string, signature: string, timestamp: string, secre
         <ul class="list-disc list-inside space-y-1 text-slate-300">
           <li><strong>Free trial:</strong> {planDetails.trial.summary}</li>
           <li><strong>Rental:</strong> {planDetails.rental.priceDisplay}{planDetails.rental.periodDisplay}. {planDetails.topup.priceDisplay} minimum deposit into your prepaid wallet (covers 5 mailbox-months).</li>
-          <li><strong>Sends:</strong> {planDetails.limits.sendsPerMonthPerMailbox.toLocaleString()} sends/month included per mailbox. Contact support if you need higher limits.</li>
-          <li><strong>Inbound & Webhooks:</strong> Completely free and unlimited.</li>
+          <li><strong>Paid Mailbox Limits ($1/mo):</strong> 1,000 sends/month and 1,000 receives/month (capped at 200 sends/day and 200 receives/day). Daily limits reset at 00:00 UTC. Contact support if you need custom limits.</li>
+          <li><strong>Trial Mailbox Limits:</strong> 20 sends/day (up to 100/mo) and 50 receives/day (up to 200/mo).</li>
+          <li><strong>Webhooks:</strong> Unlimited real-time webhooks for all accepted emails.</li>
         </ul>
       </div>
 

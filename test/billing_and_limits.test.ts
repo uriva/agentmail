@@ -8,6 +8,7 @@ import {
   handleLookupUser,
   handleSupportPrompt,
 } from "../src/handlers/supportBot.ts";
+import { handleInbound } from "../src/handlers/inbound.ts";
 
 Deno.env.set("DENO_ENV", "test");
 
@@ -222,6 +223,192 @@ Deno.test("Billing & account expiration flow", async (t) => {
     const boxData = await boxRes.json();
     assertEquals(boxData.found, true);
     assertEquals(boxData.isFrozen, false);
+  });
+
+  await t.step("Daily send limit enforcement for trial account", async () => {
+    const trialOrgId = id();
+    const trialAccountId = id();
+    // deno-lint-ignore no-explicit-any
+    const txOps: any[] = [
+      db.tx.organizations[trialOrgId]!.update({
+        name: "Trial Limits Org",
+        createdAt: Date.now(),
+        balance: 0,
+        trialUsed: true,
+        admin: false,
+      }),
+      db.tx.accounts[trialAccountId]!.update({
+        address: `trial-${trialAccountId}@theagentmail.net`,
+        displayName: "Trial Bot",
+        createdAt: Date.now(),
+        expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
+        isFrozen: false,
+        sendsThisMonth: 20,
+        sendPeriodStart: Date.now(),
+      }),
+      db.tx.accounts[trialAccountId]!.link({ organization: trialOrgId }),
+    ];
+
+    // Seed 20 outbound messages today
+    const msgIds: string[] = [];
+    for (let i = 0; i < 20; i++) {
+      const mId = id();
+      msgIds.push(mId);
+      txOps.push(
+        db.tx.messages[mId]!.update({
+          from: `trial-${trialAccountId}@theagentmail.net`,
+          to: ["dest@example.com"],
+          subject: `Msg ${i}`,
+          direction: "outbound",
+          status: "sent",
+          timestamp: Date.now(),
+        }),
+        db.tx.messages[mId]!.link({ account: trialAccountId }),
+      );
+    }
+    await db.transact(txOps);
+
+    const req = new Request("http://localhost/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        to: ["someone@example.com"],
+        subject: "Over daily limit",
+        text: "Test",
+      }),
+    });
+
+    const res = await sendMessage(req, { accountId: trialAccountId }, trialOrgId);
+    assertEquals(res.status, 429);
+    const json = await res.json();
+    assertEquals(json.code, "DAILY_SEND_LIMIT_REACHED");
+
+    // Clean up
+    // deno-lint-ignore no-explicit-any
+    const deleteOps: any[] = msgIds.map((mId) => db.tx.messages[mId]!.delete());
+    deleteOps.push(
+      db.tx.accounts[trialAccountId]!.delete(),
+      db.tx.organizations[trialOrgId]!.delete(),
+    );
+    await db.transact(deleteOps);
+  });
+
+  await t.step("Inbound drops emails for frozen mailbox", async () => {
+    const frozenAccountId = id();
+    const frozenOrgId = id();
+    await db.transact([
+      db.tx.organizations[frozenOrgId]!.update({
+        name: "Frozen Inbound Org",
+        createdAt: Date.now(),
+        balance: 0,
+        trialUsed: true,
+        admin: false,
+      }),
+      db.tx.accounts[frozenAccountId]!.update({
+        address: `frozen-${frozenAccountId}@theagentmail.net`,
+        createdAt: Date.now(),
+        expiresAt: Date.now() - 1000,
+        isFrozen: true,
+      }),
+      db.tx.accounts[frozenAccountId]!.link({ organization: frozenOrgId }),
+    ]);
+
+    const inboundReq = new Request("http://localhost/v1/inbound", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        from: "sender@example.com",
+        to: [`frozen-${frozenAccountId}@theagentmail.net`],
+        subject: "Hello frozen account",
+        text: "Should be dropped",
+      }),
+    });
+
+    const inboundRes = await handleInbound(inboundReq, {}, frozenOrgId);
+    assertEquals(inboundRes.status, 200);
+
+    const { messages } = await db.query({
+      messages: {
+        $: { where: { "account.id": frozenAccountId } },
+      },
+    });
+    assertEquals(messages.length, 0);
+
+    await db.transact([
+      db.tx.accounts[frozenAccountId]!.delete(),
+      db.tx.organizations[frozenOrgId]!.delete(),
+    ]);
+  });
+
+  await t.step("Inbound daily limit drops emails when exceeded", async () => {
+    const cappedAccountId = id();
+    const cappedOrgId = id();
+    // deno-lint-ignore no-explicit-any
+    const txOps: any[] = [
+      db.tx.organizations[cappedOrgId]!.update({
+        name: "Capped Inbound Org",
+        createdAt: Date.now(),
+        balance: 0,
+        trialUsed: true,
+        admin: false,
+      }),
+      db.tx.accounts[cappedAccountId]!.update({
+        address: `capped-${cappedAccountId}@theagentmail.net`,
+        createdAt: Date.now(),
+        expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
+        isFrozen: false,
+      }),
+      db.tx.accounts[cappedAccountId]!.link({ organization: cappedOrgId }),
+    ];
+
+    // Seed 50 inbound messages today
+    const msgIds: string[] = [];
+    for (let i = 0; i < 50; i++) {
+      const mId = id();
+      msgIds.push(mId);
+      txOps.push(
+        db.tx.messages[mId]!.update({
+          from: "sender@example.com",
+          to: [`capped-${cappedAccountId}@theagentmail.net`],
+          subject: `Inbound Msg ${i}`,
+          direction: "inbound",
+          status: "received",
+          timestamp: Date.now(),
+        }),
+        db.tx.messages[mId]!.link({ account: cappedAccountId }),
+      );
+    }
+    await db.transact(txOps);
+
+    const inboundReq = new Request("http://localhost/v1/inbound", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        from: "sender@example.com",
+        to: [`capped-${cappedAccountId}@theagentmail.net`],
+        subject: "Hello capped account",
+        text: "Should be dropped due to daily limit",
+      }),
+    });
+
+    const inboundRes = await handleInbound(inboundReq, {}, cappedOrgId);
+    assertEquals(inboundRes.status, 200);
+
+    // Should only have the initial 50 messages, the 51st was dropped
+    const { messages } = await db.query({
+      messages: {
+        $: { where: { "account.id": cappedAccountId } },
+      },
+    });
+    assertEquals(messages.length, 50);
+
+    // deno-lint-ignore no-explicit-any
+    const deleteOps: any[] = msgIds.map((mId) => db.tx.messages[mId]!.delete());
+    deleteOps.push(
+      db.tx.accounts[cappedAccountId]!.delete(),
+      db.tx.organizations[cappedOrgId]!.delete(),
+    );
+    await db.transact(deleteOps);
   });
 
   // Cleanup test entities

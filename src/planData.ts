@@ -8,17 +8,21 @@ export const planDetails = {
     durationMonths: 1,
     durationDisplay: "1 mailbox · 30 days",
     mailboxesIncluded: 1,
-    sendsIncluded: 1000,
+    sendsPerDay: 20,
+    sendsIncluded: 100,
+    receivesPerDay: 50,
+    receivesIncluded: 200,
     requiresPhoneVerification: true,
     badgeText: "1 mailbox free · 30 days",
     summary:
-      "One mailbox is free for 30 days after phone verification (1,000 sends included). Inbound + webhooks free.",
+      "One mailbox is free for 30 days after phone verification (20 sends/day, 50 receives/day, up to 100 sends & 200 receives/mo). Inbound & webhooks included.",
     features: [
       "1 email inbox free for 30 days",
       "Phone-verified to prevent abuse",
-      "1,000 sends included",
-      "Unlimited inbound & webhooks",
-      "Full API & attachment support",
+      "20 sends/day (100 sends/mo included)",
+      "50 receives/day (200 receives/mo included)",
+      "Unlimited webhooks & API access",
+      "Full attachment support",
       "Real-time AI spam & phishing protection",
     ],
   },
@@ -31,14 +35,19 @@ export const planDetails = {
     periodDisplay: "/mo per active mailbox",
     periodDisplayLong: "per mailbox / month",
     sendsPerMonth: 1000,
-    sendsDisplay: "1,000 sends/mo included",
+    sendsPerDay: 200,
+    sendsDisplay: "1,000 sends/mo (200/day)",
+    receivesPerMonth: 1000,
+    receivesPerDay: 200,
+    receivesDisplay: "1,000 receives/mo (200/day)",
     summary:
-      "1,000 sends/mo included. Pause anytime — inbound preserved in grace.",
+      "1,000 sends/mo & 1,000 receives/mo included (200/day cap). Pause anytime.",
     features: [
       "$5 minimum deposit (5 mailbox-months)",
       "Deposit funds never expire",
-      "1,000 sends/month included per mailbox",
-      "Unlimited inbound emails & webhooks",
+      "1,000 sends/mo included (200/day)",
+      "1,000 receives/mo included (200/day)",
+      "Unlimited webhooks",
       "Add as many agent mailboxes as you need",
       "Self-serve instant Stripe checkout",
     ],
@@ -52,14 +61,37 @@ export const planDetails = {
       "Prepaid balance = 5 mailbox-months. Covers renewals automatically.",
   },
   limits: {
+    trial: {
+      sendsPerDay: 20,
+      sendsPerMonth: 100,
+      receivesPerDay: 50,
+      receivesPerMonth: 200,
+    },
+    paid: {
+      sendsPerDay: 200,
+      sendsPerMonth: 1000,
+      receivesPerDay: 200,
+      receivesPerMonth: 1000,
+    },
     sendsPerMonthPerMailbox: 1000,
     minTopupDollars: 5,
     mailboxMonthlyCostDollars: 1,
     trialDays: 30,
   },
   faqCostAnswer:
-    "One mailbox is free for 30 days after phone verification (1,000 sends included). After that it's $1/month per mailbox with a $5 minimum top-up. Inbound email and webhooks are always free and unlimited.",
+    "One mailbox is free for 30 days after phone verification (20 sends/day, 50 receives/day, up to 100 sends & 200 receives/mo). Paid mailboxes ($1/mo) include 1,000 sends & 1,000 receives per month (200/day). Inbound emails and webhooks are included.",
 } as const;
+
+export const getUtcDayStart = (d = new Date()): number =>
+  Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+
+// deno-lint-ignore no-explicit-any
+export const isPayingOrg = (org: any): boolean =>
+  Boolean(
+    (Array.isArray(org?.processedCheckoutSessions) &&
+      org.processedCheckoutSessions.length > 0) ||
+      (org?.balance ?? 0) > 0,
+  );
 
 export const generateSupportPrompt = (
   nowIso = new Date().toISOString(),

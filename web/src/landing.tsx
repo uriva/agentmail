@@ -163,8 +163,8 @@ const Landing = () => {
             <dl class="grid grid-cols-3 max-w-md gap-4 border-t border-slate-800 pt-5">
               {[
                 ["$1/mo", "per mailbox"],
-                ["1,000", "sends incl."],
-                ["∞", "inbound free"],
+                ["1,000", "sends / mo"],
+                ["1,000", "receives / mo"],
               ].map(([v, l]) => (
                 <div key={l}>
                   <dt class="sr-only">{l}</dt>

@@ -4,10 +4,11 @@ import { uploadFile } from "../services/storage.ts";
 import { deliverWithRetry } from "../services/webhookDelivery.ts";
 import { captureEvent } from "../services/posthog.ts";
 import { scanInboundEmail } from "../services/jev.ts";
+import { getUtcDayStart, isPayingOrg, planDetails } from "../planData.ts";
 import { decodeBase64, encodeBase64 } from "jsr:@std/encoding/base64";
 import { coerce } from "gamla";
 
-const INBOUND_WEBHOOK_SECRET = coerce(Deno.env.get("INBOUND_WEBHOOK_SECRET"));
+const INBOUND_WEBHOOK_SECRET = Deno.env.get("INBOUND_WEBHOOK_SECRET") ?? "";
 
 const extractAddress = (raw: string): string => {
   const addr = raw.includes("<") ? raw.match(/<(.+)>/)?.[1] ?? raw : raw;
@@ -250,6 +251,25 @@ const normalizePayload = async (raw: any): Promise<InboundEmail> => {
   };
 };
 
+const countMessages = async (
+  accountId: string,
+  direction: "inbound" | "outbound",
+  since: number,
+): Promise<number> => {
+  const result = await db.query({
+    messages: {
+      $: {
+        where: {
+          "account.id": accountId,
+          direction,
+          timestamp: { $gte: since },
+        },
+      },
+    },
+  });
+  return result.messages?.length ?? 0;
+};
+
 const handleInbound = async (
   req: Request,
   _params: Record<string, string>,
@@ -331,7 +351,10 @@ const handleInbound = async (
           accounts: {
             $: { where: { address } },
             webhooks: {},
-            organization: {},
+            organization: {
+              billingUser: {},
+              members: {},
+            },
             messages: {},
           },
         });
@@ -353,6 +376,49 @@ const handleInbound = async (
         continue;
       }
       const orgId = org.id;
+      const isAdmin = Boolean(org?.admin) ||
+        org?.billingUser?.email === "uri.valevski@gmail.com" ||
+        org?.members?.some((m: { email?: string }) =>
+          m.email === "uri.valevski@gmail.com"
+        );
+
+      const now = Date.now();
+      const isExpired = Boolean(account.expiresAt && account.expiresAt < now);
+      if (!isAdmin && (account.isFrozen || isExpired)) {
+        console.log(
+          `[inbound] Account ${address} is inactive (frozen=${account.isFrozen}, expired=${isExpired}). Dropping email.`,
+        );
+        continue;
+      }
+
+      if (!isAdmin) {
+        const isPaying = isPayingOrg(org);
+        const limits = isPaying ? planDetails.limits.paid : planDetails.limits.trial;
+
+        const todayUtc = getUtcDayStart();
+        const receivesToday = await countMessages(account.id, "inbound", todayUtc);
+        if (receivesToday >= limits.receivesPerDay) {
+          console.log(
+            `[inbound] Account ${address} reached daily receive limit (${limits.receivesPerDay}/day). Dropping email.`,
+          );
+          continue;
+        }
+
+        const periodLengthMs = 30 * 24 * 60 * 60 * 1000;
+        const periodStart = now - periodLengthMs;
+        const receivesThisMonth = await countMessages(
+          account.id,
+          "inbound",
+          periodStart,
+        );
+        if (receivesThisMonth >= limits.receivesPerMonth) {
+          console.log(
+            `[inbound] Account ${address} reached monthly receive limit (${limits.receivesPerMonth}/mo). Dropping email.`,
+          );
+          continue;
+        }
+      }
+
       console.log("[inbound] Matched account", account.id, "in org", orgId);
       matched++;
 

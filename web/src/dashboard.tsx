@@ -193,7 +193,7 @@ const BillingSection = ({
   return (
     <Card title="Billing & Balance">
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-        <div class="grid grid-cols-2 sm:grid-cols-3 gap-6 flex-1">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-6 flex-1">
           <StatNumber
             value={isAdmin ? "Unlimited" : `$${currentBalance.toFixed(2)}`}
             label="Prepaid Balance"
@@ -203,7 +203,14 @@ const BillingSection = ({
             value={isTrialAvailable ? "1 Free ($1/mo after)" : "$1.00"}
             label="Cost / Mailbox / Mo"
           />
-          <StatNumber value="1,000" label="Sends / Mo Included" />
+          <StatNumber
+            value={isAdmin ? "Unlimited" : isTrialAvailable ? "20/day (100/mo)" : "200/day (1k/mo)"}
+            label="Sends Allowed"
+          />
+          <StatNumber
+            value={isAdmin ? "Unlimited" : isTrialAvailable ? "50/day (200/mo)" : "200/day (1k/mo)"}
+            label="Receives Allowed"
+          />
         </div>
         {!isAdmin && (
           <div class="flex flex-col gap-2">
@@ -243,8 +250,17 @@ const BillingSection = ({
         <div class="mt-4 p-3.5 bg-blue-950/40 border border-blue-500/30 rounded-lg text-blue-200 text-sm flex items-start gap-2.5">
           <span class="text-base leading-none mt-0.5">🎁</span>
           <div>
-            <span class="font-medium text-white">Free 30-day trial available:</span> Your first mailbox is completely free for 30 days (1,000 sends included). Prepaid balance is only needed for additional mailboxes ($1/mo) or after your trial ends.
+            <span class="font-medium text-white">Free 30-day trial available:</span> Your first mailbox is free with 20 sends/day (100/mo) and 50 receives/day (200/mo). Upgrading to a paid account ($1/mo with $5 deposit) increases limits to 1,000 sends & 1,000 receives/mo (200/day).
           </div>
+        </div>
+      )}
+
+      {!isAdmin && !isTrialAvailable && (
+        <div class="mt-4 p-3 bg-slate-800/40 border border-slate-700/60 rounded-lg text-slate-300 text-xs flex items-center gap-2">
+          <span>ℹ️</span>
+          <span>
+            Paid accounts include 1,000 sends & 1,000 receives per month per mailbox (capped at 200 sends/day & 200 receives/day). Daily limits reset at 00:00 UTC.
+          </span>
         </div>
       )}
     </Card>
@@ -378,8 +394,8 @@ const AccountsList = ({
       </div>
       <p class="text-xs text-slate-400 mb-4">
         {trialAvailable
-          ? "🎉 1 mailbox free for 30 days. Additional mailboxes cost $1.00/month."
-          : "Mailboxes cost $1.00/month from your prepaid balance."}
+          ? "🎉 1 mailbox free for 30 days (20 sends & 50 receives/day, up to 100 sends & 200 receives/mo). Additional mailboxes cost $1.00/month."
+          : "Mailboxes cost $1.00/month from your prepaid balance (includes 1,000 sends & 1,000 receives/mo, 200/day cap)."}
       </p>
       {createError && <div class="mb-4 text-red-400 text-sm">{createError}
       </div>}
@@ -451,10 +467,10 @@ const AccountsList = ({
                             </span>
                           )}
                           <span class="text-xs text-slate-400 font-mono">
-                            {account.sendsThisMonth ?? 0}
-                            {account.expiresAt && account.expiresAt > 0
-                              ? "/1,000 sends"
-                              : " sends"}
+                            📤 {account.sendsToday ?? 0} today ({account.sendsThisMonth ?? 0}/mo sends)
+                          </span>
+                          <span class="text-xs text-slate-400 font-mono">
+                            📥 {account.receivesToday ?? 0} today ({account.receivesThisMonth ?? 0}/mo receives)
                           </span>
                         </div>
                         <div class="flex items-center gap-3">

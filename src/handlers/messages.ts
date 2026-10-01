@@ -4,7 +4,7 @@ import { sendEmail } from "../services/resend.ts";
 import { uploadFile } from "../services/storage.ts";
 import { captureEvent } from "../services/posthog.ts";
 import { scanOutboundEmail } from "../services/jev.ts";
-import { planDetails } from "../planData.ts";
+import { getUtcDayStart, isPayingOrg, planDetails } from "../planData.ts";
 
 const SPAM_PATTERNS = [
   "페이지 소유권 확인",
@@ -31,6 +31,25 @@ const containsSpam = (input: SendEmailInput): boolean => {
   return SPAM_PATTERNS.some((pattern) =>
     content.includes(pattern.toLowerCase())
   );
+};
+
+const countMessages = async (
+  accountId: string,
+  direction: "inbound" | "outbound",
+  since: number,
+): Promise<number> => {
+  const result = await db.query({
+    messages: {
+      $: {
+        where: {
+          "account.id": accountId,
+          direction,
+          timestamp: { $gte: since },
+        },
+      },
+    },
+  });
+  return result.messages?.length ?? 0;
 };
 
 const sendMessage = async (
@@ -82,11 +101,27 @@ const sendMessage = async (
       );
     }
 
-    if (sendsInCurrentPeriod >= planDetails.limits.sendsPerMonthPerMailbox) {
+    const isPaying = isPayingOrg(org);
+    const limits = isPaying ? planDetails.limits.paid : planDetails.limits.trial;
+
+    const todayUtc = getUtcDayStart();
+    const sendsToday = await countMessages(accountId, "outbound", todayUtc);
+    if (sendsToday >= limits.sendsPerDay) {
       return Response.json(
         {
           error:
-            `Monthly send limit reached (${planDetails.limits.sendsPerMonthPerMailbox.toLocaleString()} sends/month). Contact support@theagentmail.net if you need more.`,
+            `Daily send limit reached (${limits.sendsPerDay} sends/day for ${isPaying ? "paid" : "trial"} accounts). Resets at 00:00 UTC.`,
+          code: "DAILY_SEND_LIMIT_REACHED",
+        },
+        { status: 429 },
+      );
+    }
+
+    if (sendsInCurrentPeriod >= limits.sendsPerMonth) {
+      return Response.json(
+        {
+          error:
+            `Monthly send limit reached (${limits.sendsPerMonth.toLocaleString()} sends/month for ${isPaying ? "paid" : "trial"} accounts). ${isPaying ? "Contact support@theagentmail.net if you need more." : "Top up $5 to upgrade to a paid account with 1,000 sends/mo."}`,
           code: "SEND_LIMIT_REACHED",
         },
         { status: 429 },
