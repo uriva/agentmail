@@ -5,6 +5,7 @@ import { deliverWithRetry } from "../services/webhookDelivery.ts";
 import { captureEvent } from "../services/posthog.ts";
 import { scanInboundEmail } from "../services/jev.ts";
 import { getUtcDayStart, isPayingOrg, planDetails } from "../planData.ts";
+import { notifyQuotaExceeded } from "../services/quotaNotifier.ts";
 import { decodeBase64, encodeBase64 } from "jsr:@std/encoding/base64";
 import { coerce } from "gamla";
 
@@ -394,6 +395,8 @@ const handleInbound = async (
       if (!isAdmin) {
         const isPaying = isPayingOrg(org);
         const limits = isPaying ? planDetails.limits.paid : planDetails.limits.trial;
+        const billingEmail = org?.billingUser?.email ||
+          org?.members?.find((m: { email?: string }) => Boolean(m.email))?.email;
 
         const todayUtc = getUtcDayStart();
         const receivesToday = await countMessages(account.id, "inbound", todayUtc);
@@ -401,6 +404,15 @@ const handleInbound = async (
           console.log(
             `[inbound] Account ${address} reached daily receive limit (${limits.receivesPerDay}/day). Dropping email.`,
           );
+          notifyQuotaExceeded({
+            orgId,
+            accountAddress: address,
+            accountId: account.id,
+            quotaType: "daily_receive",
+            limit: limits.receivesPerDay,
+            billingEmail,
+            isPaying,
+          }).catch((err) => console.error("[inbound] Quota notify error:", err));
           continue;
         }
 
@@ -415,6 +427,15 @@ const handleInbound = async (
           console.log(
             `[inbound] Account ${address} reached monthly receive limit (${limits.receivesPerMonth}/mo). Dropping email.`,
           );
+          notifyQuotaExceeded({
+            orgId,
+            accountAddress: address,
+            accountId: account.id,
+            quotaType: "monthly_receive",
+            limit: limits.receivesPerMonth,
+            billingEmail,
+            isPaying,
+          }).catch((err) => console.error("[inbound] Quota notify error:", err));
           continue;
         }
       }

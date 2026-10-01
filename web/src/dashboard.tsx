@@ -282,6 +282,7 @@ const AccountsList = ({
     accounts: {
       $: { where: { "organization.id": orgId } },
       webhooks: {},
+      messages: {},
     },
   });
 
@@ -353,14 +354,62 @@ const AccountsList = ({
 
   const accounts = data?.accounts ?? [];
 
+  const now = Date.now();
+  const todayUtc = Date.UTC(
+    new Date().getUTCFullYear(),
+    new Date().getUTCMonth(),
+    new Date().getUTCDate(),
+  );
+  const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
+
+  const maxSendsToday = trialAvailable ? 20 : 200;
+  const maxReceivesToday = trialAvailable ? 50 : 200;
+  const maxSendsMonth = trialAvailable ? 100 : 1000;
+  const maxReceivesMonth = trialAvailable ? 200 : 1000;
+
+  const anyAccountOverQuota = accounts.some(
+    // deno-lint-ignore no-explicit-any
+    (acc: any) => {
+      const msgs = acc.messages ?? [];
+      const sToday = msgs.filter(
+        // deno-lint-ignore no-explicit-any
+        (m: any) => m.direction === "outbound" && m.timestamp >= todayUtc,
+      ).length;
+      const rToday = msgs.filter(
+        // deno-lint-ignore no-explicit-any
+        (m: any) => m.direction === "inbound" && m.timestamp >= todayUtc,
+      ).length;
+      const rMonth = msgs.filter(
+        // deno-lint-ignore no-explicit-any
+        (m: any) => m.direction === "inbound" && m.timestamp >= thirtyDaysAgo,
+      ).length;
+      const sMonth = acc.sendsThisMonth ?? 0;
+      return (
+        sToday >= maxSendsToday ||
+        rToday >= maxReceivesToday ||
+        sMonth >= maxSendsMonth ||
+        rMonth >= maxReceivesMonth
+      );
+    },
+  );
+
   return (
     <Card title={`Email Accounts (${accounts.length})`}>
+      {anyAccountOverQuota && (
+        <div class="mb-4 p-3.5 bg-red-950/40 border border-red-700/60 rounded-lg text-red-300 text-xs flex items-start gap-2.5">
+          <span class="text-base leading-none mt-0.5">⚠️</span>
+          <div>
+            <span class="font-semibold text-white">Quota reached on one or more mailboxes:</span> Daily limits reset at 00:00 UTC. Incoming emails to capped mailboxes are dropped cleanly to preserve delivery.
+          </div>
+        </div>
+      )}
+
       {trialAvailable && (
         <div class="mb-4 p-3.5 bg-gradient-to-r from-blue-950/60 to-indigo-950/40 border border-blue-500/30 rounded-lg flex items-center justify-between gap-3 text-sm">
           <div class="flex items-center gap-2.5">
             <span class="text-base">✨</span>
             <span class="text-blue-100">
-              <strong class="text-white">Free Trial Available:</strong> Your first mailbox is completely free for 30 days (1,000 sends included). No prepaid balance or deposit required!
+              <strong class="text-white">Free Trial Available:</strong> Your first mailbox is completely free for 30 days (20 sends/day, 50 receives/day, up to 100 sends & 200 receives/mo). No deposit required!
             </span>
           </div>
         </div>
@@ -415,6 +464,13 @@ const AccountsList = ({
                 id: string;
                 address: string;
                 displayName?: string;
+                isFrozen?: boolean;
+                expiresAt?: number;
+                sendsThisMonth?: number;
+                messages?: {
+                  direction: string;
+                  timestamp: number;
+                }[];
                 webhooks: {
                   id: string;
                   url: string;
@@ -423,6 +479,23 @@ const AccountsList = ({
                 }[];
                 createdAt: number;
               }) => {
+                const msgs = account.messages ?? [];
+                const sendsToday = msgs.filter(
+                  (m) => m.direction === "outbound" && m.timestamp >= todayUtc,
+                ).length;
+                const receivesToday = msgs.filter(
+                  (m) => m.direction === "inbound" && m.timestamp >= todayUtc,
+                ).length;
+                const receivesThisMonth = msgs.filter(
+                  (m) => m.direction === "inbound" && m.timestamp >= thirtyDaysAgo,
+                ).length;
+                const sendsThisMonth = account.sendsThisMonth ?? 0;
+
+                const isOverDailySend = sendsToday >= maxSendsToday;
+                const isOverDailyReceive = receivesToday >= maxReceivesToday;
+                const isOverMonthlySend = sendsThisMonth >= maxSendsMonth;
+                const isOverMonthlyReceive = receivesThisMonth >= maxReceivesMonth;
+
                 return (
                   <div key={account.id}>
                     <div class="bg-slate-900 rounded-lg p-4 border border-slate-700 hover:border-slate-600 transition-colors">
@@ -466,11 +539,31 @@ const AccountsList = ({
                               Unlimited
                             </span>
                           )}
-                          <span class="text-xs text-slate-400 font-mono">
-                            📤 {account.sendsToday ?? 0} today ({account.sendsThisMonth ?? 0}/mo sends)
+                          {isOverDailyReceive && (
+                            <span class="text-xs px-2 py-0.5 bg-red-950/80 text-red-300 rounded border border-red-700">
+                              ⚠️ Inbound Capped ({receivesToday}/{maxReceivesToday})
+                            </span>
+                          )}
+                          {isOverDailySend && (
+                            <span class="text-xs px-2 py-0.5 bg-red-950/80 text-red-300 rounded border border-red-700">
+                              ⚠️ Outbound Capped ({sendsToday}/{maxSendsToday})
+                            </span>
+                          )}
+                          {isOverMonthlyReceive && (
+                            <span class="text-xs px-2 py-0.5 bg-red-950/80 text-red-300 rounded border border-red-700">
+                              ⚠️ Monthly Inbound Limit
+                            </span>
+                          )}
+                          {isOverMonthlySend && (
+                            <span class="text-xs px-2 py-0.5 bg-red-950/80 text-red-300 rounded border border-red-700">
+                              ⚠️ Monthly Outbound Limit
+                            </span>
+                          )}
+                          <span class={`text-xs font-mono ${isOverDailySend || isOverMonthlySend ? "text-red-400 font-medium" : "text-slate-400"}`}>
+                            📤 {sendsToday}/{maxSendsToday} today ({sendsThisMonth}/{maxSendsMonth} mo sends)
                           </span>
-                          <span class="text-xs text-slate-400 font-mono">
-                            📥 {account.receivesToday ?? 0} today ({account.receivesThisMonth ?? 0}/mo receives)
+                          <span class={`text-xs font-mono ${isOverDailyReceive || isOverMonthlyReceive ? "text-red-400 font-medium" : "text-slate-400"}`}>
+                            📥 {receivesToday}/{maxReceivesToday} today ({receivesThisMonth}/{maxReceivesMonth} mo receives)
                           </span>
                         </div>
                         <div class="flex items-center gap-3">
@@ -482,7 +575,9 @@ const AccountsList = ({
                               setSendingFor(
                                 sendingFor === account.id ? null : account.id,
                               )}
-                            class="text-xs px-2 py-1 bg-emerald-700 hover:bg-emerald-600 text-white rounded transition-colors"
+                            disabled={isOverDailySend || isOverMonthlySend}
+                            class="text-xs px-2 py-1 bg-emerald-700 hover:bg-emerald-600 disabled:bg-slate-700 disabled:text-slate-500 text-white rounded transition-colors"
+                            title={isOverDailySend || isOverMonthlySend ? "Send limit reached for today or this month" : undefined}
                           >
                             {sendingFor === account.id
                               ? "Cancel"

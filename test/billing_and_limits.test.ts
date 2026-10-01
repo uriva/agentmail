@@ -9,6 +9,7 @@ import {
   handleSupportPrompt,
 } from "../src/handlers/supportBot.ts";
 import { handleInbound } from "../src/handlers/inbound.ts";
+import { notifyQuotaExceeded } from "../src/services/quotaNotifier.ts";
 
 Deno.env.set("DENO_ENV", "test");
 
@@ -408,6 +409,51 @@ Deno.test("Billing & account expiration flow", async (t) => {
       db.tx.accounts[cappedAccountId]!.delete(),
       db.tx.organizations[cappedOrgId]!.delete(),
     );
+    await db.transact(deleteOps);
+  });
+
+  await t.step("Quota notification sends at most 1 email per period", async () => {
+    const notifyOrgId = id();
+    const notifyAccountId = id();
+    await db.transact([
+      db.tx.organizations[notifyOrgId]!.update({
+        name: "Notify Org",
+        createdAt: Date.now(),
+        balance: 0,
+        trialUsed: true,
+      }),
+    ]);
+
+    const first = await notifyQuotaExceeded({
+      orgId: notifyOrgId,
+      accountAddress: `notify-${notifyAccountId}@theagentmail.net`,
+      accountId: notifyAccountId,
+      quotaType: "daily_receive",
+      limit: 50,
+      billingEmail: "delivered@resend.dev",
+      isPaying: false,
+    });
+    assertEquals(first, true);
+
+    const second = await notifyQuotaExceeded({
+      orgId: notifyOrgId,
+      accountAddress: `notify-${notifyAccountId}@theagentmail.net`,
+      accountId: notifyAccountId,
+      quotaType: "daily_receive",
+      limit: 50,
+      billingEmail: "delivered@resend.dev",
+      isPaying: false,
+    });
+    assertEquals(second, false);
+
+    const { karmaEvents } = await db.query({
+      karmaEvents: {
+        $: { where: { "organization.id": notifyOrgId } },
+      },
+    });
+    // deno-lint-ignore no-explicit-any
+    const deleteOps: any[] = karmaEvents.map((e) => db.tx.karmaEvents[e.id]!.delete());
+    deleteOps.push(db.tx.organizations[notifyOrgId]!.delete());
     await db.transact(deleteOps);
   });
 

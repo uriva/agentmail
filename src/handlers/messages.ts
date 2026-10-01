@@ -5,6 +5,7 @@ import { uploadFile } from "../services/storage.ts";
 import { captureEvent } from "../services/posthog.ts";
 import { scanOutboundEmail } from "../services/jev.ts";
 import { getUtcDayStart, isPayingOrg, planDetails } from "../planData.ts";
+import { notifyQuotaExceeded } from "../services/quotaNotifier.ts";
 
 const SPAM_PATTERNS = [
   "페이지 소유권 확인",
@@ -106,7 +107,20 @@ const sendMessage = async (
 
     const todayUtc = getUtcDayStart();
     const sendsToday = await countMessages(accountId, "outbound", todayUtc);
+    const billingEmail = org?.billingUser?.email ||
+      org?.members?.find((m: { email?: string }) => Boolean(m.email))?.email;
+
     if (sendsToday >= limits.sendsPerDay) {
+      notifyQuotaExceeded({
+        orgId,
+        accountAddress: account.address,
+        accountId,
+        quotaType: "daily_send",
+        limit: limits.sendsPerDay,
+        billingEmail,
+        isPaying,
+      }).catch((err) => console.error("[messages] Quota notify error:", err));
+
       return Response.json(
         {
           error:
@@ -118,6 +132,16 @@ const sendMessage = async (
     }
 
     if (sendsInCurrentPeriod >= limits.sendsPerMonth) {
+      notifyQuotaExceeded({
+        orgId,
+        accountAddress: account.address,
+        accountId,
+        quotaType: "monthly_send",
+        limit: limits.sendsPerMonth,
+        billingEmail,
+        isPaying,
+      }).catch((err) => console.error("[messages] Quota notify error:", err));
+
       return Response.json(
         {
           error:
