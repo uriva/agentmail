@@ -33,6 +33,7 @@
     "npm:preact-iso@2.9.1": "2.9.1_preact@10.26.7",
     "npm:preact@10.26.7": "10.26.7",
     "npm:sjcl@^1.0.9": "1.0.9",
+    "npm:stripe@*": "17.7.0",
     "npm:stripe@17.7.0": "17.7.0",
     "npm:tailwindcss@4.2.1": "4.2.1",
     "npm:vite-prerender-plugin@0.5.12": "0.5.12_vite@7.3.1__picomatch@4.0.3",

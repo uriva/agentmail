@@ -69,14 +69,17 @@ const StatNumber = ({
 const BillingSection = ({
   orgId,
   userToken,
+  trialAvailable: propTrialAvailable,
   refreshTrigger,
 }: {
   orgId: string;
   userToken: string;
+  trialAvailable?: boolean;
   refreshTrigger?: number;
 }) => {
   const [balance, setBalance] = useState<number | null>(null);
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
+  const [apiTrialUsed, setApiTrialUsed] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isTopupLoading, setIsTopupLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -95,6 +98,9 @@ const BillingSection = ({
       const json = await res.json();
       setBalance(json.data?.balance ?? 0);
       setIsAdmin(Boolean(json.data?.admin));
+      if (typeof json.data?.trialUsed === "boolean") {
+        setApiTrialUsed(json.data.trialUsed);
+      }
       setError(null);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Error loading balance");
@@ -171,6 +177,8 @@ const BillingSection = ({
     );
   }
 
+  const isTrialAvailable = !isAdmin &&
+    (propTrialAvailable ?? (apiTrialUsed !== null ? !apiTrialUsed : false));
   const currentBalance = balance ?? 0;
   const balanceColor = isAdmin
     ? "text-blue-400"
@@ -178,6 +186,8 @@ const BillingSection = ({
     ? "text-green-400"
     : currentBalance > 0
     ? "text-yellow-400"
+    : isTrialAvailable
+    ? "text-slate-300"
     : "text-red-400";
 
   return (
@@ -189,7 +199,10 @@ const BillingSection = ({
             label="Prepaid Balance"
             color={balanceColor}
           />
-          <StatNumber value="$1.00" label="Cost / Mailbox / Mo" />
+          <StatNumber
+            value={isTrialAvailable ? "1 Free ($1/mo after)" : "$1.00"}
+            label="Cost / Mailbox / Mo"
+          />
           <StatNumber value="1,000" label="Sends / Mo Included" />
         </div>
         {!isAdmin && (
@@ -220,9 +233,18 @@ const BillingSection = ({
         </div>
       )}
 
-      {!isAdmin && currentBalance <= 0 && (
+      {!isAdmin && currentBalance <= 0 && !isTrialAvailable && (
         <div class="mt-4 p-3 bg-red-900/30 border border-red-700 rounded-lg text-red-300 text-sm">
           Your balance is $0.00. Expired mailboxes will be paused until topped up.
+        </div>
+      )}
+
+      {!isAdmin && isTrialAvailable && (
+        <div class="mt-4 p-3.5 bg-blue-950/40 border border-blue-500/30 rounded-lg text-blue-200 text-sm flex items-start gap-2.5">
+          <span class="text-base leading-none mt-0.5">🎁</span>
+          <div>
+            <span class="font-medium text-white">Free 30-day trial available:</span> Your first mailbox is completely free for 30 days (1,000 sends included). Prepaid balance is only needed for additional mailboxes ($1/mo) or after your trial ends.
+          </div>
         </div>
       )}
     </Card>
@@ -232,10 +254,12 @@ const BillingSection = ({
 const AccountsList = ({
   orgId,
   userToken,
+  trialAvailable,
   onAccountChanged,
 }: {
   orgId: string;
   userToken: string;
+  trialAvailable?: boolean;
   onAccountChanged?: () => void;
 }) => {
   const { isLoading, error, data } = useQuery({
@@ -315,7 +339,18 @@ const AccountsList = ({
 
   return (
     <Card title={`Email Accounts (${accounts.length})`}>
-      <div class="flex gap-2 mb-4">
+      {trialAvailable && (
+        <div class="mb-4 p-3.5 bg-gradient-to-r from-blue-950/60 to-indigo-950/40 border border-blue-500/30 rounded-lg flex items-center justify-between gap-3 text-sm">
+          <div class="flex items-center gap-2.5">
+            <span class="text-base">✨</span>
+            <span class="text-blue-100">
+              <strong class="text-white">Free Trial Available:</strong> Your first mailbox is completely free for 30 days (1,000 sends included). No prepaid balance or deposit required!
+            </span>
+          </div>
+        </div>
+      )}
+
+      <div class="flex gap-2 mb-2">
         <input
           type="text"
           value={newAddress}
@@ -338,16 +373,23 @@ const AccountsList = ({
           class="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white text-sm font-medium rounded-lg transition-colors flex-shrink-0 flex items-center justify-center gap-2"
         >
           {creating && <Spinner />}
-          <span>{creating ? "Creating..." : "Create Account"}</span>
+          <span>{creating ? "Creating..." : trialAvailable ? "Create Free Account (30 Days)" : "Create Account"}</span>
         </button>
       </div>
+      <p class="text-xs text-slate-400 mb-4">
+        {trialAvailable
+          ? "🎉 1 mailbox free for 30 days. Additional mailboxes cost $1.00/month."
+          : "Mailboxes cost $1.00/month from your prepaid balance."}
+      </p>
       {createError && <div class="mb-4 text-red-400 text-sm">{createError}
       </div>}
 
       {accounts.length === 0
         ? (
-          <div class="text-slate-500 text-center py-4">
-            No email accounts yet. Create one above.
+          <div class="text-slate-500 text-center py-6">
+            {trialAvailable
+              ? "No email accounts yet. Claim your free 30-day trial mailbox above!"
+              : "No email accounts yet. Create one above."}
           </div>
         )
         : (
@@ -1472,6 +1514,14 @@ const Dashboard = () => {
     );
   }
 
+  const activeOrg = orgs.find((o: { id: string }) => o.id === activeOrgId);
+  const isOrgAdmin = Boolean(
+    activeOrg?.admin ||
+      activeOrg?.billingUser?.email === "uri.valevski@gmail.com" ||
+      user?.email === "uri.valevski@gmail.com",
+  );
+  const isTrialAvailable = !isOrgAdmin && !Boolean(activeOrg?.trialUsed);
+
   return (
     <div class="space-y-6">
       <div>
@@ -1520,15 +1570,17 @@ const Dashboard = () => {
 
       {activeOrgId && (
         <>
-          <BillingSection
-            orgId={activeOrgId}
-            userToken={userToken}
-            refreshTrigger={balanceRefreshKey}
-          />
           <AccountsList
             orgId={activeOrgId}
             userToken={userToken}
+            trialAvailable={isTrialAvailable}
             onAccountChanged={() => setBalanceRefreshKey((k) => k + 1)}
+          />
+          <BillingSection
+            orgId={activeOrgId}
+            userToken={userToken}
+            trialAvailable={isTrialAvailable}
+            refreshTrigger={balanceRefreshKey}
           />
 
           <div>

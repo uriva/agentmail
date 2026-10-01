@@ -102,6 +102,7 @@ const getBillingBalance = async (
     data: {
       balance: org.balance ?? 0,
       admin: isAdmin,
+      trialUsed: Boolean(org.trialUsed),
     },
   });
 };
