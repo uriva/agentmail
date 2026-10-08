@@ -13,7 +13,7 @@
     "push-perms": "npx instant-cli push perms --yes"
   },
   "imports": {
-    "ai-utils": "jsr:@uri/ai-utils@^0.3.34",
+    "ai-utils": "jsr:@uri/ai-utils@^0.3.80",
     "gamla": "jsr:@uri/gamla",
     "@instantdb/admin": "npm:@instantdb/admin@1.0.65",
     "@instantdb/react": "npm:@instantdb/react@1.0.65",

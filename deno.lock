@@ -4,28 +4,28 @@
     "jsr:@noble/hashes@2.0.0": "2.0.0",
     "jsr:@std/assert@*": "1.0.19",
     "jsr:@std/dotenv@*": "0.225.8",
-    "jsr:@std/encoding@*": "0.224.0",
+    "jsr:@std/encoding@*": "1.0.11",
     "jsr:@std/encoding@0.224.0": "0.224.0",
     "jsr:@std/encoding@1": "1.0.11",
     "jsr:@std/encoding@^1.0.10": "1.0.11",
     "jsr:@std/internal@^1.0.12": "1.0.14",
     "jsr:@std/internal@^1.0.14": "1.0.14",
     "jsr:@std/path@1": "1.1.6",
-    "jsr:@uri/ai-utils@~0.3.34": "0.3.34",
-    "jsr:@uri/gamla@*": "0.0.14",
+    "jsr:@uri/ai-utils@~0.3.80": "0.3.80",
+    "jsr:@uri/gamla@*": "0.0.17",
     "jsr:@uri/gamla@0.0.16": "0.0.16",
     "jsr:@uri/inject@0.0.2": "0.0.2",
     "jsr:@uri/rmmbr@0.1.5": "0.1.5",
     "npm:@anthropic-ai/sdk@0.39.0": "0.39.0",
-    "npm:@deno/vite-plugin@^1.0.5": "1.0.6_vite@7.3.1__picomatch@4.0.3",
+    "npm:@deno/vite-plugin@^1.0.5": "1.0.6_vite@7.3.1",
     "npm:@google/genai@2.10.0": "2.10.0",
     "npm:@instantdb/admin@*": "1.0.65",
     "npm:@instantdb/admin@1.0.65": "1.0.65",
     "npm:@instantdb/core@1.0.65": "1.0.65",
     "npm:@instantdb/react@1.0.65": "1.0.65_react@19.2.8",
-    "npm:@preact/preset-vite@2.10.2": "2.10.2_@babel+core@7.29.0_vite@7.3.1__picomatch@4.0.3_preact@10.26.7",
+    "npm:@preact/preset-vite@2.10.2": "2.10.2_@babel+core@7.29.0_vite@7.3.1_preact@10.26.7",
     "npm:@preact/signals@2.1.1": "2.1.1_preact@10.26.7",
-    "npm:@tailwindcss/vite@4.2.1": "4.2.1_vite@7.3.1__picomatch@4.0.3",
+    "npm:@tailwindcss/vite@4.2.1": "4.2.1_vite@7.3.1",
     "npm:instant-cli@*": "0.22.142_acorn@8.16.0",
     "npm:js-tiktoken@1.0.21": "1.0.21",
     "npm:openai@5.2.0": "5.2.0_zod@3.25.57",
@@ -36,7 +36,7 @@
     "npm:stripe@*": "17.7.0",
     "npm:stripe@17.7.0": "17.7.0",
     "npm:tailwindcss@4.2.1": "4.2.1",
-    "npm:vite-prerender-plugin@0.5.12": "0.5.12_vite@7.3.1__picomatch@4.0.3",
+    "npm:vite-prerender-plugin@0.5.12": "0.5.12_vite@7.3.1",
     "npm:vite@*": "7.3.1_picomatch@4.0.3",
     "npm:vite@^7.1.5": "7.3.1_picomatch@4.0.3",
     "npm:zod@3.25.57": "3.25.57"
@@ -69,8 +69,8 @@
         "jsr:@std/internal@^1.0.14"
       ]
     },
-    "@uri/ai-utils@0.3.34": {
-      "integrity": "214788ee4125410545777f9f965e2f3ece7e0f0c795a565b5374e7c9ca1669ba",
+    "@uri/ai-utils@0.3.80": {
+      "integrity": "45557d0fad7a38e364b51a220cd64a842c950bc13dcdbc50efdf7600e73ff9fd",
       "dependencies": [
         "jsr:@std/encoding@^1.0.10",
         "jsr:@uri/gamla@0.0.16",
@@ -83,15 +83,15 @@
         "npm:zod"
       ]
     },
-    "@uri/gamla@0.0.14": {
-      "integrity": "5a83c61f77d0efc761f6a269596cb8d43658e4343d261f8c28ebbd4522e33519",
+    "@uri/gamla@0.0.16": {
+      "integrity": "96a92fa0340b10447e7625b0d8a1a53d301aeb04aeee90c9b7cc899e7774e072",
       "dependencies": [
         "jsr:@noble/hashes",
         "jsr:@std/encoding@0.224.0"
       ]
     },
-    "@uri/gamla@0.0.16": {
-      "integrity": "96a92fa0340b10447e7625b0d8a1a53d301aeb04aeee90c9b7cc899e7774e072",
+    "@uri/gamla@0.0.17": {
+      "integrity": "fa61927f47c28214285e83cedc4b7d293b2e0d0a92242f561a1b3da90928281f",
       "dependencies": [
         "jsr:@noble/hashes",
         "jsr:@std/encoding@0.224.0"
@@ -299,7 +299,7 @@
         "@babel/helper-validator-identifier@8.0.0-rc.2"
       ]
     },
-    "@deno/vite-plugin@1.0.6_vite@7.3.1__picomatch@4.0.3": {
+    "@deno/vite-plugin@1.0.6_vite@7.3.1": {
       "integrity": "sha512-Sh5XqvFuKAwjARTesi0n6xRpEXm1V0UeqKh+SxIrexCofxOaieNDMqXZD02RiZCg0mrJ43V8eCMuVrDfq6mLmg==",
       "dependencies": [
         "vite"
@@ -764,7 +764,7 @@
     "@posthog/types@1.359.0": {
       "integrity": "sha512-IcRRmDqDwXnwcB1ISg2NofvDXUwJKUjmIWuRqaEzD1sB+VyY7YX9R1pctXoZ4181cdjYG8Ed/g7fnpJMloZY/A=="
     },
-    "@preact/preset-vite@2.10.2_@babel+core@7.29.0_vite@7.3.1__picomatch@4.0.3_preact@10.26.7": {
+    "@preact/preset-vite@2.10.2_@babel+core@7.29.0_vite@7.3.1_preact@10.26.7": {
       "integrity": "sha512-K9wHlJOtkE+cGqlyQ5v9kL3Ge0Ql4LlIZjkUTL+1zf3nNdF88F9UZN6VTV8jdzBX9Fl7WSzeNMSDG7qECPmSmg==",
       "dependencies": [
         "@babel/core",
@@ -801,7 +801,7 @@
     "@prefresh/utils@1.2.1": {
       "integrity": "sha512-vq/sIuN5nYfYzvyayXI4C2QkprfNaHUQ9ZX+3xLD8nL3rWyzpxOm1+K7RtMbhd+66QcaISViK7amjnheQ/4WZw=="
     },
-    "@prefresh/vite@2.4.11_preact@10.26.7_vite@7.3.1__picomatch@4.0.3": {
+    "@prefresh/vite@2.4.11_preact@10.26.7_vite@7.3.1": {
       "integrity": "sha512-/XjURQqdRiCG3NpMmWqE9kJwrg9IchIOWHzulCfqg2sRe/8oQ1g5De7xrk9lbqPIQLn7ntBkKdqWXIj4E9YXyg==",
       "dependencies": [
         "@babel/core",
@@ -1067,7 +1067,7 @@
         "@tailwindcss/oxide-win32-x64-msvc"
       ]
     },
-    "@tailwindcss/vite@4.2.1_vite@7.3.1__picomatch@4.0.3": {
+    "@tailwindcss/vite@4.2.1_vite@7.3.1": {
       "integrity": "sha512-TBf2sJjYeb28jD2U/OhwdW0bbOsxkWPwQ7SrqGf9sVcoYwZj7rkXljroBO9wKBut9XnmQLXanuDUeqQK0lGg/w==",
       "dependencies": [
         "@tailwindcss/node",
@@ -2310,7 +2310,7 @@
       "integrity": "sha512-0/A9rDy9P7cJ+8w1c9WD9V//9Wj15Ce2MPz8Ri6032usz+NfePxx5AcN3bN+r6ZL6jEo066/yNYB3tn4pQEx+A==",
       "bin": true
     },
-    "vite-prerender-plugin@0.5.12_vite@7.3.1__picomatch@4.0.3": {
+    "vite-prerender-plugin@0.5.12_vite@7.3.1": {
       "integrity": "sha512-EiwhbMn+flg14EysbLTmZSzq8NGTxhytgK3bf4aGRF1evWLGwZiHiUJ1KZDvbxgKbMf2pG6fJWGEa3UZXOnR1g==",
       "dependencies": [
         "kolorist",
@@ -2380,8 +2380,8 @@
         "strip-ansi@7.1.2"
       ]
     },
-    "ws@8.21.3": {
-      "integrity": "sha512-201TZ/kPWxoPr/OKWjquZR1SWKXcvxdH+e1xrx89b3YbmzLMFCLfnaG1HFIgWzJOEWZ7MvpK++odZufgYR50Rw=="
+    "ws@8.22.0": {
+      "integrity": "sha512-Ydggc987+RO0AnWtZ/7Wq9FtNvcrL1b/RO0ud9mWjUPgDrsAAwQSF51sm2hm1XofbU/4jkpGEsLFsZZxU+1DOg=="
     },
     "wsl-utils@0.1.0": {
       "integrity": "sha512-h3Fbisa2nKGPxCpm89Hk33lBLsnaGBvctQopaBSOW/uIs6FTe1ATyAnKFJrzVs9vpGdsTe73WF3V4lIsk4Gacw==",
@@ -2413,7 +2413,7 @@
   },
   "workspace": {
     "dependencies": [
-      "jsr:@uri/ai-utils@~0.3.34",
+      "jsr:@uri/ai-utils@~0.3.80",
       "jsr:@uri/gamla@*",
       "npm:@deno/vite-plugin@^1.0.5",
       "npm:@instantdb/admin@1.0.65",
