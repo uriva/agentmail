@@ -34,6 +34,7 @@
   },
   "deploy": {
     "build": "deno task build:web",
+    "buildMemoryLimit": 2048,
     "runtime": {
       "entrypoint": "src/main.ts"
     },
