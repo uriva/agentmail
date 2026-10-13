@@ -6,7 +6,7 @@
   "tasks": {
     "dev": "deno run --allow-net --allow-env --allow-read --watch src/main.ts",
     "dev:web": "deno run -A --node-modules-dir=auto npm:vite",
-    "build:web": "mkdir -p web/node_modules/vite-prerender-plugin && deno run -A --node-modules-dir=auto npm:vite build",
+    "build:web": "mkdir -p web/node_modules/vite-prerender-plugin && deno run -A --node-modules-dir=auto npm:vite build && rm -rf node_modules web/node_modules",
     "start": "deno run --allow-net --allow-env --allow-read src/main.ts",
     "check": "deno check src/main.ts && deno check sdk/src/index.ts",
     "push-schema": "npx instant-cli push schema --yes",
