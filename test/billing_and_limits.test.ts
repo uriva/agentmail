@@ -10,6 +10,8 @@ import {
 } from "../src/handlers/supportBot.ts";
 import { handleInbound } from "../src/handlers/inbound.ts";
 import { notifyQuotaExceeded } from "../src/services/quotaNotifier.ts";
+import { handleStripeWebhook } from "../src/handlers/billing.ts";
+import { stripe } from "../src/services/stripe.ts";
 
 Deno.env.set("DENO_ENV", "test");
 
@@ -455,6 +457,52 @@ Deno.test("Billing & account expiration flow", async (t) => {
     const deleteOps: any[] = karmaEvents.map((e) => db.tx.karmaEvents[e.id]!.delete());
     deleteOps.push(db.tx.organizations[notifyOrgId]!.delete());
     await db.transact(deleteOps);
+  });
+
+  await t.step("Stripe webhook constructs event asynchronously in Deno", async () => {
+    const testSecret = "whsec_test_secret_for_deno_webhook";
+    const previousSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
+    Deno.env.set("STRIPE_WEBHOOK_SECRET", testSecret);
+
+    const payload = JSON.stringify({
+      id: "evt_test_event",
+      type: "customer.subscription.updated",
+      data: { object: {} },
+    });
+    const validSignature = await stripe.webhooks.generateTestHeaderStringAsync({
+      payload,
+      secret: testSecret,
+    });
+
+    const validReq = new Request("http://localhost/stripe-webhook", {
+      method: "POST",
+      headers: {
+        "stripe-signature": validSignature,
+        "content-type": "application/json",
+      },
+      body: payload,
+    });
+    const validRes = await handleStripeWebhook(validReq);
+    assertEquals(validRes.status, 200);
+    const validJson = await validRes.json();
+    assertEquals(validJson, { received: true });
+
+    const invalidReq = new Request("http://localhost/stripe-webhook", {
+      method: "POST",
+      headers: {
+        "stripe-signature": "t=1,v1=invalidsig",
+        "content-type": "application/json",
+      },
+      body: payload,
+    });
+    const invalidRes = await handleStripeWebhook(invalidReq);
+    assertEquals(invalidRes.status, 400);
+
+    if (previousSecret) {
+      Deno.env.set("STRIPE_WEBHOOK_SECRET", previousSecret);
+    } else {
+      Deno.env.delete("STRIPE_WEBHOOK_SECRET");
+    }
   });
 
   // Cleanup test entities

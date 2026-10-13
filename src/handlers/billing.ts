@@ -119,7 +119,11 @@ const handleStripeWebhook = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const event = stripe.webhooks.constructEvent(body, sig, webhookSecret);
+    const event = await stripe.webhooks.constructEventAsync(
+      body,
+      sig,
+      webhookSecret,
+    );
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
       await applyCheckoutSession(session.id);
