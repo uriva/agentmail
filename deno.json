@@ -30,7 +30,7 @@
     "vite-prerender-plugin": "npm:vite-prerender-plugin@0.5.12",
     "@tailwindcss/vite": "npm:@tailwindcss/vite@4.2.1",
     "tailwindcss": "npm:tailwindcss@4.2.1",
-    "stripe": "npm:stripe@17.7.0"
+    "stripe": "npm:stripe@23.0.1"
   },
   "deploy": {
     "build": "deno task build:web",
@@ -47,9 +47,3 @@
     "jsxImportSource": "preact"
   }
 }
-
-
-
-
-
-
