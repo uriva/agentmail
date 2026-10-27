@@ -7,7 +7,7 @@ import { scanInboundEmail } from "../services/jev.ts";
 import { getUtcDayStart, isPayingOrg, planDetails } from "../planData.ts";
 import { notifyQuotaExceeded } from "../services/quotaNotifier.ts";
 import { decodeBase64, encodeBase64 } from "jsr:@std/encoding/base64";
-import { coerce } from "gamla";
+import { unique } from "gamla";
 
 const INBOUND_WEBHOOK_SECRET = Deno.env.get("INBOUND_WEBHOOK_SECRET") ?? "";
 
@@ -222,6 +222,43 @@ const resolveResendPayload = async (raw: any): Promise<any> => {
   return baseData;
 };
 
+const extractHeaders = (
+  // deno-lint-ignore no-explicit-any
+  rawHeaders: any,
+): Record<string, string> | undefined =>
+  typeof rawHeaders === "object" &&
+    rawHeaders !== null &&
+    !Array.isArray(rawHeaders)
+    ? rawHeaders
+    : undefined;
+
+const getHeader = (
+  headers: Record<string, string> | undefined,
+  name: string,
+): string | undefined => {
+  if (!headers) return undefined;
+  const lower = name.toLowerCase();
+  return Object.entries(headers).find(
+    ([k, v]) => k.toLowerCase() === lower && typeof v === "string" && v !== "",
+  )?.[1];
+};
+
+// deno-lint-ignore no-explicit-any
+const parseReferences = (rawRefs: any): string | undefined => {
+  if (Array.isArray(rawRefs)) return rawRefs.join(" ");
+  if (typeof rawRefs !== "string" || !rawRefs.trim()) return undefined;
+  const trimmed = rawRefs.trim();
+  if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) return parsed.join(" ");
+    } catch {
+      // ignore JSON parse error
+    }
+  }
+  return trimmed;
+};
+
 // deno-lint-ignore no-explicit-any
 const normalizePayload = async (raw: any): Promise<InboundEmail> => {
   const data = await resolveResendPayload(raw);
@@ -229,22 +266,27 @@ const normalizePayload = async (raw: any): Promise<InboundEmail> => {
   const to = extractAddresses(data.to);
   const finalTo = to.length > 0 ? to : (data.recipients ?? []);
   const cc = extractAddresses(data.cc);
-  const references = Array.isArray(data.references)
-    ? data.references.join(" ")
-    : (data.references ?? undefined);
+  const headers = extractHeaders(data.headers);
+  const references = parseReferences(
+    data.references ?? getHeader(headers, "references"),
+  );
 
   return {
     from,
     to: finalTo,
     cc: cc.length > 0 ? cc : undefined,
-    subject: data.subject ?? "",
+    subject: getHeader(headers, "subject") ?? data.subject ?? "",
     text: data.text,
     html: data.html,
-    headers: typeof data.headers === "object" && !Array.isArray(data.headers)
-      ? data.headers
-      : undefined,
-    messageId: data.messageId ?? data.message_id ?? data.email_id ?? data.id,
-    inReplyTo: data.inReplyTo ?? data.in_reply_to,
+    headers,
+    messageId: data.messageId ??
+      data.message_id ??
+      getHeader(headers, "message-id") ??
+      data.email_id ??
+      data.id,
+    inReplyTo: data.inReplyTo ??
+      data.in_reply_to ??
+      getHeader(headers, "in-reply-to"),
     references,
     attachments: data.attachments?.length
       ? normalizeAttachments(data.attachments)
@@ -334,15 +376,18 @@ const handleInbound = async (
     });
 
     // Find target account(s) by recipient address
-    const recipients = [
-      ...email.to,
-      ...(email.cc ?? []),
-      ...extractAddresses(payload?.received_for ?? payload?.data?.received_for),
-    ];
+    const recipients = unique(
+      [
+        ...email.to,
+        ...(email.cc ?? []),
+        ...extractAddresses(
+          payload?.received_for ?? payload?.data?.received_for,
+        ),
+      ].map(extractAddress),
+    );
 
     let matched = 0;
-    for (const recipient of recipients) {
-      const address = extractAddress(recipient);
+    for (const address of recipients) {
       console.log("[inbound] Looking up account for address:", address);
 
       // deno-lint-ignore no-explicit-any
@@ -394,12 +439,19 @@ const handleInbound = async (
 
       if (!isAdmin) {
         const isPaying = isPayingOrg(org);
-        const limits = isPaying ? planDetails.limits.paid : planDetails.limits.trial;
+        const limits = isPaying
+          ? planDetails.limits.paid
+          : planDetails.limits.trial;
         const billingEmail = org?.billingUser?.email ||
-          org?.members?.find((m: { email?: string }) => Boolean(m.email))?.email;
+          org?.members?.find((m: { email?: string }) => Boolean(m.email))
+            ?.email;
 
         const todayUtc = getUtcDayStart();
-        const receivesToday = await countMessages(account.id, "inbound", todayUtc);
+        const receivesToday = await countMessages(
+          account.id,
+          "inbound",
+          todayUtc,
+        );
         if (receivesToday >= limits.receivesPerDay) {
           console.log(
             `[inbound] Account ${address} reached daily receive limit (${limits.receivesPerDay}/day). Dropping email.`,
@@ -412,7 +464,9 @@ const handleInbound = async (
             limit: limits.receivesPerDay,
             billingEmail,
             isPaying,
-          }).catch((err) => console.error("[inbound] Quota notify error:", err));
+          }).catch((err) =>
+            console.error("[inbound] Quota notify error:", err)
+          );
           continue;
         }
 
@@ -435,7 +489,9 @@ const handleInbound = async (
             limit: limits.receivesPerMonth,
             billingEmail,
             isPaying,
-          }).catch((err) => console.error("[inbound] Quota notify error:", err));
+          }).catch((err) =>
+            console.error("[inbound] Quota notify error:", err)
+          );
           continue;
         }
       }

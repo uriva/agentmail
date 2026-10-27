@@ -39,18 +39,21 @@ Deno.test("Billing & account expiration flow", async (t) => {
     }),
   ]);
 
-  await t.step("Account creation rejects unverified phone for free trial", async () => {
-    const req = new Request("http://localhost/v1/accounts", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ address: `bot-${testUserId}` }),
-    });
+  await t.step(
+    "Account creation rejects unverified phone for free trial",
+    async () => {
+      const req = new Request("http://localhost/v1/accounts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ address: `bot-${testUserId}` }),
+      });
 
-    const res = await createAccount(req, {}, testOrgId);
-    assertEquals(res.status, 403);
-    const json = await res.json();
-    assertEquals(json.code, "PHONE_VERIFICATION_REQUIRED");
-  });
+      const res = await createAccount(req, {}, testOrgId);
+      assertEquals(res.status, 403);
+      const json = await res.json();
+      assertEquals(json.code, "PHONE_VERIFICATION_REQUIRED");
+    },
+  );
 
   await t.step("Non-admin cannot create reserved address", async () => {
     const req = new Request("http://localhost/v1/accounts", {
@@ -79,7 +82,10 @@ Deno.test("Billing & account expiration flow", async (t) => {
     const res = await createAccount(req, {}, testOrgId);
     assertEquals(res.status, 201);
     const json = await res.json();
-    assertEquals(json.data.address, `support-test-${testUserId}@theagentmail.net`);
+    assertEquals(
+      json.data.address,
+      `support-test-${testUserId}@theagentmail.net`,
+    );
 
     // Reset admin status for subsequent tests
     await db.transact([
@@ -123,29 +129,32 @@ Deno.test("Billing & account expiration flow", async (t) => {
     assertEquals(json.code, "INSUFFICIENT_BALANCE");
   });
 
-  await t.step("Renewal cron freezes expired mailbox when balance is 0", async () => {
-    const expiredTimestamp = Date.now() - 1000;
-    await db.transact([
-      db.tx.accounts[testAccountId]!.update({
-        address: `test-${testAccountId}@theagentmail.net`,
-        displayName: "Expired Bot",
-        createdAt: Date.now() - 31 * 24 * 60 * 60 * 1000,
-        expiresAt: expiredTimestamp,
-        isFrozen: false,
-        sendsThisMonth: 10,
-        sendPeriodStart: Date.now() - 31 * 24 * 60 * 60 * 1000,
-      }),
-      db.tx.accounts[testAccountId]!.link({ organization: testOrgId }),
-    ]);
+  await t.step(
+    "Renewal cron freezes expired mailbox when balance is 0",
+    async () => {
+      const expiredTimestamp = Date.now() - 1000;
+      await db.transact([
+        db.tx.accounts[testAccountId]!.update({
+          address: `test-${testAccountId}@theagentmail.net`,
+          displayName: "Expired Bot",
+          createdAt: Date.now() - 31 * 24 * 60 * 60 * 1000,
+          expiresAt: expiredTimestamp,
+          isFrozen: false,
+          sendsThisMonth: 10,
+          sendPeriodStart: Date.now() - 31 * 24 * 60 * 60 * 1000,
+        }),
+        db.tx.accounts[testAccountId]!.link({ organization: testOrgId }),
+      ]);
 
-    // Run cron
-    await runBillingRenewalCheck();
+      // Run cron
+      await runBillingRenewalCheck();
 
-    const { accounts } = await db.query({
-      accounts: { $: { where: { id: testAccountId } } },
-    });
-    assertEquals(accounts[0].isFrozen, true);
-  });
+      const { accounts } = await db.query({
+        accounts: { $: { where: { id: testAccountId } } },
+      });
+      assertEquals(accounts[0].isFrozen, true);
+    },
+  );
 
   await t.step("Frozen account cannot send emails", async () => {
     const req = new Request("http://localhost/v1/messages", {
@@ -164,25 +173,28 @@ Deno.test("Billing & account expiration flow", async (t) => {
     assertEquals(json.code, "ACCOUNT_EXPIRED");
   });
 
-  await t.step("Renewal cron renews mailbox when organization has balance", async () => {
-    // Add $5 to org balance
-    await db.transact([
-      db.tx.organizations[testOrgId]!.update({ balance: 5 }),
-    ]);
+  await t.step(
+    "Renewal cron renews mailbox when organization has balance",
+    async () => {
+      // Add $5 to org balance
+      await db.transact([
+        db.tx.organizations[testOrgId]!.update({ balance: 5 }),
+      ]);
 
-    // Run cron
-    await runBillingRenewalCheck();
+      // Run cron
+      await runBillingRenewalCheck();
 
-    const { accounts, organizations } = await db.query({
-      accounts: { $: { where: { id: testAccountId } } },
-      organizations: { $: { where: { id: testOrgId } } },
-    });
+      const { accounts, organizations } = await db.query({
+        accounts: { $: { where: { id: testAccountId } } },
+        organizations: { $: { where: { id: testOrgId } } },
+      });
 
-    assertEquals(organizations[0].balance, 4); // Deducted $1
-    assertEquals(accounts[0].isFrozen, false); // Unfrozen
-    assertEquals(accounts[0].sendsThisMonth, 0); // Reset sends
-    assertEquals(accounts[0].expiresAt! > Date.now(), true); // Extended
-  });
+      assertEquals(organizations[0].balance, 4); // Deducted $1
+      assertEquals(accounts[0].isFrozen, false); // Unfrozen
+      assertEquals(accounts[0].sendsThisMonth, 0); // Reset sends
+      assertEquals(accounts[0].expiresAt! > Date.now(), true); // Extended
+    },
+  );
 
   await t.step("Support bot prompt returns dynamic prompt text", async () => {
     const req = new Request("http://localhost/v1/support/prompt", {
@@ -194,39 +206,48 @@ Deno.test("Billing & account expiration flow", async (t) => {
     assertEquals(text.includes("support@theagentmail.net"), true);
   });
 
-  await t.step("Support bot tools lookup user and mailbox information", async () => {
-    // Test lookup_user
-    const userReq = new Request("http://localhost/v1/support/tools/lookup-user", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        payload: {
-          params: { email: `test-${testUserId}@example.com` },
+  await t.step(
+    "Support bot tools lookup user and mailbox information",
+    async () => {
+      // Test lookup_user
+      const userReq = new Request(
+        "http://localhost/v1/support/tools/lookup-user",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            payload: {
+              params: { email: `test-${testUserId}@example.com` },
+            },
+          }),
         },
-      }),
-    });
-    const userRes = await handleLookupUser(userReq);
-    assertEquals(userRes.status, 200);
-    const userData = await userRes.json();
-    assertEquals(userData.found, true);
-    assertEquals(userData.organization.balanceDollars, 4);
+      );
+      const userRes = await handleLookupUser(userReq);
+      assertEquals(userRes.status, 200);
+      const userData = await userRes.json();
+      assertEquals(userData.found, true);
+      assertEquals(userData.organization.balanceDollars, 4);
 
-    // Test lookup_mailbox
-    const boxReq = new Request("http://localhost/v1/support/tools/lookup-mailbox", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        payload: {
-          params: { address: `bot-${testUserId}@theagentmail.net` },
+      // Test lookup_mailbox
+      const boxReq = new Request(
+        "http://localhost/v1/support/tools/lookup-mailbox",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            payload: {
+              params: { address: `bot-${testUserId}@theagentmail.net` },
+            },
+          }),
         },
-      }),
-    });
-    const boxRes = await handleLookupMailbox(boxReq);
-    assertEquals(boxRes.status, 200);
-    const boxData = await boxRes.json();
-    assertEquals(boxData.found, true);
-    assertEquals(boxData.isFrozen, false);
-  });
+      );
+      const boxRes = await handleLookupMailbox(boxReq);
+      assertEquals(boxRes.status, 200);
+      const boxData = await boxRes.json();
+      assertEquals(boxData.found, true);
+      assertEquals(boxData.isFrozen, false);
+    },
+  );
 
   await t.step("Daily send limit enforcement for trial account", async () => {
     const trialOrgId = id();
@@ -281,7 +302,11 @@ Deno.test("Billing & account expiration flow", async (t) => {
       }),
     });
 
-    const res = await sendMessage(req, { accountId: trialAccountId }, trialOrgId);
+    const res = await sendMessage(
+      req,
+      { accountId: trialAccountId },
+      trialOrgId,
+    );
     assertEquals(res.status, 429);
     const json = await res.json();
     assertEquals(json.code, "DAILY_SEND_LIMIT_REACHED");
@@ -414,103 +439,180 @@ Deno.test("Billing & account expiration flow", async (t) => {
     await db.transact(deleteOps);
   });
 
-  await t.step("Quota notification sends at most 1 email per period", async () => {
-    const notifyOrgId = id();
-    const notifyAccountId = id();
-    await db.transact([
-      db.tx.organizations[notifyOrgId]!.update({
-        name: "Notify Org",
-        createdAt: Date.now(),
-        balance: 0,
-        trialUsed: true,
-      }),
-    ]);
+  await t.step(
+    "Quota notification sends at most 1 email per period",
+    async () => {
+      const notifyOrgId = id();
+      const notifyAccountId = id();
+      await db.transact([
+        db.tx.organizations[notifyOrgId]!.update({
+          name: "Notify Org",
+          createdAt: Date.now(),
+          balance: 0,
+          trialUsed: true,
+        }),
+      ]);
 
-    const first = await notifyQuotaExceeded({
-      orgId: notifyOrgId,
-      accountAddress: `notify-${notifyAccountId}@theagentmail.net`,
-      accountId: notifyAccountId,
-      quotaType: "daily_receive",
-      limit: 50,
-      billingEmail: "delivered@resend.dev",
-      isPaying: false,
-    });
-    assertEquals(first, true);
+      const first = await notifyQuotaExceeded({
+        orgId: notifyOrgId,
+        accountAddress: `notify-${notifyAccountId}@theagentmail.net`,
+        accountId: notifyAccountId,
+        quotaType: "daily_receive",
+        limit: 50,
+        billingEmail: "delivered@resend.dev",
+        isPaying: false,
+      });
+      assertEquals(first, true);
 
-    const second = await notifyQuotaExceeded({
-      orgId: notifyOrgId,
-      accountAddress: `notify-${notifyAccountId}@theagentmail.net`,
-      accountId: notifyAccountId,
-      quotaType: "daily_receive",
-      limit: 50,
-      billingEmail: "delivered@resend.dev",
-      isPaying: false,
-    });
-    assertEquals(second, false);
+      const second = await notifyQuotaExceeded({
+        orgId: notifyOrgId,
+        accountAddress: `notify-${notifyAccountId}@theagentmail.net`,
+        accountId: notifyAccountId,
+        quotaType: "daily_receive",
+        limit: 50,
+        billingEmail: "delivered@resend.dev",
+        isPaying: false,
+      });
+      assertEquals(second, false);
 
-    const { karmaEvents } = await db.query({
-      karmaEvents: {
-        $: { where: { "organization.id": notifyOrgId } },
-      },
-    });
-    // deno-lint-ignore no-explicit-any
-    const deleteOps: any[] = karmaEvents.map((e) => db.tx.karmaEvents[e.id]!.delete());
-    deleteOps.push(db.tx.organizations[notifyOrgId]!.delete());
-    await db.transact(deleteOps);
-  });
+      const { karmaEvents } = await db.query({
+        karmaEvents: {
+          $: { where: { "organization.id": notifyOrgId } },
+        },
+      });
+      // deno-lint-ignore no-explicit-any
+      const deleteOps: any[] = karmaEvents.map((e) =>
+        db.tx.karmaEvents[e.id]!.delete()
+      );
+      deleteOps.push(db.tx.organizations[notifyOrgId]!.delete());
+      await db.transact(deleteOps);
+    },
+  );
 
-  await t.step("Stripe webhook constructs event asynchronously in Deno", async () => {
-    const testSecret = "whsec_test_secret_for_deno_webhook";
-    const previousSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
-    Deno.env.set("STRIPE_WEBHOOK_SECRET", testSecret);
+  await t.step(
+    "Stripe webhook constructs event asynchronously in Deno",
+    async () => {
+      const testSecret = "whsec_test_secret_for_deno_webhook";
+      const previousSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
+      Deno.env.set("STRIPE_WEBHOOK_SECRET", testSecret);
 
-    const payload = JSON.stringify({
-      id: "evt_test_event",
-      type: "customer.subscription.updated",
-      data: { object: {} },
-    });
-    const validSignature = await stripe.webhooks.generateTestHeaderStringAsync({
-      payload,
-      secret: testSecret,
-    });
+      const payload = JSON.stringify({
+        id: "evt_test_event",
+        type: "customer.subscription.updated",
+        data: { object: {} },
+      });
+      const validSignature = await stripe.webhooks
+        .generateTestHeaderStringAsync({
+          payload,
+          secret: testSecret,
+        });
 
-    const validReq = new Request("http://localhost/stripe-webhook", {
-      method: "POST",
-      headers: {
-        "stripe-signature": validSignature,
-        "content-type": "application/json",
-      },
-      body: payload,
-    });
-    const validRes = await handleStripeWebhook(validReq);
-    assertEquals(validRes.status, 200);
-    const validJson = await validRes.json();
-    assertEquals(validJson, { received: true });
+      const validReq = new Request("http://localhost/stripe-webhook", {
+        method: "POST",
+        headers: {
+          "stripe-signature": validSignature,
+          "content-type": "application/json",
+        },
+        body: payload,
+      });
+      const validRes = await handleStripeWebhook(validReq);
+      assertEquals(validRes.status, 200);
+      const validJson = await validRes.json();
+      assertEquals(validJson, { received: true });
 
-    const invalidReq = new Request("http://localhost/stripe-webhook", {
-      method: "POST",
-      headers: {
-        "stripe-signature": "t=1,v1=invalidsig",
-        "content-type": "application/json",
-      },
-      body: payload,
-    });
-    const invalidRes = await handleStripeWebhook(invalidReq);
-    assertEquals(invalidRes.status, 400);
+      const invalidReq = new Request("http://localhost/stripe-webhook", {
+        method: "POST",
+        headers: {
+          "stripe-signature": "t=1,v1=invalidsig",
+          "content-type": "application/json",
+        },
+        body: payload,
+      });
+      const invalidRes = await handleStripeWebhook(invalidReq);
+      assertEquals(invalidRes.status, 400);
 
-    if (previousSecret) {
-      Deno.env.set("STRIPE_WEBHOOK_SECRET", previousSecret);
-    } else {
-      Deno.env.delete("STRIPE_WEBHOOK_SECRET");
-    }
-  });
+      if (previousSecret) {
+        Deno.env.set("STRIPE_WEBHOOK_SECRET", previousSecret);
+      } else {
+        Deno.env.delete("STRIPE_WEBHOOK_SECRET");
+      }
+    },
+  );
+
+  await t.step(
+    "Inbound preserves exact header subject, threading headers, and deduplicates recipients",
+    async () => {
+      const rtlAccountId = id();
+      const rtlOrgId = id();
+      const rtlAddress = `rtl-${rtlAccountId}@theagentmail.net`;
+      await db.transact([
+        db.tx.organizations[rtlOrgId]!.update({
+          name: "RTL Inbound Org",
+          createdAt: Date.now(),
+          balance: 0,
+          trialUsed: true,
+          admin: false,
+        }),
+        db.tx.accounts[rtlAccountId]!.update({
+          address: rtlAddress,
+          createdAt: Date.now(),
+          expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
+          isFrozen: false,
+        }),
+        db.tx.accounts[rtlAccountId]!.link({ organization: rtlOrgId }),
+      ]);
+
+      const exactSubject = "Re: \u200f \u200f Project Intro";
+      const inboundReq = new Request("http://localhost/v1/inbound", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          from: "sender@example.com",
+          to: [rtlAddress],
+          received_for: rtlAddress,
+          subject: "Re:   Project Intro",
+          text: "What does this mean?",
+          headers: {
+            subject: exactSubject,
+            "message-id": "<msg-123@mail.gmail.com>",
+            "in-reply-to": "<parent-456@outlook.com>",
+            references: '["<root-000@example.com>","<parent-456@outlook.com>"]',
+          },
+        }),
+      });
+
+      const inboundRes = await handleInbound(inboundReq, {}, rtlOrgId);
+      assertEquals(inboundRes.status, 200);
+
+      const { messages } = await db.query({
+        messages: {
+          $: { where: { "account.id": rtlAccountId } },
+        },
+      });
+      assertEquals(messages.length, 1);
+      assertEquals(messages[0]!.subject, exactSubject);
+      assertEquals(messages[0]!.inReplyTo, "<parent-456@outlook.com>");
+      assertEquals(
+        messages[0]!.references,
+        "<root-000@example.com> <parent-456@outlook.com>",
+      );
+
+      await db.transact([
+        db.tx.messages[messages[0]!.id]!.delete(),
+        db.tx.accounts[rtlAccountId]!.delete(),
+        db.tx.organizations[rtlOrgId]!.delete(),
+      ]);
+    },
+  );
 
   // Cleanup test entities
   const { accounts: orgAccounts } = await db.query({
     accounts: { $: { where: { "organization.id": testOrgId } } },
   });
   // deno-lint-ignore no-explicit-any
-  const deleteOps: any[] = orgAccounts.map((a) => db.tx.accounts[a.id]!.delete());
+  const deleteOps: any[] = orgAccounts.map((a) =>
+    db.tx.accounts[a.id]!.delete()
+  );
   deleteOps.push(db.tx.organizations[testOrgId]!.delete());
   deleteOps.push(db.tx.$users[testUserId]!.delete());
   await db.transact(deleteOps);
