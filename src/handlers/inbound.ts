@@ -265,8 +265,11 @@ const normalizePayload = async (raw: any): Promise<InboundEmail> => {
   const from = extractFromString(data.from);
   const to = extractAddresses(data.to);
   const finalTo = to.length > 0 ? to : (data.recipients ?? []);
-  const cc = extractAddresses(data.cc);
   const headers = extractHeaders(data.headers);
+  const cc = extractAddresses(data.cc);
+  const finalCc = cc.length > 0
+    ? cc
+    : extractAddresses(getHeader(headers, "cc"));
   const references = parseReferences(
     data.references ?? getHeader(headers, "references"),
   );
@@ -274,7 +277,7 @@ const normalizePayload = async (raw: any): Promise<InboundEmail> => {
   return {
     from,
     to: finalTo,
-    cc: cc.length > 0 ? cc : undefined,
+    cc: finalCc.length > 0 ? finalCc : undefined,
     subject: getHeader(headers, "subject") ?? data.subject ?? "",
     text: data.text,
     html: data.html,
@@ -587,8 +590,10 @@ const handleInbound = async (
               data: {
                 id: messageId,
                 account_id: account.id,
+                account_address: account.address,
                 from: email.from,
                 to: email.to,
+                ...(email.cc?.length ? { cc: email.cc } : {}),
                 subject: email.subject,
                 text: typeof email.text === "string" ? email.text : "",
                 html: typeof email.html === "string" ? email.html : "",
