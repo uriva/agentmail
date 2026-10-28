@@ -3,3 +3,5 @@ node_modules/
 *.json.bak
 gcp-sa-key.json
 web/dist/
+dist/
+.wrangler/

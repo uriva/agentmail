@@ -28,7 +28,7 @@ import {
   handleStripeWebhook,
   syncCheckout,
 } from "./handlers/billing.ts";
-import { runBillingRenewalCheck } from "./services/billingCron.ts";
+import { trackBackgroundTask } from "./services/posthog.ts";
 import {
   createOrganization,
   listOrganizations,
@@ -100,9 +100,11 @@ const authenticateApiKey = async (
   if (!apiKeyRecord?.organization) return null;
 
   // Update lastUsedAt (fire and forget)
-  db.transact([
-    db.tx.apiKeys[apiKeyRecord.id]!.update({ lastUsedAt: Date.now() }),
-  ]);
+  trackBackgroundTask(
+    db.transact([
+      db.tx.apiKeys[apiKeyRecord.id]!.update({ lastUsedAt: Date.now() }),
+    ]),
+  );
 
   return {
     orgId: apiKeyRecord.organization.id,
@@ -282,7 +284,12 @@ const routes: readonly Route[] = [
   route("GET", "/v1/support/prompt", handleSupportPrompt, "none"),
   route("POST", "/v1/support/prompt", handleSupportPrompt, "none"),
   route("POST", "/v1/support/tools/lookup-user", handleLookupUser, "none"),
-  route("POST", "/v1/support/tools/lookup-mailbox", handleLookupMailbox, "none"),
+  route(
+    "POST",
+    "/v1/support/tools/lookup-mailbox",
+    handleLookupMailbox,
+    "none",
+  ),
 
   // Health
   route(
@@ -474,7 +481,9 @@ const handleRequest = async (req: Request): Promise<Response> => {
 
 // --- Static file serving ---
 
-const DIST_DIR = new URL("../web/dist", import.meta.url).pathname;
+const DIST_DIR = import.meta.url
+  ? new URL("../web/dist", import.meta.url).pathname
+  : "/web/dist";
 
 const contentTypeByExt: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
@@ -533,16 +542,18 @@ const handleStatic = async (req: Request): Promise<Response | null> => {
 
 // --- Start server ---
 
+export const isApiPath = (pathname: string): boolean =>
+  pathname.startsWith("/v1/") ||
+  pathname === "/inbound" ||
+  pathname === "/stripe-webhook" ||
+  pathname === "/health";
+
 const handler = async (req: Request): Promise<Response> => {
   const response = await handleRequest(req);
   // If API returned 404 and this isn't an API path, try static files
   if (response.status === 404) {
     const url = new URL(req.url);
-    const isApiPath = url.pathname.startsWith("/v1/") ||
-      url.pathname === "/inbound" ||
-      url.pathname === "/stripe-webhook" ||
-      url.pathname === "/health";
-    if (!isApiPath && req.method === "GET") {
+    if (!isApiPath(url.pathname) && req.method === "GET") {
       const staticResponse = await handleStatic(req);
       if (staticResponse) return staticResponse;
     }
@@ -550,6 +561,8 @@ const handler = async (req: Request): Promise<Response> => {
   return response;
 };
 
-Deno.cron("mailbox-renewal-check", "0 * * * *", runBillingRenewalCheck);
+export { handleRequest };
 
-Deno.serve({ port: Number(Deno.env.get("PORT") ?? 8000) }, handler);
+if (import.meta.main) {
+  Deno.serve({ port: Number(Deno.env.get("PORT") ?? 8000) }, handler);
+}

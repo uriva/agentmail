@@ -14,6 +14,6 @@
 # Deno & Deployment
 
 - Dependencies live in `deno.json` (no `package.json`).
-- `src/main.ts` auto-deploys to Deno Deploy on push to `main` via GitHub
-  integration. Do not create GitHub Actions deploy workflows or run
-  `deno deploy` manually.
+- Deployed to Cloudflare Workers (`agentmail`, `wrangler.jsonc`) at
+  `https://theagentmail.net` and `https://api.theagentmail.net` via
+  `npx wrangler deploy`.

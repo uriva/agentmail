@@ -1,4 +1,5 @@
 import { db, id } from "../db.ts";
+import { trackBackgroundTask } from "./posthog.ts";
 import { emailDomain, sendEmail } from "./resend.ts";
 
 export type QuotaType =
@@ -7,7 +8,7 @@ export type QuotaType =
   | "daily_receive"
   | "monthly_receive";
 
-export const notifyQuotaExceeded = async ({
+const runNotifyQuotaExceeded = async ({
   orgId,
   accountAddress,
   accountId,
@@ -109,3 +110,7 @@ The AgentMail Team`,
     return false;
   }
 };
+
+export const notifyQuotaExceeded = (
+  params: Parameters<typeof runNotifyQuotaExceeded>[0],
+): Promise<boolean> => trackBackgroundTask(runNotifyQuotaExceeded(params));
