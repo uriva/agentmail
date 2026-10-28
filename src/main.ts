@@ -553,7 +553,10 @@ const handler = async (req: Request): Promise<Response> => {
   // If API returned 404 and this isn't an API path, try static files
   if (response.status === 404) {
     const url = new URL(req.url);
-    if (!isApiPath(url.pathname) && req.method === "GET") {
+    if (
+      !isApiPath(url.pathname) &&
+      (req.method === "GET" || req.method === "HEAD")
+    ) {
       const staticResponse = await handleStatic(req);
       if (staticResponse) return staticResponse;
     }

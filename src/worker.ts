@@ -23,7 +23,11 @@ export default {
     ctx?.waitUntil?.(waitBackgroundTasks());
     if (response.status === 404) {
       const url = new URL(req.url);
-      if (!isApiPath(url.pathname) && req.method === "GET" && env.ASSETS) {
+      if (
+        !isApiPath(url.pathname) &&
+        (req.method === "GET" || req.method === "HEAD") &&
+        env.ASSETS
+      ) {
         return await env.ASSETS.fetch(req);
       }
     }
