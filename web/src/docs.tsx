@@ -178,7 +178,7 @@ const Docs = () => (
           <p>
             Pass the account token and{" "}
             <code class="text-white">
-              https://api.theagentmail.net/docs
+              https://theagentmail.net/docs
             </code>{" "}
             to your AI agent. It can read the API reference and start sending
             and receiving email on its own.
@@ -235,7 +235,7 @@ const Docs = () => (
       <Endpoint
         method="POST"
         path="/v1/accounts"
-        description="Create a new email account. First account is free for 30 days upon phone verification. Additional accounts cost $1/month from your prepaid balance."
+        description={`Create a new email account. First account is free for ${planDetails.limits.trialDays} days upon phone verification. Additional accounts cost ${planDetails.rental.priceDisplay}/month from your prepaid balance.`}
       >
         <p class="text-xs text-slate-500 mb-2">Request body</p>
         <CodeBlock
@@ -313,7 +313,7 @@ const Docs = () => (
       <Endpoint
         method="POST"
         path="/v1/accounts/:accountId/messages"
-        description="Send an email from this account. 1,000 sends/month included per mailbox. With an account token: POST /v1/messages"
+        description={`Send an email from this account. ${planDetails.limits.sendsPerMonthPerMailbox.toLocaleString()} sends/month included per mailbox. With an account token: POST /v1/messages`}
       >
         <p class="text-xs text-slate-500 mb-2">Request body</p>
         <CodeBlock
@@ -493,13 +493,29 @@ const Docs = () => (
         <CodeBlock
           lang="json"
           code={`{
-  "messageId": "msg_123",
-  "accountId": "abc123",
-  "from": "sender@gmail.com",
-  "to": ["my-agent@theagentmail.net"],
-  "subject": "Hello",
-  "text": "Message body...",
-  "html": "<p>Message body...</p>",
+  "event": "email.received",
+  "data": {
+    "id": "msg_123",
+    "account_id": "abc123",
+    "account_address": "my-agent@theagentmail.net",
+    "from": "sender@gmail.com",
+    "to": ["my-agent@theagentmail.net"],
+    "cc": ["other@example.com"],
+    "subject": "Hello",
+    "text": "Message body...",
+    "html": "<p>Message body...</p>",
+    "messageId": "<external-msgid@gmail.com>",
+    "inReplyTo": "",
+    "references": "",
+    "attachments": [
+      {
+        "id": "att_456",
+        "filename": "doc.pdf",
+        "contentType": "application/pdf",
+        "size": 12345
+      }
+    ]
+  },
   "timestamp": 1709137000000
 }`}
         />
@@ -556,9 +572,9 @@ const verifyWebhook = (body: string, signature: string, timestamp: string, secre
         </p>
         <ul class="list-disc list-inside space-y-1 text-slate-300">
           <li><strong>Free trial:</strong> {planDetails.trial.summary}</li>
-          <li><strong>Rental:</strong> {planDetails.rental.priceDisplay}{planDetails.rental.periodDisplay}. {planDetails.topup.priceDisplay} minimum deposit into your prepaid wallet (covers 5 mailbox-months).</li>
-          <li><strong>Paid Mailbox Limits ($1/mo):</strong> 1,000 sends/month and 1,000 receives/month (capped at 200 sends/day and 200 receives/day). Daily limits reset at 00:00 UTC. Contact support if you need custom limits.</li>
-          <li><strong>Trial Mailbox Limits:</strong> 20 sends/day (up to 100/mo) and 50 receives/day (up to 200/mo).</li>
+          <li><strong>Rental:</strong> {planDetails.rental.priceDisplay}{planDetails.rental.periodDisplay}. {planDetails.topup.priceDisplay} minimum deposit into your prepaid wallet ({planDetails.topup.summary.toLowerCase()}).</li>
+          <li><strong>Paid Mailbox Limits ({planDetails.rental.priceDisplay}/mo):</strong> {planDetails.limits.paid.sendsPerMonth.toLocaleString()} sends/month and {planDetails.limits.paid.receivesPerMonth.toLocaleString()} receives/month (capped at {planDetails.limits.paid.sendsPerDay} sends/day and {planDetails.limits.paid.receivesPerDay} receives/day). Daily limits reset at 00:00 UTC. Contact support if you need custom limits.</li>
+          <li><strong>Trial Mailbox Limits:</strong> {planDetails.limits.trial.sendsPerDay} sends/day (up to {planDetails.limits.trial.sendsPerMonth}/mo) and {planDetails.limits.trial.receivesPerDay} receives/day (up to {planDetails.limits.trial.receivesPerMonth}/mo).</li>
           <li><strong>Webhooks:</strong> Unlimited real-time webhooks for all accepted emails.</li>
         </ul>
       </div>
@@ -577,7 +593,7 @@ const verifyWebhook = (body: string, signature: string, timestamp: string, secre
       <Endpoint
         method="POST"
         path="/v1/billing/checkout"
-        description="Create a Stripe checkout session to top up $5.00 into your organization's prepaid balance."
+        description={`Create a Stripe checkout session to top up ${planDetails.topup.priceDisplay} into your organization's prepaid balance.`}
       >
         <p class="text-xs text-slate-500 mb-2">Request body (optional)</p>
         <CodeBlock
@@ -609,7 +625,8 @@ const verifyWebhook = (body: string, signature: string, timestamp: string, secre
           code={`{
   "data": {
     "balance": 5.0,
-    "admin": false
+    "admin": false,
+    "trialUsed": true
   }
 }`}
         />
@@ -683,19 +700,29 @@ const verifyWebhook = (body: string, signature: string, timestamp: string, secre
       />
       <div class="mt-6 space-y-2">
         {[
+          [
+            "400",
+            "SPAM_REJECTED",
+            "Outbound message blocked by real-time spam/phishing scan (or RESERVED_ADDRESS on account creation)",
+          ],
           ["401", "UNAUTHORIZED", "Missing or invalid API key / token"],
           [
             "402",
             "INSUFFICIENT_BALANCE",
-            "Insufficient prepaid balance for this action",
+            "Insufficient prepaid balance (or ACCOUNT_EXPIRED if mailbox is frozen/expired)",
           ],
           [
             "403",
             "FORBIDDEN",
-            "Account-scoped token accessing org-level endpoint",
+            "Account-scoped token accessing org-level endpoint (or PHONE_VERIFICATION_REQUIRED on trial)",
           ],
           ["404", "NOT_FOUND", "Resource not found"],
-          ["409", "CONFLICT", "Address already taken"],
+          ["409", "ADDRESS_EXISTS", "Email address is already in use"],
+          [
+            "429",
+            "SEND_LIMIT_REACHED",
+            "Monthly or daily (DAILY_SEND_LIMIT_REACHED) send limit exceeded",
+          ],
           ["500", "INTERNAL_ERROR", "Something went wrong on our end"],
         ].map(([status, code, desc]) => (
           <div

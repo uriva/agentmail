@@ -58,8 +58,7 @@ const Privacy = () => (
     <P>We use the following services to operate AgentMail:</P>
     <ul class="text-slate-400 text-sm space-y-2 ml-4 list-disc mb-3">
       <li>
-        <strong class="text-slate-300">Email infrastructure provider</strong>
-        {" "}
+        <strong class="text-slate-300">Resend</strong>{" "}
         -- email sending and receiving infrastructure
       </li>
       <li>
@@ -71,8 +70,12 @@ const Privacy = () => (
         -- attachment file storage
       </li>
       <li>
-        <strong class="text-slate-300">Deno Deploy</strong>{" "}
+        <strong class="text-slate-300">Cloudflare Workers</strong>{" "}
         -- application hosting
+      </li>
+      <li>
+        <strong class="text-slate-300">Stripe &amp; Twilio</strong>{" "}
+        -- payment processing and trial phone verification
       </li>
     </ul>
     <P>

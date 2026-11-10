@@ -203,7 +203,6 @@ const sendMessage = async (
     }
   }
 
-  // Send via Forward Email
   const result = (await sendEmail({
     from,
     to: [...input.to],
