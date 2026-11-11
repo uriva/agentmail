@@ -1,4 +1,4 @@
-import { callDecisionModel } from "ai-utils";
+import { callDecisionModel, isDecisionModelAvailable } from "ai-utils";
 import { captureEvent } from "./posthog.ts";
 
 type ScanParams = {
@@ -61,7 +61,7 @@ const scanOutboundEmail = async (
   params: ScanParams,
   orgId?: string,
 ): Promise<ScanResult> => {
-  if (!Deno.env.get("RESPAN_API_KEY") && !Deno.env.get("JEV_API_KEY")) {
+  if (!isDecisionModelAvailable()) {
     return { allowed: true };
   }
   try {
@@ -69,7 +69,10 @@ const scanOutboundEmail = async (
       {
         to: params.to,
         subject: params.subject,
-        body: (params.text || params.html || params.subject || "").slice(0, 4000),
+        body: (params.text || params.html || params.subject || "").slice(
+          0,
+          4000,
+        ),
       },
       outboundQuestions,
     );
@@ -96,7 +99,7 @@ const scanInboundEmail = async (
   params: InboundScanParams,
   orgId?: string,
 ): Promise<ScanResult> => {
-  if (!Deno.env.get("RESPAN_API_KEY") && !Deno.env.get("JEV_API_KEY")) {
+  if (!isDecisionModelAvailable()) {
     return { allowed: true };
   }
   try {
@@ -105,7 +108,10 @@ const scanInboundEmail = async (
         from: params.from,
         to: params.to,
         subject: params.subject,
-        body: (params.text || params.html || params.subject || "").slice(0, 4000),
+        body: (params.text || params.html || params.subject || "").slice(
+          0,
+          4000,
+        ),
       },
       inboundQuestions,
     );
