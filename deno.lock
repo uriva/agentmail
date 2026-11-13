@@ -3,13 +3,12 @@
   "specifiers": {
     "jsr:@noble/hashes@2.0.0": "2.0.0",
     "jsr:@std/dotenv@*": "0.225.8",
-    "jsr:@std/encoding@*": "1.0.11",
     "jsr:@std/encoding@0.224.0": "0.224.0",
     "jsr:@std/encoding@1": "1.0.11",
     "jsr:@std/encoding@^1.0.10": "1.0.11",
     "jsr:@std/internal@^1.0.14": "1.0.14",
     "jsr:@std/path@1": "1.1.6",
-    "jsr:@uri/ai-utils@~0.3.129": "0.3.129",
+    "jsr:@uri/ai-utils@~0.3.130": "0.3.130",
     "jsr:@uri/gamla@*": "0.0.17",
     "jsr:@uri/gamla@0.0.16": "0.0.16",
     "jsr:@uri/inject@0.0.2": "0.0.2",
@@ -60,8 +59,8 @@
         "jsr:@std/internal"
       ]
     },
-    "@uri/ai-utils@0.3.129": {
-      "integrity": "e55723613cc836cc46574af1ac0e126f9d25d3f44829af245a2254f712221881",
+    "@uri/ai-utils@0.3.130": {
+      "integrity": "23dcf2ec40e87fce7d38c6ffb85cf9316769bbc6a74640de1406feff91d8ebe1",
       "dependencies": [
         "jsr:@std/encoding@^1.0.10",
         "jsr:@uri/gamla@0.0.16",
@@ -2348,7 +2347,7 @@
   },
   "workspace": {
     "dependencies": [
-      "jsr:@uri/ai-utils@~0.3.129",
+      "jsr:@uri/ai-utils@~0.3.130",
       "jsr:@uri/gamla@*",
       "npm:@deno/vite-plugin@^1.0.5",
       "npm:@instantdb/admin@1.0.65",
