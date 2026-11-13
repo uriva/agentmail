@@ -9,7 +9,7 @@
     "jsr:@std/encoding@^1.0.10": "1.0.11",
     "jsr:@std/internal@^1.0.14": "1.0.14",
     "jsr:@std/path@1": "1.1.6",
-    "jsr:@uri/ai-utils@~0.3.127": "0.3.127",
+    "jsr:@uri/ai-utils@~0.3.129": "0.3.129",
     "jsr:@uri/gamla@*": "0.0.17",
     "jsr:@uri/gamla@0.0.16": "0.0.16",
     "jsr:@uri/inject@0.0.2": "0.0.2",
@@ -60,8 +60,8 @@
         "jsr:@std/internal"
       ]
     },
-    "@uri/ai-utils@0.3.127": {
-      "integrity": "1aa82ec819c0523889dec41c91021a5b0370075a997b916acc606bba00442c34",
+    "@uri/ai-utils@0.3.129": {
+      "integrity": "e55723613cc836cc46574af1ac0e126f9d25d3f44829af245a2254f712221881",
       "dependencies": [
         "jsr:@std/encoding@^1.0.10",
         "jsr:@uri/gamla@0.0.16",
@@ -2348,7 +2348,7 @@
   },
   "workspace": {
     "dependencies": [
-      "jsr:@uri/ai-utils@~0.3.127",
+      "jsr:@uri/ai-utils@~0.3.129",
       "jsr:@uri/gamla@*",
       "npm:@deno/vite-plugin@^1.0.5",
       "npm:@instantdb/admin@1.0.65",
