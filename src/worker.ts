@@ -6,6 +6,7 @@ import { waitBackgroundTasks } from "./services/posthog.ts";
 const syncEnv = (env: Record<string, any>) => {
   // deno-lint-ignore no-explicit-any
   const g = globalThis as any;
+  g.__cf_in_handler = true;
   g.process ??= { env: {} };
   g.process.env ??= {};
   for (const [k, v] of Object.entries(env)) {

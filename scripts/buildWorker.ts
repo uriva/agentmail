@@ -148,6 +148,33 @@ if (typeof globalThis.clearTimeout === "function") {
 if (typeof globalThis.clearInterval === "function") {
   globalThis.clearInterval = globalThis.clearInterval.bind(globalThis);
 }
+if (typeof globalThis.crypto !== "undefined" && globalThis.crypto.randomUUID) {
+  const __orig_randomUUID = globalThis.crypto.randomUUID.bind(globalThis.crypto);
+  let __init_uuid_counter = 0;
+  globalThis.crypto.randomUUID = function() {
+    if (globalThis.__cf_in_handler) return __orig_randomUUID();
+    try {
+      return __orig_randomUUID();
+    } catch (err) {
+      if (globalThis.__cf_in_handler) throw err;
+      __init_uuid_counter++;
+      return "00000000-0000-4000-8000-" + String(__init_uuid_counter).padStart(12, "0");
+    }
+  };
+}
+if (typeof globalThis.crypto !== "undefined" && globalThis.crypto.getRandomValues) {
+  const __orig_getRandomValues = globalThis.crypto.getRandomValues.bind(globalThis.crypto);
+  globalThis.crypto.getRandomValues = function(arr) {
+    if (globalThis.__cf_in_handler) return __orig_getRandomValues(arr);
+    try {
+      return __orig_getRandomValues(arr);
+    } catch (err) {
+      if (globalThis.__cf_in_handler) throw err;
+      if (arr && typeof arr.fill === "function") arr.fill(0);
+      return arr;
+    }
+  };
+}
 if (typeof globalThis.setTimeout !== "undefined") {
   const __orig_setTimeout = globalThis.setTimeout.bind(globalThis);
   globalThis.setTimeout = function(fn, ms, ...args) {
