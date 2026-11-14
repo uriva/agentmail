@@ -200,8 +200,8 @@ const Docs = () => (
             <h4 class="text-white font-medium mb-1">Org tokens</h4>
             <p>
               Full access to all accounts in your organization. Create and
-              delete accounts, send and receive email, manage webhooks, and manage
-              balance. Created from the dashboard.
+              delete accounts, send and receive email, manage webhooks, and
+              manage balance. Created from the dashboard.
             </p>
           </div>
           <div class="p-4 bg-slate-800/50 rounded-lg border border-slate-700">
@@ -568,14 +568,43 @@ const verifyWebhook = (body: string, signature: string, timestamp: string, secre
     <Section id="billing" title="Billing & Limits">
       <div class="text-slate-400 text-sm space-y-3 mb-6">
         <p>
-          AgentMail offers straightforward mailbox rentals with transparent volume allowances:
+          AgentMail offers straightforward mailbox rentals with transparent
+          volume allowances:
         </p>
         <ul class="list-disc list-inside space-y-1 text-slate-300">
-          <li><strong>Free trial:</strong> {planDetails.trial.summary}</li>
-          <li><strong>Rental:</strong> {planDetails.rental.priceDisplay}{planDetails.rental.periodDisplay}. {planDetails.topup.priceDisplay} minimum deposit into your prepaid wallet ({planDetails.topup.summary.toLowerCase()}).</li>
-          <li><strong>Paid Mailbox Limits ({planDetails.rental.priceDisplay}/mo):</strong> {planDetails.limits.paid.sendsPerMonth.toLocaleString()} sends/month and {planDetails.limits.paid.receivesPerMonth.toLocaleString()} receives/month (capped at {planDetails.limits.paid.sendsPerDay} sends/day and {planDetails.limits.paid.receivesPerDay} receives/day). Daily limits reset at 00:00 UTC. Contact support if you need custom limits.</li>
-          <li><strong>Trial Mailbox Limits:</strong> {planDetails.limits.trial.sendsPerDay} sends/day (up to {planDetails.limits.trial.sendsPerMonth}/mo) and {planDetails.limits.trial.receivesPerDay} receives/day (up to {planDetails.limits.trial.receivesPerMonth}/mo).</li>
-          <li><strong>Webhooks:</strong> Unlimited real-time webhooks for all accepted emails.</li>
+          <li>
+            <strong>Free trial:</strong> {planDetails.trial.summary}
+          </li>
+          <li>
+            <strong>Rental:</strong> {planDetails.rental.priceDisplay}
+            {planDetails.rental.periodDisplay}. {planDetails.topup.priceDisplay}
+            {" "}
+            minimum deposit into your prepaid wallet ({planDetails.topup.summary
+              .toLowerCase()}).
+          </li>
+          <li>
+            <strong>
+              Paid Mailbox Limits ({planDetails.rental.priceDisplay}/mo):
+            </strong>{" "}
+            {planDetails.limits.paid.sendsPerMonth.toLocaleString()}{" "}
+            sends/month and{" "}
+            {planDetails.limits.paid.receivesPerMonth.toLocaleString()}{" "}
+            receives/month (capped at {planDetails.limits.paid.sendsPerDay}{" "}
+            sends/day and {planDetails.limits.paid.receivesPerDay}{" "}
+            receives/day). Daily limits reset at 00:00 UTC. Contact support if
+            you need custom limits.
+          </li>
+          <li>
+            <strong>Trial Mailbox Limits:</strong>{" "}
+            {planDetails.limits.trial.sendsPerDay} sends/day (up to{" "}
+            {planDetails.limits.trial.sendsPerMonth}/mo) and{" "}
+            {planDetails.limits.trial.receivesPerDay} receives/day (up to{" "}
+            {planDetails.limits.trial.receivesPerMonth}/mo).
+          </li>
+          <li>
+            <strong>Webhooks:</strong>{" "}
+            Unlimited real-time webhooks for all accepted emails.
+          </li>
         </ul>
       </div>
 
@@ -638,8 +667,8 @@ const verifyWebhook = (body: string, signature: string, timestamp: string, secre
       <div class="text-slate-400 text-sm space-y-3 mb-6">
         <p>
           Each organization has one billing user (the creator) and can have
-          additional admins. Balance and accounts belong to the organization, not
-          individual users.
+          additional admins. Balance and accounts belong to the organization,
+          not individual users.
         </p>
         <p>
           Organizations are managed from the dashboard. By default, each user

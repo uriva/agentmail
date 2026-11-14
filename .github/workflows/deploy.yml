@@ -6,6 +6,9 @@ on:
       - main
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 concurrency:
   group: deploy-worker
   cancel-in-progress: false
@@ -23,6 +26,15 @@ jobs:
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
+
+      - name: Typecheck & run tests
+        run: deno task check && deno task test
+
+      - name: Push InstantDB permissions
+        run: npx instant-cli@latest push perms --app "$INSTANT_APP_ID" --token "$INSTANT_CLI_AUTH_TOKEN" --yes
+        env:
+          INSTANT_APP_ID: ${{ secrets.INSTANT_APP_ID }}
+          INSTANT_CLI_AUTH_TOKEN: ${{ secrets.INSTANT_CLI_AUTH_TOKEN }}
 
       - name: Build frontend
         run: deno task build:web

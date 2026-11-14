@@ -2,22 +2,29 @@
   "version": "5",
   "specifiers": {
     "jsr:@noble/hashes@2.0.0": "2.0.0",
+    "jsr:@std/assert@*": "1.0.19",
+    "jsr:@std/assert@^1.0.13": "1.0.19",
     "jsr:@std/dotenv@*": "0.225.8",
+    "jsr:@std/encoding@*": "1.0.11",
     "jsr:@std/encoding@0.224.0": "0.224.0",
     "jsr:@std/encoding@1": "1.0.11",
     "jsr:@std/encoding@^1.0.10": "1.0.11",
+    "jsr:@std/internal@^1.0.12": "1.0.14",
     "jsr:@std/internal@^1.0.14": "1.0.14",
     "jsr:@std/path@1": "1.1.6",
     "jsr:@uri/ai-utils@~0.3.130": "0.3.130",
     "jsr:@uri/gamla@*": "0.0.17",
     "jsr:@uri/gamla@0.0.16": "0.0.16",
     "jsr:@uri/inject@0.0.2": "0.0.2",
+    "jsr:@uri/instantdb-mock@^0.0.3": "0.0.3",
     "jsr:@uri/rmmbr@0.1.5": "0.1.5",
     "npm:@anthropic-ai/sdk@0.39.0": "0.39.0",
     "npm:@deno/vite-plugin@^1.0.5": "1.0.6_vite@7.3.1",
     "npm:@google/genai@2.10.0": "2.10.0",
     "npm:@instantdb/admin@*": "1.0.65",
+    "npm:@instantdb/admin@1.0.41": "1.0.41",
     "npm:@instantdb/admin@1.0.65": "1.0.65",
+    "npm:@instantdb/core@1.0.41": "1.0.41",
     "npm:@instantdb/core@1.0.65": "1.0.65",
     "npm:@instantdb/react@1.0.65": "1.0.65_react@19.2.8",
     "npm:@preact/preset-vite@2.10.2": "2.10.2_@babel+core@7.29.0_vite@7.3.1_preact@10.26.7",
@@ -41,6 +48,12 @@
     "@noble/hashes@2.0.0": {
       "integrity": "203b1a1d3a3de1e964e482fbe8196963e12d5dc63f280b42eae2fb74131001c8"
     },
+    "@std/assert@1.0.19": {
+      "integrity": "eaada96ee120cb980bc47e040f82814d786fe8162ecc53c91d8df60b8755991e",
+      "dependencies": [
+        "jsr:@std/internal@^1.0.12"
+      ]
+    },
     "@std/dotenv@0.225.8": {
       "integrity": "27b8c1a9d00cbf938345a5924487c04d9b27bdd7e7bd1983f54bcf76d0a0174a"
     },
@@ -56,7 +69,7 @@
     "@std/path@1.1.6": {
       "integrity": "c68485c2a4dfbb5ae3cc74fae4e8c4e5d874cf8a8ed12927917235c758b46cbe",
       "dependencies": [
-        "jsr:@std/internal"
+        "jsr:@std/internal@^1.0.14"
       ]
     },
     "@uri/ai-utils@0.3.130": {
@@ -89,6 +102,13 @@
     },
     "@uri/inject@0.0.2": {
       "integrity": "532740259eddbb8e00b886fc4cb8b048f009be623225745cf3ce8cf229d6d30a"
+    },
+    "@uri/instantdb-mock@0.0.3": {
+      "integrity": "d5e3bb1a7161eb81a56fde23939831fd4c1eed1071790631e74576e9cdc70f4a",
+      "dependencies": [
+        "npm:@instantdb/admin@1.0.41",
+        "npm:@instantdb/core@1.0.41"
+      ]
     },
     "@uri/rmmbr@0.1.5": {
       "integrity": "022040f275aff288aeb383f99f133d12f99fa86a480b7721ad497fa12ba2194e",
@@ -561,13 +581,24 @@
       ],
       "scripts": true
     },
+    "@instantdb/admin@1.0.41": {
+      "integrity": "sha512-YFOGVDMdfwUW8hC5YUyGtsCVbcAf7etL+B8SYLKznBKCaijQBYdvO9z9I1Xf3/fz/764lMVUfUm815qGVuV9wQ==",
+      "dependencies": [
+        "@instantdb/core@1.0.41",
+        "@instantdb/eventsource",
+        "@instantdb/version@1.0.41",
+        "@instantdb/webhooks@1.0.41",
+        "cookie",
+        "uuid"
+      ]
+    },
     "@instantdb/admin@1.0.65": {
       "integrity": "sha512-g/A6JgkLhHoRswx2uU7oCk2iJ93+DxBw84867IIdckYv2UTngQ65gNiJhbdWbZ4S5cD1+NMWCPXZBbQilVNHGw==",
       "dependencies": [
         "@instantdb/core@1.0.65",
         "@instantdb/eventsource",
         "@instantdb/version@1.0.65",
-        "@instantdb/webhooks",
+        "@instantdb/webhooks@1.0.65",
         "cookie",
         "uuid"
       ]
@@ -576,6 +607,14 @@
       "integrity": "sha512-p7Tnm2yN4aWWPvx3SL2Dh84JU3XyY8Y4bviRPk2qr85wtSvTRquKwiooJe3yICTdO6x/f+AUoPUk7zttP/583w==",
       "dependencies": [
         "@instantdb/version@0.22.142",
+        "mutative",
+        "uuid"
+      ]
+    },
+    "@instantdb/core@1.0.41": {
+      "integrity": "sha512-Nrn/11FeLZhhWNbGnruY8r4invyfrY5xCyKvtpCBemRPlpN6zcbyVkv+a1DHstKG9Jc1g+ClEbpXb6VPZBaYLg==",
+      "dependencies": [
+        "@instantdb/version@1.0.41",
         "mutative",
         "uuid"
       ]
@@ -624,8 +663,17 @@
     "@instantdb/version@0.22.142": {
       "integrity": "sha512-C2HTo95PllT0b47EFDBC9/XILHwUbaDL/3pE2Q8aI0htB+1gf1Drodz6T4d2BNHJkdELYuDEK6ZpyPIMZqaV7Q=="
     },
+    "@instantdb/version@1.0.41": {
+      "integrity": "sha512-MB9K8O88du/UUTOZ1ogKitPTL4YuId25E4rVfp6tV6usD5PHBV8WRDCBDKxO6NCRYjTpUXgvx6QqMYAqCzsTHg=="
+    },
     "@instantdb/version@1.0.65": {
       "integrity": "sha512-9uZa9zHM9lGKm7YD9ttaaYjA3dVPcuzTpq9aQBWH1PRyIU8G7aaOBLIpEDrtpnO+dng0iKi6S2WrPrynALfKQg=="
+    },
+    "@instantdb/webhooks@1.0.41": {
+      "integrity": "sha512-1+XHCSBmO9ZRV94DNArQbd7z3VpVJw8eKb3s5fa6ktspqoXz5Pb5Ea8PMqgcBWyHMp3G71XUKBEORqMUYLtbog==",
+      "dependencies": [
+        "@instantdb/core@1.0.41"
+      ]
     },
     "@instantdb/webhooks@1.0.65": {
       "integrity": "sha512-cO/JTXgd6NNAxeRmo0LkaAxHNjBEKBbPe8lPBbGhYu4OHq2izIqsAhsKaDHhpYjEEhYR/BiCgsHzD0BA3ecadA==",
@@ -2347,8 +2395,11 @@
   },
   "workspace": {
     "dependencies": [
+      "jsr:@std/assert@^1.0.13",
+      "jsr:@std/encoding@^1.0.10",
       "jsr:@uri/ai-utils@~0.3.130",
       "jsr:@uri/gamla@*",
+      "jsr:@uri/instantdb-mock@^0.0.3",
       "npm:@deno/vite-plugin@^1.0.5",
       "npm:@instantdb/admin@1.0.65",
       "npm:@instantdb/core@1.0.65",

@@ -1,49 +1,98 @@
 import type { InstantRules } from "@instantdb/admin";
+import type { AppSchema } from "./instant.schema.ts";
+
+const readOnlyOrgMemberAllow = {
+  view: "auth.id != null && auth.id in data.ref('organization.members.id')",
+  create: "false",
+  update: "false",
+  delete: "false",
+} as const;
 
 const rules = {
-  attrs: {
+  $default: {
     allow: {
-      // All mutations go through the admin SDK (server-side API).
-      // Client-side writes are blocked by default.
       $default: "false",
     },
   },
-  // Users can read data that belongs to their organizations.
+  attrs: {
+    allow: {
+      $default: "false",
+      create: "false",
+    },
+  },
+  $users: {
+    allow: {
+      view:
+        "auth.id != null && (auth.id == data.id || auth.id in data.ref('organizations.members.id'))",
+      create: "data.email != null && !data.email.endsWith('@theagentmail.net')",
+      update: "false",
+    },
+    fields: {
+      phone: "auth.id != null && auth.id == data.id",
+    },
+  },
   organizations: {
     allow: {
-      view: "auth.id in data.ref('members.id')",
+      view: "auth.id != null && auth.id in data.ref('members.id')",
+      create: "false",
+      update: "false",
+      delete: "false",
+    },
+    fields: {
+      processedCheckoutSessions: "false",
     },
   },
   accounts: {
     allow: {
-      view: "auth.id in data.ref('organization.members.id')",
+      ...readOnlyOrgMemberAllow,
     },
   },
   apiKeys: {
     allow: {
-      view: "auth.id in data.ref('organization.members.id')",
+      ...readOnlyOrgMemberAllow,
+    },
+    fields: {
+      keyHash: "false",
     },
   },
   karmaEvents: {
     allow: {
-      view: "auth.id in data.ref('organization.members.id')",
+      ...readOnlyOrgMemberAllow,
     },
   },
   messages: {
     allow: {
-      view: "auth.id in data.ref('account.organization.members.id')",
+      view:
+        "auth.id != null && auth.id in data.ref('account.organization.members.id')",
+      create: "false",
+      update: "false",
+      delete: "false",
     },
   },
   attachments: {
     allow: {
-      view: "auth.id in data.ref('message.account.organization.members.id')",
+      view:
+        "auth.id != null && auth.id in data.ref('message.account.organization.members.id')",
+      create: "false",
+      update: "false",
+      delete: "false",
+    },
+    fields: {
+      storageKey: "false",
     },
   },
   webhookSubscriptions: {
     allow: {
-      view: "auth.id in data.ref('account.organization.members.id')",
+      view:
+        "auth.id != null && auth.id in data.ref('account.organization.members.id')",
+      create: "false",
+      update: "false",
+      delete: "false",
+    },
+    fields: {
+      secret: "false",
     },
   },
-} satisfies InstantRules;
+} satisfies InstantRules<AppSchema>;
 
 export default rules;

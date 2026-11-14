@@ -27,6 +27,9 @@ type SendEmailParams = {
 };
 
 const sendEmail = async (params: SendEmailParams): Promise<unknown> => {
+  if (Deno.env.get("DENO_ENV") === "test" && !Deno.env.get("RESEND_API_KEY")) {
+    return { id: "test-resend-id" };
+  }
   const res = await fetch(`${baseUrl}/emails`, {
     method: "POST",
     headers: {

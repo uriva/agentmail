@@ -1,40 +1,32 @@
+import { resolve } from "node:path";
 import { db } from "./db.ts";
-import type { ApiError } from "./types.ts";
-
-// Handlers
 import {
   createAccount,
   deleteAccount,
   getAccount,
   listAccounts,
 } from "./handlers/accounts.ts";
-import { getMessage, listMessages, sendMessage } from "./handlers/messages.ts";
-import { getAttachmentUrl } from "./handlers/attachments.ts";
-import {
-  createWebhook,
-  deleteWebhook,
-  listWebhooks,
-} from "./handlers/webhooks.ts";
-import { handleInbound } from "./handlers/inbound.ts";
 import {
   createAccountApiKey,
   createApiKey,
   deleteApiKey,
   listApiKeys,
 } from "./handlers/apiKeys.ts";
+import { getAttachmentUrl } from "./handlers/attachments.ts";
 import {
   createCheckout,
   getBillingBalance,
   handleStripeWebhook,
   syncCheckout,
 } from "./handlers/billing.ts";
-import { trackBackgroundTask } from "./services/posthog.ts";
+import { handleInbound } from "./handlers/inbound.ts";
+import { inviteMember, listMembers, removeMember } from "./handlers/members.ts";
+import { getMessage, listMessages, sendMessage } from "./handlers/messages.ts";
 import {
   createOrganization,
   listOrganizations,
   renameOrganization,
 } from "./handlers/organizations.ts";
-import { inviteMember, listMembers, removeMember } from "./handlers/members.ts";
 import {
   getPhoneStatus,
   sendPhoneCode,
@@ -45,12 +37,18 @@ import {
   handleLookupUser,
   handleSupportPrompt,
 } from "./handlers/supportBot.ts";
-
-// --- Types ---
+import {
+  createWebhook,
+  deleteWebhook,
+  listWebhooks,
+} from "./handlers/webhooks.ts";
+import { trackBackgroundTask } from "./services/posthog.ts";
+import type { ApiError } from "./types.ts";
 
 type AuthType =
-  | "apiKey"
+  | "accountApiKey"
   | "apiKeyOrUserToken"
+  | "orgApiKeyOrUserToken"
   | "userToken"
   | "userTokenOptionalOrg"
   | "none";
@@ -69,8 +67,6 @@ type Route = {
   readonly authType: AuthType;
 };
 
-// --- Auth ---
-
 const hashApiKey = async (key: string): Promise<string> => {
   const data = new TextEncoder().encode(key);
   const hash = await crypto.subtle.digest("SHA-256", data);
@@ -86,6 +82,7 @@ const authenticateApiKey = async (
   if (!authHeader?.startsWith("Bearer ")) return null;
 
   const apiKey = authHeader.slice(7);
+  if (!apiKey.startsWith("am_")) return null;
   const keyHash = await hashApiKey(apiKey);
 
   const { apiKeys } = await db.query({
@@ -99,7 +96,6 @@ const authenticateApiKey = async (
   const apiKeyRecord = apiKeys[0];
   if (!apiKeyRecord?.organization) return null;
 
-  // Update lastUsedAt (fire and forget)
   trackBackgroundTask(
     db.transact([
       db.tx.apiKeys[apiKeyRecord.id]!.update({ lastUsedAt: Date.now() }),
@@ -119,6 +115,7 @@ const authenticateUserToken = async (
   if (!authHeader?.startsWith("Bearer ")) return null;
 
   const token = authHeader.slice(7);
+  if (token.startsWith("am_")) return null;
 
   try {
     const user = await db.auth.verifyToken(token);
@@ -127,7 +124,6 @@ const authenticateUserToken = async (
     const orgId = req.headers.get("x-org-id");
     if (!orgId) return null;
 
-    // Verify the user is a member of this org
     const { organizations } = await db.query({
       organizations: {
         $: { where: { id: orgId, "members.id": user.id } },
@@ -140,13 +136,11 @@ const authenticateUserToken = async (
   }
 };
 
-// --- Routes ---
-
 const route = (
   method: string,
   path: string,
   handler: RouteHandler,
-  authType: AuthType = "apiKey",
+  authType: AuthType = "accountApiKey",
 ): Route => ({
   method,
   pattern: new URLPattern({ pathname: path }),
@@ -155,15 +149,15 @@ const route = (
 });
 
 const routes: readonly Route[] = [
-  // Accounts
-  route("POST", "/v1/accounts", createAccount, "apiKeyOrUserToken"),
-  route("GET", "/v1/accounts", listAccounts, "apiKeyOrUserToken"),
+  // Organization-level account management (rejects account-scoped API keys)
+  route("POST", "/v1/accounts", createAccount, "orgApiKeyOrUserToken"),
+  route("GET", "/v1/accounts", listAccounts, "orgApiKeyOrUserToken"),
   route("GET", "/v1/accounts/:accountId", getAccount, "apiKeyOrUserToken"),
   route(
     "DELETE",
     "/v1/accounts/:accountId",
     deleteAccount,
-    "apiKeyOrUserToken",
+    "orgApiKeyOrUserToken",
   ),
 
   // Messages
@@ -214,38 +208,48 @@ const routes: readonly Route[] = [
     "apiKeyOrUserToken",
   ),
 
-  // Account-scoped shortcuts (accountId inferred from account-scoped API key)
-  route("GET", "/v1/account", getAccount, "apiKey"),
-  route("DELETE", "/v1/account", deleteAccount, "apiKey"),
-  route("POST", "/v1/messages", sendMessage, "apiKey"),
-  route("GET", "/v1/messages", listMessages, "apiKey"),
-  route("GET", "/v1/messages/:messageId", getMessage, "apiKey"),
+  // Account-scoped shortcuts (strictly require an account-scoped API key)
+  route("GET", "/v1/account", getAccount, "accountApiKey"),
+  route("DELETE", "/v1/account", deleteAccount, "accountApiKey"),
+  route("POST", "/v1/messages", sendMessage, "accountApiKey"),
+  route("GET", "/v1/messages", listMessages, "accountApiKey"),
+  route("GET", "/v1/messages/:messageId", getMessage, "accountApiKey"),
   route(
     "GET",
     "/v1/messages/:messageId/attachments/:attachmentId",
     getAttachmentUrl,
-    "apiKey",
+    "accountApiKey",
   ),
-  route("POST", "/v1/webhooks", createWebhook, "apiKey"),
-  route("GET", "/v1/webhooks", listWebhooks, "apiKey"),
-  route("DELETE", "/v1/webhooks/:webhookId", deleteWebhook, "apiKey"),
+  route("POST", "/v1/webhooks", createWebhook, "accountApiKey"),
+  route("GET", "/v1/webhooks", listWebhooks, "accountApiKey"),
+  route("DELETE", "/v1/webhooks/:webhookId", deleteWebhook, "accountApiKey"),
 
-  // Billing
-  route("POST", "/v1/billing/checkout", createCheckout, "apiKeyOrUserToken"),
-  route("POST", "/v1/billing/sync", syncCheckout, "apiKeyOrUserToken"),
-  route("GET", "/v1/billing/balance", getBillingBalance, "apiKeyOrUserToken"),
+  // Billing (org-level only)
+  route(
+    "POST",
+    "/v1/billing/checkout",
+    createCheckout,
+    "orgApiKeyOrUserToken",
+  ),
+  route("POST", "/v1/billing/sync", syncCheckout, "orgApiKeyOrUserToken"),
+  route(
+    "GET",
+    "/v1/billing/balance",
+    getBillingBalance,
+    "orgApiKeyOrUserToken",
+  ),
 
   // API Keys (user-token auth — from dashboard)
   route("POST", "/v1/api-keys", createApiKey, "userToken"),
   route("GET", "/v1/api-keys", listApiKeys, "userToken"),
   route("DELETE", "/v1/api-keys/:apiKeyId", deleteApiKey, "userToken"),
 
-  // Account API Keys
+  // Account API Keys (org-level only so account-scoped keys cannot mint new keys)
   route(
     "POST",
     "/v1/accounts/:accountId/api-keys",
     createAccountApiKey,
-    "apiKeyOrUserToken",
+    "orgApiKeyOrUserToken",
   ),
 
   // Phone Verification
@@ -258,7 +262,7 @@ const routes: readonly Route[] = [
   ),
   route("GET", "/v1/phone/status", getPhoneStatus, "userTokenOptionalOrg"),
 
-  // Organizations (user-token auth — org may not exist yet)
+  // Organizations
   route(
     "POST",
     "/v1/organizations",
@@ -268,19 +272,19 @@ const routes: readonly Route[] = [
   route("GET", "/v1/organizations", listOrganizations, "userTokenOptionalOrg"),
   route("PATCH", "/v1/organizations", renameOrganization, "userToken"),
 
-  // Members (user-token auth — requires org via X-Org-Id)
+  // Members
   route("POST", "/v1/members", inviteMember, "userToken"),
   route("GET", "/v1/members", listMembers, "userToken"),
   route("DELETE", "/v1/members/:memberId", removeMember, "userToken"),
 
-  // Inbound (from Resend, no auth — uses webhook secret)
+  // Inbound (verified via Svix / ForwardEmail webhook signature)
   route("POST", "/inbound", handleInbound, "none"),
 
-  // Stripe Webhook (no auth — uses Stripe webhook signature)
+  // Stripe Webhook
   route("POST", "/stripe-webhook", handleStripeWebhook, "none"),
   route("POST", "/v1/billing/stripe-webhook", handleStripeWebhook, "none"),
 
-  // Support Bot (Dynamic prompt & tools for prompt2bot)
+  // Support Bot (verified via HMAC signature with SUPPORT_BOT_SECRET)
   route("GET", "/v1/support/prompt", handleSupportPrompt, "none"),
   route("POST", "/v1/support/prompt", handleSupportPrompt, "none"),
   route("POST", "/v1/support/tools/lookup-user", handleLookupUser, "none"),
@@ -295,26 +299,54 @@ const routes: readonly Route[] = [
   route(
     "GET",
     "/health",
-    async () => Response.json({ status: "ok" }),
+    () => Promise.resolve(Response.json({ status: "ok" })),
     "none",
   ),
 ];
 
-// --- Error handling ---
-
-const jsonError = (status: number, error: string, code: string): Response =>
-  Response.json({ error, code } satisfies ApiError, {
-    status,
-    headers: corsHeaders,
-  });
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Org-Id",
+export const baseSecurityHeaders: Record<string, string> = {
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "DENY",
+  "Referrer-Policy": "strict-origin-when-cross-origin",
 };
 
-// --- Request handler ---
+const allowedDashboardOrigins = new Set([
+  "https://theagentmail.net",
+  "https://www.theagentmail.net",
+  "http://localhost:3000",
+  "http://localhost:8000",
+]);
+
+const buildCorsHeaders = (
+  req: Request,
+  isDashboardRoute: boolean,
+): Record<string, string> => {
+  const origin = req.headers.get("origin") ?? "";
+  const allowOrigin = isDashboardRoute
+    ? (allowedDashboardOrigins.has(origin)
+      ? origin
+      : "https://theagentmail.net")
+    : "*";
+  return {
+    ...baseSecurityHeaders,
+    "Access-Control-Allow-Origin": allowOrigin,
+    "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Org-Id",
+    ...(isDashboardRoute ? { Vary: "Origin" } : {}),
+  };
+};
+
+const jsonError = (
+  req: Request,
+  status: number,
+  error: string,
+  code: string,
+  isDashboardRoute = false,
+): Response =>
+  Response.json({ error, code } satisfies ApiError, {
+    status,
+    headers: buildCorsHeaders(req, isDashboardRoute),
+  });
 
 const matchRoute = (
   req: Request,
@@ -341,107 +373,166 @@ const resolveAuth = async (
   accountId: string | null;
   error: Response | null;
 }> => {
-  switch (authType) {
-    case "none":
-      return { orgId: "", accountId: null, error: null };
-    case "apiKey": {
-      const result = await authenticateApiKey(req);
-      return result
-        ? { orgId: result.orgId, accountId: result.accountId, error: null }
-        : {
-          orgId: null,
-          accountId: null,
-          error: jsonError(401, "Invalid or missing API key", "UNAUTHORIZED"),
-        };
-    }
-    case "apiKeyOrUserToken": {
-      // Try API key first, then user token
-      const apiKeyResult = await authenticateApiKey(req);
-      if (apiKeyResult) {
-        return {
-          orgId: apiKeyResult.orgId,
-          accountId: apiKeyResult.accountId,
-          error: null,
-        };
-      }
-      const orgId = await authenticateUserToken(req);
-      return orgId ? { orgId, accountId: null, error: null } : {
-        orgId: null,
-        accountId: null,
-        error: jsonError(401, "Invalid or missing credentials", "UNAUTHORIZED"),
-      };
-    }
-    case "userToken": {
-      const orgId = await authenticateUserToken(req);
-      return orgId ? { orgId, accountId: null, error: null } : {
+  if (authType === "none") {
+    return { orgId: "", accountId: null, error: null };
+  }
+
+  if (authType === "accountApiKey") {
+    const result = await authenticateApiKey(req);
+    if (!result) {
+      return {
         orgId: null,
         accountId: null,
         error: jsonError(
+          req,
           401,
-          "Invalid or missing user token",
+          "Invalid or missing API key",
           "UNAUTHORIZED",
         ),
       };
     }
-    case "userTokenOptionalOrg": {
-      // Verify the user token is valid but don't require an org
-      const authHeader = req.headers.get("authorization");
-      if (!authHeader?.startsWith("Bearer ")) {
-        return {
-          orgId: null,
-          accountId: null,
-          error: jsonError(401, "Missing authorization", "UNAUTHORIZED"),
-        };
-      }
-      const token = authHeader.slice(7);
-      try {
-        const user = await db.auth.verifyToken(token);
-        if (!user?.id) throw new Error("No user");
-        // Try to find org, but it's okay if there isn't one
-        const { organizations } = await db.query({
-          organizations: { $: { where: { "members.id": user.id } } },
-        });
-        return {
-          orgId: organizations[0]?.id ?? "",
-          accountId: null,
-          error: null,
-        };
-      } catch {
-        return {
-          orgId: null,
-          accountId: null,
-          error: jsonError(401, "Invalid user token", "UNAUTHORIZED"),
-        };
-      }
+    if (!result.accountId) {
+      return {
+        orgId: null,
+        accountId: null,
+        error: jsonError(
+          req,
+          403,
+          "Shortcut routes require an account-scoped API key; use /v1/accounts/:accountId/... with org-scoped keys",
+          "FORBIDDEN",
+        ),
+      };
     }
+    return { orgId: result.orgId, accountId: result.accountId, error: null };
+  }
+
+  if (authType === "orgApiKeyOrUserToken") {
+    const apiKeyResult = await authenticateApiKey(req);
+    if (apiKeyResult) {
+      if (apiKeyResult.accountId !== null) {
+        return {
+          orgId: null,
+          accountId: null,
+          error: jsonError(
+            req,
+            403,
+            "Account-scoped API keys cannot perform organization-level operations",
+            "FORBIDDEN",
+          ),
+        };
+      }
+      return { orgId: apiKeyResult.orgId, accountId: null, error: null };
+    }
+    const orgId = await authenticateUserToken(req);
+    return orgId ? { orgId, accountId: null, error: null } : {
+      orgId: null,
+      accountId: null,
+      error: jsonError(
+        req,
+        401,
+        "Invalid or missing credentials",
+        "UNAUTHORIZED",
+      ),
+    };
+  }
+
+  if (authType === "apiKeyOrUserToken") {
+    const apiKeyResult = await authenticateApiKey(req);
+    if (apiKeyResult) {
+      return {
+        orgId: apiKeyResult.orgId,
+        accountId: apiKeyResult.accountId,
+        error: null,
+      };
+    }
+    const orgId = await authenticateUserToken(req);
+    return orgId ? { orgId, accountId: null, error: null } : {
+      orgId: null,
+      accountId: null,
+      error: jsonError(
+        req,
+        401,
+        "Invalid or missing credentials",
+        "UNAUTHORIZED",
+      ),
+    };
+  }
+
+  if (authType === "userToken") {
+    const orgId = await authenticateUserToken(req);
+    return orgId ? { orgId, accountId: null, error: null } : {
+      orgId: null,
+      accountId: null,
+      error: jsonError(
+        req,
+        401,
+        "Invalid or missing user token",
+        "UNAUTHORIZED",
+        true,
+      ),
+    };
+  }
+
+  // userTokenOptionalOrg
+  const authHeader = req.headers.get("authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    return {
+      orgId: null,
+      accountId: null,
+      error: jsonError(req, 401, "Missing authorization", "UNAUTHORIZED", true),
+    };
+  }
+  const token = authHeader.slice(7);
+  try {
+    const user = await db.auth.verifyToken(token);
+    if (!user?.id) throw new Error("No user");
+    const { organizations } = await db.query({
+      organizations: { $: { where: { "members.id": user.id } } },
+    });
+    return {
+      orgId: organizations[0]?.id ?? "",
+      accountId: null,
+      error: null,
+    };
+  } catch {
+    return {
+      orgId: null,
+      accountId: null,
+      error: jsonError(req, 401, "Invalid user token", "UNAUTHORIZED", true),
+    };
   }
 };
 
 const handleRequest = async (req: Request): Promise<Response> => {
-  // CORS preflight
   if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: corsHeaders });
+    const origin = req.headers.get("origin") ?? "";
+    const isDashOrigin = allowedDashboardOrigins.has(origin);
+    return new Response(null, {
+      status: 204,
+      headers: buildCorsHeaders(req, isDashOrigin),
+    });
   }
 
   const matched = matchRoute(req);
   if (!matched) {
-    return jsonError(404, "Not found", "NOT_FOUND");
+    return jsonError(req, 404, "Not found", "NOT_FOUND");
   }
 
   const { route: matchedRoute, params } = matched;
+  const isDashboardRoute = matchedRoute.authType === "userToken" ||
+    matchedRoute.authType === "userTokenOptionalOrg";
 
-  // Auth
   const { orgId, accountId, error: authError } = await resolveAuth(
     req,
     matchedRoute.authType,
   );
   if (authError) return authError;
 
-  // Account-scoped token enforcement / inference
   if (accountId) {
     const routeAccountId = params.accountId;
     if (routeAccountId && routeAccountId !== accountId) {
       return jsonError(
+        req,
         403,
         "Account-scoped token cannot access other accounts",
         "FORBIDDEN",
@@ -459,7 +550,11 @@ const handleRequest = async (req: Request): Promise<Response> => {
       orgId!,
       accountId ?? undefined,
     );
-    for (const [key, value] of Object.entries(corsHeaders)) {
+    for (
+      const [key, value] of Object.entries(
+        buildCorsHeaders(req, isDashboardRoute),
+      )
+    ) {
       response.headers.set(key, value);
     }
     return response;
@@ -472,17 +567,21 @@ const handleRequest = async (req: Request): Promise<Response> => {
       "code" in err
     ) {
       const e = err as { status: number; error: string; code: string };
-      return jsonError(e.status, e.error, e.code);
+      return jsonError(req, e.status, e.error, e.code, isDashboardRoute);
     }
     console.error("Unhandled error:", err);
-    return jsonError(500, "Internal server error", "INTERNAL_ERROR");
+    return jsonError(
+      req,
+      500,
+      "Internal server error",
+      "INTERNAL_ERROR",
+      isDashboardRoute,
+    );
   }
 };
 
-// --- Static file serving ---
-
-const DIST_DIR = import.meta.url
-  ? new URL("../web/dist", import.meta.url).pathname
+const distDir = import.meta.url
+  ? resolve(new URL("../web/dist", import.meta.url).pathname)
   : "/web/dist";
 
 const contentTypeByExt: Record<string, string> = {
@@ -490,7 +589,6 @@ const contentTypeByExt: Record<string, string> = {
   ".js": "application/javascript; charset=utf-8",
   ".css": "text/css; charset=utf-8",
   ".json": "application/json; charset=utf-8",
-  ".map": "application/json; charset=utf-8",
   ".svg": "image/svg+xml",
   ".png": "image/png",
   ".ico": "image/x-icon",
@@ -504,12 +602,20 @@ const getContentType = (path: string): string => {
   return contentTypeByExt[ext] ?? "application/octet-stream";
 };
 
+const resolveSafeDistPath = (relativePath: string): string | null => {
+  const candidate = resolve(distDir, `.${relativePath}`);
+  return candidate === distDir || candidate.startsWith(`${distDir}/`)
+    ? candidate
+    : null;
+};
+
 const serveStaticFile = async (filePath: string): Promise<Response | null> => {
   try {
     const data = await Deno.readFile(filePath);
     const isAsset = filePath.includes("/assets/");
     return new Response(data, {
       headers: {
+        ...baseSecurityHeaders,
         "content-type": getContentType(filePath),
         ...(isAsset
           ? { "cache-control": "public, max-age=31536000, immutable" }
@@ -523,24 +629,29 @@ const serveStaticFile = async (filePath: string): Promise<Response | null> => {
 
 const handleStatic = async (req: Request): Promise<Response | null> => {
   const url = new URL(req.url);
-  const pathname = url.pathname;
+  const decoded = (() => {
+    try {
+      return decodeURIComponent(url.pathname);
+    } catch {
+      return null;
+    }
+  })();
+  if (!decoded || decoded.includes("\0")) return null;
 
-  // Try exact file match
-  const filePath = `${DIST_DIR}${pathname}`;
-  const fileResponse = await serveStaticFile(filePath);
-  if (fileResponse) return fileResponse;
+  const exactPath = resolveSafeDistPath(decoded);
+  if (exactPath) {
+    const fileResponse = await serveStaticFile(exactPath);
+    if (fileResponse) return fileResponse;
+  }
 
-  // Try prerendered route (e.g. /docs -> /docs/index.html)
-  const prerenderResponse = await serveStaticFile(
-    `${DIST_DIR}${pathname}/index.html`,
-  );
-  if (prerenderResponse) return prerenderResponse;
+  const indexCandidate = resolveSafeDistPath(`${decoded}/index.html`);
+  if (indexCandidate) {
+    const prerenderResponse = await serveStaticFile(indexCandidate);
+    if (prerenderResponse) return prerenderResponse;
+  }
 
-  // SPA fallback — serve index.html for non-file paths
-  return serveStaticFile(`${DIST_DIR}/index.html`);
+  return serveStaticFile(`${distDir}/index.html`);
 };
-
-// --- Start server ---
 
 export const isApiPath = (pathname: string): boolean =>
   pathname.startsWith("/v1/") ||
@@ -550,7 +661,6 @@ export const isApiPath = (pathname: string): boolean =>
 
 const handler = async (req: Request): Promise<Response> => {
   const response = await handleRequest(req);
-  // If API returned 404 and this isn't an API path, try static files
   if (response.status === 404) {
     const url = new URL(req.url);
     if (

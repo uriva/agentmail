@@ -23,7 +23,7 @@ export default defineConfig({
     }),
     deno(),
   ],
-  build: { sourcemap: true },
+  build: { sourcemap: false },
   resolve: {
     alias: {
       "@instantdb/react": "@instantdb/react",

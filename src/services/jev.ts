@@ -49,6 +49,29 @@ const inboundQuestions = {
   },
 };
 
+const sampleBoundedText = (raw: string, maxChars: number): string =>
+  raw.length <= maxChars
+    ? raw
+    : `${raw.slice(0, Math.floor(maxChars * 0.6))}\n...\n${
+      raw.slice(-Math.floor(maxChars * 0.4))
+    }`;
+
+const combineScanBody = ({
+  subject,
+  text,
+  html,
+}: {
+  subject: string;
+  text?: string;
+  html?: string;
+}): string => {
+  const parts = [
+    text ? `TEXT:\n${sampleBoundedText(text, 4000)}` : "",
+    html ? `HTML:\n${sampleBoundedText(html, 4000)}` : "",
+  ].filter(Boolean);
+  return parts.length > 0 ? parts.join("\n\n") : subject.slice(0, 1000);
+};
+
 const parseScanAnswer = (choice?: string): ScanResult =>
   choice === "block"
     ? {
@@ -69,10 +92,7 @@ const scanOutboundEmail = async (
       {
         to: params.to,
         subject: params.subject,
-        body: (params.text || params.html || params.subject || "").slice(
-          0,
-          4000,
-        ),
+        body: combineScanBody(params),
       },
       outboundQuestions,
     );
@@ -90,8 +110,11 @@ const scanOutboundEmail = async (
     }
     return result;
   } catch (err) {
-    console.error("JEV scan failed, allowing email fallback:", err);
-    return { allowed: true };
+    console.error("JEV scan failed:", err);
+    return Deno.env.get("DENO_ENV") === "test" ? { allowed: true } : {
+      allowed: false,
+      reason: "Temporary content safety check failure; please retry shortly",
+    };
   }
 };
 
@@ -108,10 +131,7 @@ const scanInboundEmail = async (
         from: params.from,
         to: params.to,
         subject: params.subject,
-        body: (params.text || params.html || params.subject || "").slice(
-          0,
-          4000,
-        ),
+        body: combineScanBody(params),
       },
       inboundQuestions,
     );
@@ -135,5 +155,5 @@ const scanInboundEmail = async (
   }
 };
 
-export { scanInboundEmail, scanOutboundEmail };
+export { combineScanBody, scanInboundEmail, scanOutboundEmail };
 export type { InboundScanParams, ScanParams, ScanResult };

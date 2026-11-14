@@ -1,5 +1,6 @@
-import { assertEquals, assertRejects } from "jsr:@std/assert";
+import { assertEquals } from "@std/assert";
 import { db, id } from "../src/db.ts";
+import { hmacSha256Hex } from "../src/security.ts";
 import { runBillingRenewalCheck } from "../src/services/billingCron.ts";
 import { createAccount } from "../src/handlers/accounts.ts";
 import { sendMessage } from "../src/handlers/messages.ts";
@@ -197,8 +198,16 @@ Deno.test("Billing & account expiration flow", async (t) => {
   );
 
   await t.step("Support bot prompt returns dynamic prompt text", async () => {
+    Deno.env.set("SUPPORT_BOT_SECRET", "test-support-secret-12345");
+    const payload = { meta: { timestamp: String(Date.now()) }, params: {} };
+    const signature = await hmacSha256Hex(
+      "test-support-secret-12345",
+      JSON.stringify(payload),
+    );
     const req = new Request("http://localhost/v1/support/prompt", {
-      method: "GET",
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ payload, signature }),
     });
     const res = await handleSupportPrompt(req);
     assertEquals(res.status, 200);
@@ -209,16 +218,23 @@ Deno.test("Billing & account expiration flow", async (t) => {
   await t.step(
     "Support bot tools lookup user and mailbox information",
     async () => {
-      // Test lookup_user
+      Deno.env.set("SUPPORT_BOT_SECRET", "test-support-secret-12345");
+      const userPayload = {
+        meta: { timestamp: String(Date.now()), nonce: crypto.randomUUID() },
+        params: { email: `test-${testUserId}@example.com` },
+      };
+      const userSig = await hmacSha256Hex(
+        "test-support-secret-12345",
+        JSON.stringify(userPayload),
+      );
       const userReq = new Request(
         "http://localhost/v1/support/tools/lookup-user",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            payload: {
-              params: { email: `test-${testUserId}@example.com` },
-            },
+            payload: userPayload,
+            signature: userSig,
           }),
         },
       );
@@ -228,16 +244,22 @@ Deno.test("Billing & account expiration flow", async (t) => {
       assertEquals(userData.found, true);
       assertEquals(userData.organization.balanceDollars, 4);
 
-      // Test lookup_mailbox
+      const boxPayload = {
+        meta: { timestamp: String(Date.now()), nonce: crypto.randomUUID() },
+        params: { address: `bot-${testUserId}@theagentmail.net` },
+      };
+      const boxSig = await hmacSha256Hex(
+        "test-support-secret-12345",
+        JSON.stringify(boxPayload),
+      );
       const boxReq = new Request(
         "http://localhost/v1/support/tools/lookup-mailbox",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            payload: {
-              params: { address: `bot-${testUserId}@theagentmail.net` },
-            },
+            payload: boxPayload,
+            signature: boxSig,
           }),
         },
       );
@@ -341,15 +363,24 @@ Deno.test("Billing & account expiration flow", async (t) => {
       db.tx.accounts[frozenAccountId]!.link({ organization: frozenOrgId }),
     ]);
 
+    Deno.env.set("INBOUND_WEBHOOK_SECRET", "test-inbound-secret-xyz");
+    const frozenBody = JSON.stringify({
+      from: "sender@example.com",
+      to: [`frozen-${frozenAccountId}@theagentmail.net`],
+      subject: "Hello frozen account",
+      text: "Should be dropped",
+    });
+    const frozenSig = await hmacSha256Hex(
+      "test-inbound-secret-xyz",
+      frozenBody,
+    );
     const inboundReq = new Request("http://localhost/v1/inbound", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        from: "sender@example.com",
-        to: [`frozen-${frozenAccountId}@theagentmail.net`],
-        subject: "Hello frozen account",
-        text: "Should be dropped",
-      }),
+      headers: {
+        "Content-Type": "application/json",
+        "x-webhook-signature": frozenSig,
+      },
+      body: frozenBody,
     });
 
     const inboundRes = await handleInbound(inboundReq, {}, frozenOrgId);
@@ -408,15 +439,24 @@ Deno.test("Billing & account expiration flow", async (t) => {
     }
     await db.transact(txOps);
 
+    Deno.env.set("INBOUND_WEBHOOK_SECRET", "test-inbound-secret-xyz");
+    const cappedBody = JSON.stringify({
+      from: "sender@example.com",
+      to: [`capped-${cappedAccountId}@theagentmail.net`],
+      subject: "Hello capped account",
+      text: "Should be dropped due to daily limit",
+    });
+    const cappedSig = await hmacSha256Hex(
+      "test-inbound-secret-xyz",
+      cappedBody,
+    );
     const inboundReq = new Request("http://localhost/v1/inbound", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        from: "sender@example.com",
-        to: [`capped-${cappedAccountId}@theagentmail.net`],
-        subject: "Hello capped account",
-        text: "Should be dropped due to daily limit",
-      }),
+      headers: {
+        "Content-Type": "application/json",
+        "x-webhook-signature": cappedSig,
+      },
+      body: cappedBody,
     });
 
     const inboundRes = await handleInbound(inboundReq, {}, cappedOrgId);
@@ -562,23 +602,29 @@ Deno.test("Billing & account expiration flow", async (t) => {
         db.tx.accounts[rtlAccountId]!.link({ organization: rtlOrgId }),
       ]);
 
+      Deno.env.set("INBOUND_WEBHOOK_SECRET", "test-inbound-secret-xyz");
       const exactSubject = "Re: \u200f \u200f Project Intro";
+      const rtlBody = JSON.stringify({
+        from: "sender@example.com",
+        to: [rtlAddress],
+        received_for: rtlAddress,
+        subject: "Re:   Project Intro",
+        text: "What does this mean?",
+        headers: {
+          subject: exactSubject,
+          "message-id": "<msg-123@mail.gmail.com>",
+          "in-reply-to": "<parent-456@outlook.com>",
+          references: '["<root-000@example.com>","<parent-456@outlook.com>"]',
+        },
+      });
+      const rtlSig = await hmacSha256Hex("test-inbound-secret-xyz", rtlBody);
       const inboundReq = new Request("http://localhost/v1/inbound", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          from: "sender@example.com",
-          to: [rtlAddress],
-          received_for: rtlAddress,
-          subject: "Re:   Project Intro",
-          text: "What does this mean?",
-          headers: {
-            subject: exactSubject,
-            "message-id": "<msg-123@mail.gmail.com>",
-            "in-reply-to": "<parent-456@outlook.com>",
-            references: '["<root-000@example.com>","<parent-456@outlook.com>"]',
-          },
-        }),
+        headers: {
+          "Content-Type": "application/json",
+          "x-webhook-signature": rtlSig,
+        },
+        body: rtlBody,
       });
 
       const inboundRes = await handleInbound(inboundReq, {}, rtlOrgId);

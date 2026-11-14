@@ -8,11 +8,16 @@ const getAttachmentUrl = async (
   orgId: string,
 ): Promise<Response> => {
   const { accountId, messageId, attachmentId } = params;
+  if (!messageId || !attachmentId) {
+    return Response.json(
+      { error: "Attachment not found", code: "NOT_FOUND" },
+      { status: 404 },
+    );
+  }
 
-  // Get attachment with nested relations
   const { attachments } = await db.query({
     attachments: {
-      $: { where: { id: attachmentId! } },
+      $: { where: { id: attachmentId } },
       message: {
         account: {
           organization: {},
@@ -63,7 +68,12 @@ const getAttachmentUrl = async (
     );
   }
 
-  const url = await getSignedUrl(attachment.storageKey);
+  const url = await getSignedUrl(
+    attachment.storageKey,
+    3600,
+    attachment.filename,
+    attachment.contentType,
+  );
 
   return Response.json(
     {

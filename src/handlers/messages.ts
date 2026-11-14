@@ -1,13 +1,19 @@
+import { decodeBase64 } from "@std/encoding/base64";
 import { db, id } from "../db.ts";
-import type { ApiResponse, SendEmailInput } from "../types.ts";
+import { getUtcDayStart, isPayingOrg, planDetails } from "../planData.ts";
+import { sanitizeAttachmentFilename, withKeyedLock } from "../security.ts";
+import { scanOutboundEmail } from "../services/jev.ts";
+import { captureEvent } from "../services/posthog.ts";
+import { notifyQuotaExceeded } from "../services/quotaNotifier.ts";
 import { sendEmail } from "../services/resend.ts";
 import { uploadFile } from "../services/storage.ts";
-import { captureEvent } from "../services/posthog.ts";
-import { scanOutboundEmail } from "../services/jev.ts";
-import { getUtcDayStart, isPayingOrg, planDetails } from "../planData.ts";
-import { notifyQuotaExceeded } from "../services/quotaNotifier.ts";
+import type { ApiResponse, SendEmailInput } from "../types.ts";
 
-const SPAM_PATTERNS = [
+const maxRecipientsPerMessage = 10;
+const maxAttachmentsPerMessage = 10;
+const maxOutboundAttachmentBytes = 10 * 1024 * 1024;
+
+const spamPatterns = [
   "페이지 소유권 확인",
   "Meta 비즈니스 지원",
   "비즈니스 신원 확인",
@@ -29,14 +35,13 @@ const containsSpam = (input: SendEmailInput): boolean => {
   const content = `${input.subject ?? ""} ${input.text ?? ""} ${
     input.html ?? ""
   }`.toLowerCase();
-  return SPAM_PATTERNS.some((pattern) =>
+  return spamPatterns.some((pattern) =>
     content.includes(pattern.toLowerCase())
   );
 };
 
-const countMessages = async (
+const countOutboundRecipientsSince = async (
   accountId: string,
-  direction: "inbound" | "outbound",
   since: number,
 ): Promise<number> => {
   const result = await db.query({
@@ -44,13 +49,18 @@ const countMessages = async (
       $: {
         where: {
           "account.id": accountId,
-          direction,
+          direction: "outbound",
           timestamp: { $gte: since },
         },
       },
     },
   });
-  return result.messages?.length ?? 0;
+  return (result.messages ?? []).reduce((sum, m) => {
+    const toCount = Array.isArray(m.to) ? m.to.length : 1;
+    const ccCount = Array.isArray(m.cc) ? m.cc.length : 0;
+    const bccCount = Array.isArray(m.bcc) ? m.bcc.length : 0;
+    return sum + Math.max(1, toCount + ccCount + bccCount);
+  }, 0);
 };
 
 const sendMessage = async (
@@ -58,102 +68,48 @@ const sendMessage = async (
   params: Record<string, string>,
   orgId: string,
 ): Promise<Response> => {
-  const accountId = params.accountId!;
-
-  // Verify account belongs to org
-  const { accounts } = await db.query({
-    accounts: {
-      $: { where: { id: accountId, "organization.id": orgId } },
-      organization: { billingUser: {}, members: {} },
-    },
-  });
-  const account = accounts[0];
-  if (!account) {
+  const accountId = params.accountId;
+  if (!accountId) {
     return Response.json(
-      { error: "Account not found", code: "NOT_FOUND" },
-      { status: 404 },
+      { error: "accountId is required", code: "BAD_REQUEST" },
+      { status: 400 },
     );
-  }
-
-  // deno-lint-ignore no-explicit-any
-  const org: any = Array.isArray(account.organization)
-    ? account.organization[0]
-    : account.organization;
-  const isAdmin = Boolean(org?.admin) ||
-    org?.billingUser?.email === "uri.valevski@gmail.com" ||
-    org?.members?.some((m: { email?: string }) =>
-      m.email === "uri.valevski@gmail.com"
-    );
-
-  const now = Date.now();
-  const periodLengthMs = 30 * 24 * 60 * 60 * 1000;
-  const isNewPeriod = !account.sendPeriodStart ||
-    now - account.sendPeriodStart > periodLengthMs;
-  const sendsInCurrentPeriod = isNewPeriod ? 0 : (account.sendsThisMonth ?? 0);
-
-  if (!isAdmin) {
-    if (account.isFrozen || (account.expiresAt && account.expiresAt < now)) {
-      return Response.json(
-        {
-          error: "Mailbox is expired or inactive. Please top up your balance.",
-          code: "ACCOUNT_EXPIRED",
-        },
-        { status: 402 },
-      );
-    }
-
-    const isPaying = isPayingOrg(org);
-    const limits = isPaying ? planDetails.limits.paid : planDetails.limits.trial;
-
-    const todayUtc = getUtcDayStart();
-    const sendsToday = await countMessages(accountId, "outbound", todayUtc);
-    const billingEmail = org?.billingUser?.email ||
-      org?.members?.find((m: { email?: string }) => Boolean(m.email))?.email;
-
-    if (sendsToday >= limits.sendsPerDay) {
-      notifyQuotaExceeded({
-        orgId,
-        accountAddress: account.address,
-        accountId,
-        quotaType: "daily_send",
-        limit: limits.sendsPerDay,
-        billingEmail,
-        isPaying,
-      }).catch((err) => console.error("[messages] Quota notify error:", err));
-
-      return Response.json(
-        {
-          error:
-            `Daily send limit reached (${limits.sendsPerDay} sends/day for ${isPaying ? "paid" : "trial"} accounts). Resets at 00:00 UTC.`,
-          code: "DAILY_SEND_LIMIT_REACHED",
-        },
-        { status: 429 },
-      );
-    }
-
-    if (sendsInCurrentPeriod >= limits.sendsPerMonth) {
-      notifyQuotaExceeded({
-        orgId,
-        accountAddress: account.address,
-        accountId,
-        quotaType: "monthly_send",
-        limit: limits.sendsPerMonth,
-        billingEmail,
-        isPaying,
-      }).catch((err) => console.error("[messages] Quota notify error:", err));
-
-      return Response.json(
-        {
-          error:
-            `Monthly send limit reached (${limits.sendsPerMonth.toLocaleString()} sends/month for ${isPaying ? "paid" : "trial"} accounts). ${isPaying ? "Contact support@theagentmail.net if you need more." : "Top up $5 to upgrade to a paid account with 1,000 sends/mo."}`,
-          code: "SEND_LIMIT_REACHED",
-        },
-        { status: 429 },
-      );
-    }
   }
 
   const input = (await req.json()) as SendEmailInput;
+  if (!Array.isArray(input.to) || input.to.length === 0) {
+    return Response.json(
+      {
+        error: "At least one recipient in 'to' is required",
+        code: "BAD_REQUEST",
+      },
+      { status: 400 },
+    );
+  }
+
+  const recipientCount = input.to.length +
+    (input.cc?.length ?? 0) +
+    (input.bcc?.length ?? 0);
+  if (recipientCount > maxRecipientsPerMessage) {
+    return Response.json(
+      {
+        error:
+          `Too many recipients (maximum ${maxRecipientsPerMessage} per message)`,
+        code: "TOO_MANY_RECIPIENTS",
+      },
+      { status: 400 },
+    );
+  }
+
+  if ((input.attachments?.length ?? 0) > maxAttachmentsPerMessage) {
+    return Response.json(
+      {
+        error: `Too many attachments (maximum ${maxAttachmentsPerMessage})`,
+        code: "BAD_REQUEST",
+      },
+      { status: 400 },
+    );
+  }
 
   if (containsSpam(input)) {
     return Response.json(
@@ -165,121 +121,236 @@ const sendMessage = async (
     );
   }
 
-  const scanResult = await scanOutboundEmail(input, orgId);
-  if (!scanResult.allowed) {
-    return Response.json(
-      {
-        error: scanResult.reason ??
-          "Message rejected: content flagged as spam or phishing",
-        code: "SPAM_REJECTED",
+  return withKeyedLock(`acct:${accountId}`, async () => {
+    const { accounts } = await db.query({
+      accounts: {
+        $: { where: { id: accountId, "organization.id": orgId } },
+        organization: { billingUser: {}, members: {} },
       },
-      { status: 400 },
-    );
-  }
-  const from = account.address;
-
-  // Upload attachments to GCS
-  const attachmentRecords: {
-    id: string;
-    filename: string;
-    contentType: string;
-    size: number;
-    storageKey: string;
-  }[] = [];
-
-  if (input.attachments) {
-    for (const att of input.attachments) {
-      const attId = id();
-      const storageKey = `${orgId}/${accountId}/${attId}/${att.filename}`;
-      const data = Uint8Array.from(atob(att.content), (c) => c.charCodeAt(0));
-      await uploadFile(storageKey, data, att.contentType);
-      attachmentRecords.push({
-        id: attId,
-        filename: att.filename,
-        contentType: att.contentType,
-        size: data.byteLength,
-        storageKey,
-      });
+    });
+    const account = accounts[0];
+    if (!account) {
+      return Response.json(
+        { error: "Account not found", code: "NOT_FOUND" },
+        { status: 404 },
+      );
     }
-  }
 
-  const result = (await sendEmail({
-    from,
-    to: [...input.to],
-    cc: input.cc ? [...input.cc] : undefined,
-    bcc: input.bcc ? [...input.bcc] : undefined,
-    subject: input.subject,
-    text: input.text,
-    html: input.html,
-    inReplyTo: input.inReplyTo,
-    references: input.references,
-    attachments: input.attachments?.map((a) => ({
-      filename: a.filename,
-      contentType: a.contentType,
-      content: a.content,
-    })),
-  })) as { id?: string } | null;
+    // deno-lint-ignore no-explicit-any
+    const org: any = Array.isArray(account.organization)
+      ? account.organization[0]
+      : account.organization;
+    const isAdmin = Boolean(org?.admin);
 
-  // Store message in DB
-  const messageId = id();
-  // deno-lint-ignore no-explicit-any
-  const txOps: any[] = [
-    db.tx.messages[messageId]!.update({
+    const now = Date.now();
+    const periodLengthMs = 30 * 24 * 60 * 60 * 1000;
+    const isNewPeriod = !account.sendPeriodStart ||
+      now - account.sendPeriodStart > periodLengthMs;
+    const sendsInCurrentPeriod = isNewPeriod
+      ? 0
+      : (account.sendsThisMonth ?? 0);
+
+    if (!isAdmin) {
+      if (account.isFrozen || (account.expiresAt && account.expiresAt < now)) {
+        return Response.json(
+          {
+            error:
+              "Mailbox is expired or inactive. Please top up your balance.",
+            code: "ACCOUNT_EXPIRED",
+          },
+          { status: 402 },
+        );
+      }
+
+      const isPaying = isPayingOrg(org);
+      const limits = isPaying
+        ? planDetails.limits.paid
+        : planDetails.limits.trial;
+
+      const todayUtc = getUtcDayStart();
+      const sendsToday = await countOutboundRecipientsSince(
+        accountId,
+        todayUtc,
+      );
+      const billingEmail = org?.billingUser?.email ||
+        org?.members?.find((m: { email?: string }) => Boolean(m.email))?.email;
+
+      if (sendsToday + recipientCount > limits.sendsPerDay) {
+        notifyQuotaExceeded({
+          orgId,
+          accountAddress: account.address,
+          accountId,
+          quotaType: "daily_send",
+          limit: limits.sendsPerDay,
+          billingEmail,
+          isPaying,
+        }).catch((err) => console.error("[messages] Quota notify error:", err));
+
+        return Response.json(
+          {
+            error:
+              `Daily send limit reached (${limits.sendsPerDay} sends/day for ${
+                isPaying ? "paid" : "trial"
+              } accounts). Resets at 00:00 UTC.`,
+            code: "DAILY_SEND_LIMIT_REACHED",
+          },
+          { status: 429 },
+        );
+      }
+
+      if (sendsInCurrentPeriod + recipientCount > limits.sendsPerMonth) {
+        notifyQuotaExceeded({
+          orgId,
+          accountAddress: account.address,
+          accountId,
+          quotaType: "monthly_send",
+          limit: limits.sendsPerMonth,
+          billingEmail,
+          isPaying,
+        }).catch((err) => console.error("[messages] Quota notify error:", err));
+
+        return Response.json(
+          {
+            error:
+              `Monthly send limit reached (${limits.sendsPerMonth.toLocaleString()} sends/month for ${
+                isPaying ? "paid" : "trial"
+              } accounts). ${
+                isPaying
+                  ? "Contact support@theagentmail.net if you need more."
+                  : "Top up $5 to upgrade to a paid account with 1,000 sends/mo."
+              }`,
+            code: "SEND_LIMIT_REACHED",
+          },
+          { status: 429 },
+        );
+      }
+    }
+
+    const scanResult = await scanOutboundEmail(input, orgId);
+    if (!scanResult.allowed) {
+      return Response.json(
+        {
+          error: scanResult.reason ??
+            "Message rejected: content flagged as spam or phishing",
+          code: "SPAM_REJECTED",
+        },
+        { status: 400 },
+      );
+    }
+
+    const from = account.address;
+    const attachmentRecords: {
+      id: string;
+      filename: string;
+      contentType: string;
+      size: number;
+      storageKey: string;
+    }[] = [];
+
+    if (input.attachments) {
+      let totalBytes = 0;
+      for (const att of input.attachments) {
+        const safeFilename = sanitizeAttachmentFilename(att.filename);
+        const data = decodeBase64(att.content);
+        totalBytes += data.byteLength;
+        if (totalBytes > maxOutboundAttachmentBytes) {
+          return Response.json(
+            {
+              error: "Attachments exceed maximum total size of 10MB",
+              code: "BAD_REQUEST",
+            },
+            { status: 413 },
+          );
+        }
+        const attId = id();
+        const storageKey = `${orgId}/${accountId}/${attId}/${safeFilename}`;
+        await uploadFile(storageKey, data, att.contentType);
+        attachmentRecords.push({
+          id: attId,
+          filename: safeFilename,
+          contentType: att.contentType,
+          size: data.byteLength,
+          storageKey,
+        });
+      }
+    }
+
+    const result = (await sendEmail({
       from,
       to: [...input.to],
       cc: input.cc ? [...input.cc] : undefined,
       bcc: input.bcc ? [...input.bcc] : undefined,
       subject: input.subject,
-      bodyText: input.text ?? "",
-      bodyHtml: input.html ?? "",
-      direction: "outbound",
-      status: "sent",
-      timestamp: Date.now(),
-      externalId: result?.id ?? "",
-      inReplyTo: input.inReplyTo ?? "",
-      references: input.references ?? "",
-    }),
-    db.tx.messages[messageId]!.link({ account: accountId }),
-    db.tx.accounts[accountId]!.update({
-      sendsThisMonth: sendsInCurrentPeriod + 1,
-      sendPeriodStart: isNewPeriod ? now : account.sendPeriodStart,
-    }),
-  ];
+      text: input.text,
+      html: input.html,
+      inReplyTo: input.inReplyTo,
+      references: input.references,
+      attachments: input.attachments?.map((a) => ({
+        filename: sanitizeAttachmentFilename(a.filename),
+        contentType: a.contentType,
+        content: a.content,
+      })),
+    })) as { id?: string } | null;
 
-  // Link attachments
-  for (const att of attachmentRecords) {
-    txOps.push(
-      db.tx.attachments[att.id]!.update({
-        filename: att.filename,
-        contentType: att.contentType,
-        size: att.size,
-        storageKey: att.storageKey,
-        createdAt: Date.now(),
-      }),
-      db.tx.attachments[att.id]!.link({ message: messageId }),
-    );
-  }
-
-  await db.transact(txOps);
-  captureEvent(orgId, "email_sent", {
-    from,
-    to: input.to,
-    hasAttachments: attachmentRecords.length > 0,
-  });
-
-  return Response.json(
-    {
-      data: {
-        id: messageId,
+    const messageId = id();
+    // deno-lint-ignore no-explicit-any
+    const txOps: any[] = [
+      db.tx.messages[messageId]!.update({
         from,
-        to: input.to,
+        to: [...input.to],
+        cc: input.cc ? [...input.cc] : undefined,
+        bcc: input.bcc ? [...input.bcc] : undefined,
         subject: input.subject,
+        bodyText: input.text ?? "",
+        bodyHtml: input.html ?? "",
+        direction: "outbound",
         status: "sent",
         timestamp: Date.now(),
-      },
-    } satisfies ApiResponse<unknown>,
-    { status: 201 },
-  );
+        externalId: result?.id ?? "",
+        inReplyTo: input.inReplyTo ?? "",
+        references: input.references ?? "",
+      }),
+      db.tx.messages[messageId]!.link({ account: accountId }),
+      db.tx.accounts[accountId]!.update({
+        sendsThisMonth: sendsInCurrentPeriod + recipientCount,
+        sendPeriodStart: isNewPeriod ? now : account.sendPeriodStart,
+      }),
+    ];
+
+    for (const att of attachmentRecords) {
+      txOps.push(
+        db.tx.attachments[att.id]!.update({
+          filename: att.filename,
+          contentType: att.contentType,
+          size: att.size,
+          storageKey: att.storageKey,
+          createdAt: Date.now(),
+        }),
+        db.tx.attachments[att.id]!.link({ message: messageId }),
+      );
+    }
+
+    await db.transact(txOps);
+    captureEvent(orgId, "email_sent", {
+      from,
+      to: input.to,
+      hasAttachments: attachmentRecords.length > 0,
+    });
+
+    return Response.json(
+      {
+        data: {
+          id: messageId,
+          from,
+          to: input.to,
+          subject: input.subject,
+          status: "sent",
+          timestamp: Date.now(),
+        },
+      } satisfies ApiResponse<unknown>,
+      { status: 201 },
+    );
+  });
 };
 
 const listMessages = async (
@@ -287,7 +358,13 @@ const listMessages = async (
   params: Record<string, string>,
   orgId: string,
 ): Promise<Response> => {
-  const accountId = params.accountId!;
+  const accountId = params.accountId;
+  if (!accountId) {
+    return Response.json(
+      { error: "accountId is required", code: "BAD_REQUEST" },
+      { status: 400 },
+    );
+  }
 
   const { accounts } = await db.query({
     accounts: {

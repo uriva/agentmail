@@ -1,3 +1,4 @@
+import { validateWebhookTargetUrl } from "../security.ts";
 import { captureEvent } from "./posthog.ts";
 
 const sign = async (secret: string, payload: string): Promise<string> => {
@@ -30,16 +31,27 @@ const deliverWebhook = async (
   payload: WebhookPayload,
   orgId: string,
 ): Promise<boolean> => {
+  const safeUrl = validateWebhookTargetUrl(url);
+  if (!safeUrl) {
+    console.warn("[webhook] Blocked unsafe webhook URL:", url);
+    return false;
+  }
+
   const body = JSON.stringify(payload);
-  const signature = await sign(secret, body);
-  const timestamp = Date.now().toString();
+  const timestamp = String(payload.timestamp);
+  const [signature, timestampedSignature] = await Promise.all([
+    sign(secret, body),
+    sign(secret, `${timestamp}.${body}`),
+  ]);
 
   try {
-    const res = await fetch(url, {
+    const res = await fetch(safeUrl, {
       method: "POST",
+      redirect: "error",
       headers: {
         "Content-Type": "application/json",
         "X-AgentMail-Signature": signature,
+        "X-AgentMail-Signature-256": `v1=${timestampedSignature}`,
         "X-AgentMail-Timestamp": timestamp,
       },
       body,
@@ -47,26 +59,17 @@ const deliverWebhook = async (
     });
 
     const success = res.ok;
-    console.log("[webhook]", success ? "delivered" : "failed", {
-      url,
-      status: res.status,
-      event: payload.event,
-    });
+    await res.body?.cancel().catch(() => {});
     captureEvent(orgId, "webhook_delivered", {
-      url,
+      url: safeUrl,
       success,
       statusCode: res.status,
       event: payload.event,
     });
     return success;
   } catch (err) {
-    console.error("[webhook] error delivering", {
-      url,
-      error: err instanceof Error ? err.message : "Unknown error",
-      event: payload.event,
-    });
     captureEvent(orgId, "webhook_delivery_failed", {
-      url,
+      url: safeUrl,
       error: err instanceof Error ? err.message : "Unknown error",
       event: payload.event,
     });
@@ -81,15 +84,16 @@ const deliverWithRetry = async (
   orgId: string,
   maxRetries = 3,
 ): Promise<boolean> => {
+  const safeUrl = validateWebhookTargetUrl(url);
+  if (!safeUrl) return false;
+
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     if (attempt > 0) {
-      console.log("[webhook] retry attempt", attempt, "for", url);
       await new Promise((r) => setTimeout(r, 1000 * Math.pow(2, attempt - 1)));
     }
-    const success = await deliverWebhook(url, secret, payload, orgId);
+    const success = await deliverWebhook(safeUrl, secret, payload, orgId);
     if (success) return true;
   }
-  console.error("[webhook] all retries exhausted for", url);
   return false;
 };
 

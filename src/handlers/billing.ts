@@ -1,11 +1,11 @@
 import Stripe from "stripe";
 import { db } from "../db.ts";
+import { captureEvent } from "../services/posthog.ts";
 import {
   applyCheckoutSession,
   createTopupCheckoutSession,
-  stripe,
+  getStripe,
 } from "../services/stripe.ts";
-import { captureEvent } from "../services/posthog.ts";
 
 const createCheckout = async (
   req: Request,
@@ -53,10 +53,13 @@ const syncCheckout = async (
     );
   }
 
-  const result = await applyCheckoutSession(sessionId);
+  const result = await applyCheckoutSession(sessionId, orgId);
   if (!result.success) {
     return Response.json(
-      { error: "Checkout session not completed or invalid", code: "PAYMENT_NOT_FOUND" },
+      {
+        error: "Checkout session not completed or invalid",
+        code: "PAYMENT_NOT_FOUND",
+      },
       { status: 400 },
     );
   }
@@ -94,9 +97,7 @@ const getBillingBalance = async (
     );
   }
 
-  const isAdmin = Boolean(
-    org.admin || org.billingUser?.email === "uri.valevski@gmail.com",
-  );
+  const isAdmin = Boolean(org.admin);
 
   return Response.json({
     data: {
@@ -119,7 +120,7 @@ const handleStripeWebhook = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const event = await stripe.webhooks.constructEventAsync(
+    const event = await getStripe().webhooks.constructEventAsync(
       body,
       sig,
       webhookSecret,

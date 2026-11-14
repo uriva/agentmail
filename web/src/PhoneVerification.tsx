@@ -79,7 +79,9 @@ export const PhoneVerification = ({
           </div>
           <div>
             <h1 class="text-xl font-bold text-white">Phone Verification</h1>
-            <p class="text-xs text-slate-400">Required to secure your account</p>
+            <p class="text-xs text-slate-400">
+              Required to secure your account
+            </p>
           </div>
         </div>
 
@@ -89,62 +91,68 @@ export const PhoneVerification = ({
           </div>
         )}
 
-        {step === "phone" ? (
-          <div>
-            <label class="block text-sm text-slate-300 mb-1">
-              Mobile Phone Number
-            </label>
-            <input
-              type="tel"
-              value={phone}
-              onInput={(e) => setPhone((e.target as HTMLInputElement).value)}
-              placeholder="+1234567890"
-              class="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500 mb-4"
-              onKeyDown={(e) => e.key === "Enter" && sendPhoneCode()}
-            />
-            <p class="text-xs text-slate-400 mb-4">
-              Enter your mobile phone number with country code (e.g. +1 for US/Canada).
-            </p>
-            <button
-              onClick={sendPhoneCode}
-              disabled={loading || !phone}
-              class="w-full py-2 px-4 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-600 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors"
-            >
-              {loading ? "Sending SMS..." : "Send Verification Code"}
-            </button>
-          </div>
-        ) : (
-          <div>
-            <p class="text-slate-400 text-sm mb-4">
-              We sent a verification code to <span class="text-white">{phone}</span>
-            </p>
-            <label class="block text-sm text-slate-300 mb-1">SMS Verification Code</label>
-            <input
-              type="text"
-              value={code}
-              onInput={(e) => setCode((e.target as HTMLInputElement).value)}
-              placeholder="123456"
-              class="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500 mb-4 text-center text-2xl tracking-widest"
-              onKeyDown={(e) => e.key === "Enter" && verifyPhoneCode()}
-            />
-            <button
-              onClick={verifyPhoneCode}
-              disabled={loading || !code}
-              class="w-full py-2 px-4 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-600 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors"
-            >
-              {loading ? "Verifying..." : "Verify Phone Number"}
-            </button>
-            <button
-              onClick={() => {
-                setStep("phone");
-                setCode("");
-              }}
-              class="w-full mt-2 py-2 text-sm text-slate-400 hover:text-white transition-colors"
-            >
-              Use a different phone number
-            </button>
-          </div>
-        )}
+        {step === "phone"
+          ? (
+            <div>
+              <label class="block text-sm text-slate-300 mb-1">
+                Mobile Phone Number
+              </label>
+              <input
+                type="tel"
+                value={phone}
+                onInput={(e) => setPhone((e.target as HTMLInputElement).value)}
+                placeholder="+1234567890"
+                class="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500 mb-4"
+                onKeyDown={(e) => e.key === "Enter" && sendPhoneCode()}
+              />
+              <p class="text-xs text-slate-400 mb-4">
+                Enter your mobile phone number with country code (e.g. +1 for
+                US/Canada).
+              </p>
+              <button
+                onClick={sendPhoneCode}
+                disabled={loading || !phone}
+                class="w-full py-2 px-4 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-600 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors"
+              >
+                {loading ? "Sending SMS..." : "Send Verification Code"}
+              </button>
+            </div>
+          )
+          : (
+            <div>
+              <p class="text-slate-400 text-sm mb-4">
+                We sent a verification code to{" "}
+                <span class="text-white">{phone}</span>
+              </p>
+              <label class="block text-sm text-slate-300 mb-1">
+                SMS Verification Code
+              </label>
+              <input
+                type="text"
+                value={code}
+                onInput={(e) => setCode((e.target as HTMLInputElement).value)}
+                placeholder="123456"
+                class="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500 mb-4 text-center text-2xl tracking-widest"
+                onKeyDown={(e) => e.key === "Enter" && verifyPhoneCode()}
+              />
+              <button
+                onClick={verifyPhoneCode}
+                disabled={loading || !code}
+                class="w-full py-2 px-4 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-600 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors"
+              >
+                {loading ? "Verifying..." : "Verify Phone Number"}
+              </button>
+              <button
+                onClick={() => {
+                  setStep("phone");
+                  setCode("");
+                }}
+                class="w-full mt-2 py-2 text-sm text-slate-400 hover:text-white transition-colors"
+              >
+                Use a different phone number
+              </button>
+            </div>
+          )}
       </div>
     </div>
   );

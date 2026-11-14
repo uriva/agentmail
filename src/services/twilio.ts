@@ -1,36 +1,50 @@
-const TWILIO_ACCOUNT_SID = Deno.env.get("TWILIO_ACCOUNT_SID") ?? "";
-const TWILIO_AUTH_TOKEN = Deno.env.get("TWILIO_AUTH_TOKEN") ?? "";
-const TWILIO_API_KEY_SID =
-  Deno.env.get("TWILIO_API_KEY_SID") ?? TWILIO_ACCOUNT_SID;
-const TWILIO_API_KEY_SECRET =
-  Deno.env.get("TWILIO_API_KEY_SECRET") ?? TWILIO_AUTH_TOKEN;
-const TWILIO_VERIFY_SERVICE_SID =
-  Deno.env.get("TWILIO_VERIFY_SERVICE_SID") ?? "";
+import { normalizeE164Phone } from "../security.ts";
 
-const hasTwilioConfig = () =>
-  Boolean(
-    TWILIO_API_KEY_SID &&
-      TWILIO_API_KEY_SECRET &&
-      TWILIO_VERIFY_SERVICE_SID,
-  );
+const readTwilioConfig = () => {
+  const accountSid = Deno.env.get("TWILIO_ACCOUNT_SID") ?? "";
+  const authToken = Deno.env.get("TWILIO_AUTH_TOKEN") ?? "";
+  const apiKeySid = Deno.env.get("TWILIO_API_KEY_SID") || accountSid;
+  const apiKeySecret = Deno.env.get("TWILIO_API_KEY_SECRET") || authToken;
+  const verifyServiceSid = Deno.env.get("TWILIO_VERIFY_SERVICE_SID") ?? "";
+  return {
+    apiKeySid,
+    apiKeySecret,
+    verifyServiceSid,
+    configured: Boolean(apiKeySid && apiKeySecret && verifyServiceSid),
+  };
+};
 
-const authHeader = () =>
-  "Basic " + btoa(`${TWILIO_API_KEY_SID}:${TWILIO_API_KEY_SECRET}`);
-
-const formatPhone = (to: string): string =>
-  to.startsWith("+") ? to : `+${to.replace(/\D/g, "")}`;
+const isDevOrTestEnv = (): boolean => {
+  const env = Deno.env.get("DENO_ENV");
+  return env === "development" || env === "test";
+};
 
 const startTwilioVerification = async (to: string): Promise<boolean> => {
-  const formattedTo = formatPhone(to);
-  if (!hasTwilioConfig()) {
-    console.log(`[Dev Phone Verify] Mock SMS sent to ${formattedTo}`);
-    return true;
+  const formattedTo = normalizeE164Phone(to);
+  if (!formattedTo) {
+    throw {
+      status: 400,
+      error: "Invalid phone number format",
+      code: "BAD_REQUEST",
+    };
+  }
+
+  const cfg = readTwilioConfig();
+  if (!cfg.configured) {
+    if (isDevOrTestEnv()) {
+      return true;
+    }
+    throw {
+      status: 503,
+      error: "Phone verification service is temporarily unavailable",
+      code: "SMS_UNAVAILABLE",
+    };
   }
 
   const url =
-    `https://verify.twilio.com/v2/Services/${TWILIO_VERIFY_SERVICE_SID}/Verifications`;
+    `https://verify.twilio.com/v2/Services/${cfg.verifyServiceSid}/Verifications`;
   const headers = new Headers({
-    Authorization: authHeader(),
+    Authorization: "Basic " + btoa(`${cfg.apiKeySid}:${cfg.apiKeySecret}`),
     "Content-Type": "application/x-www-form-urlencoded",
   });
 
@@ -46,10 +60,9 @@ const startTwilioVerification = async (to: string): Promise<boolean> => {
   });
 
   if (!response.ok) {
-    const errText = await response.text();
     throw {
       status: 400,
-      error: `SMS delivery failed: ${errText}`,
+      error: "SMS delivery failed. Please verify the phone number.",
       code: "SMS_FAILED",
     };
   }
@@ -61,15 +74,18 @@ const checkTwilioVerification = async (
   to: string,
   code: string,
 ): Promise<boolean> => {
-  const formattedTo = formatPhone(to);
-  if (!hasTwilioConfig()) {
-    return code === "123456" || code.length === 6;
+  const formattedTo = normalizeE164Phone(to);
+  if (!formattedTo) return false;
+
+  const cfg = readTwilioConfig();
+  if (!cfg.configured) {
+    return isDevOrTestEnv() && code === "123456";
   }
 
   const url =
-    `https://verify.twilio.com/v2/Services/${TWILIO_VERIFY_SERVICE_SID}/VerificationCheck`;
+    `https://verify.twilio.com/v2/Services/${cfg.verifyServiceSid}/VerificationCheck`;
   const headers = new Headers({
-    Authorization: authHeader(),
+    Authorization: "Basic " + btoa(`${cfg.apiKeySid}:${cfg.apiKeySecret}`),
     "Content-Type": "application/x-www-form-urlencoded",
   });
 

@@ -1,15 +1,26 @@
+import { decodeBase64, encodeBase64 } from "@std/encoding/base64";
+import { unique } from "gamla";
 import { db, id } from "../db.ts";
-import type { InboundAttachment, InboundEmail } from "../types.ts";
+import { getUtcDayStart, isPayingOrg, planDetails } from "../planData.ts";
+import {
+  bytesToHex,
+  markWebhookEventSeen,
+  sanitizeAttachmentFilename,
+  timingSafeEqualStrings,
+} from "../security.ts";
+import { scanInboundEmail } from "../services/jev.ts";
+import { captureEvent } from "../services/posthog.ts";
+import { notifyQuotaExceeded } from "../services/quotaNotifier.ts";
+import { emailDomain } from "../services/resend.ts";
 import { uploadFile } from "../services/storage.ts";
 import { deliverWithRetry } from "../services/webhookDelivery.ts";
-import { captureEvent } from "../services/posthog.ts";
-import { scanInboundEmail } from "../services/jev.ts";
-import { getUtcDayStart, isPayingOrg, planDetails } from "../planData.ts";
-import { notifyQuotaExceeded } from "../services/quotaNotifier.ts";
-import { decodeBase64, encodeBase64 } from "jsr:@std/encoding/base64";
-import { unique } from "gamla";
+import type { InboundAttachment, InboundEmail } from "../types.ts";
 
-const INBOUND_WEBHOOK_SECRET = Deno.env.get("INBOUND_WEBHOOK_SECRET") ?? "";
+const svixToleranceSeconds = 300;
+const replayTtlMs = 10 * 60 * 1000;
+const maxRecipientsPerEvent = 10;
+const maxAttachmentsCount = 10;
+const maxTotalAttachmentBytes = 15 * 1024 * 1024;
 
 const extractAddress = (raw: string): string => {
   const addr = raw.includes("<") ? raw.match(/<(.+)>/)?.[1] ?? raw : raw;
@@ -24,39 +35,60 @@ const verifySvixSignature = async (
   const svixId = req.headers.get("svix-id");
   const svixTimestamp = req.headers.get("svix-timestamp");
   const svixSignature = req.headers.get("svix-signature");
-  if (!svixId || !svixTimestamp || !svixSignature) return false;
+  if (!svixId || !svixTimestamp || !svixSignature || !secret) return false;
+
+  const tsSeconds = Number(svixTimestamp);
+  if (
+    !Number.isFinite(tsSeconds) ||
+    Math.abs(Math.floor(Date.now() / 1000) - tsSeconds) > svixToleranceSeconds
+  ) {
+    return false;
+  }
 
   const rawSecret = secret.startsWith("whsec_") ? secret.slice(6) : secret;
   const payloadToSign = `${svixId}.${svixTimestamp}.${body}`;
 
-  const keysToTry: BufferSource[] = [];
-  try {
-    keysToTry.push(new Uint8Array(decodeBase64(rawSecret)));
-  } catch {
-    // ignore base64 parse error
-  }
-  keysToTry.push(new TextEncoder().encode(rawSecret));
-  keysToTry.push(new TextEncoder().encode(secret));
-
-  for (const secretBytes of keysToTry) {
-    const key = await crypto.subtle.importKey(
-      "raw",
-      secretBytes,
-      { name: "HMAC", hash: "SHA-256" },
-      false,
-      ["sign"],
-    );
-    const signed = await crypto.subtle.sign(
-      "HMAC",
-      key,
-      new TextEncoder().encode(payloadToSign),
-    );
-    const expectedSig = `v1,${encodeBase64(signed)}`;
-    if (svixSignature.split(" ").includes(expectedSig)) {
-      return true;
+  const decodedKey = (() => {
+    try {
+      return new Uint8Array(decodeBase64(rawSecret));
+    } catch {
+      return null;
     }
-  }
-  return false;
+  })();
+
+  const keysToTry: readonly BufferSource[] = [
+    ...(decodedKey ? [decodedKey] : []),
+    new TextEncoder().encode(rawSecret),
+    new TextEncoder().encode(secret),
+  ];
+
+  const providedSigs = svixSignature.split(" ").filter(Boolean);
+  const results = await Promise.all(
+    keysToTry.map(async (secretBytes) => {
+      const key = await crypto.subtle.importKey(
+        "raw",
+        secretBytes,
+        { name: "HMAC", hash: "SHA-256" },
+        false,
+        ["sign"],
+      );
+      const signed = await crypto.subtle.sign(
+        "HMAC",
+        key,
+        new TextEncoder().encode(payloadToSign),
+      );
+      const expectedSig = `v1,${encodeBase64(signed)}`;
+      const matches = await Promise.all(
+        providedSigs.map((candidate) =>
+          timingSafeEqualStrings(candidate, expectedSig)
+        ),
+      );
+      return matches.some(Boolean);
+    }),
+  );
+
+  if (!results.some(Boolean)) return false;
+  return markWebhookEventSeen(`svix:${svixId}`, replayTtlMs);
 };
 
 const verifyForwardEmailSignature = async (
@@ -65,7 +97,7 @@ const verifyForwardEmailSignature = async (
   secret: string,
 ): Promise<boolean> => {
   const signature = req.headers.get("x-webhook-signature");
-  if (!signature) return false;
+  if (!signature || !secret) return false;
   const key = await crypto.subtle.importKey(
     "raw",
     new TextEncoder().encode(secret),
@@ -78,48 +110,44 @@ const verifyForwardEmailSignature = async (
     key,
     new TextEncoder().encode(body),
   );
-  const expectedHex = Array.from(new Uint8Array(expected))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-  return signature === expectedHex;
+  const expectedHex = bytesToHex(new Uint8Array(expected));
+  return timingSafeEqualStrings(signature.toLowerCase(), expectedHex);
 };
 
-const verifyInboundSignature = async (
+export const verifyInboundSignature = async (
   req: Request,
   body: string,
 ): Promise<boolean> => {
+  const secret = Deno.env.get("INBOUND_WEBHOOK_SECRET") ?? "";
+  if (!secret) {
+    console.error("[inbound] INBOUND_WEBHOOK_SECRET is not configured");
+    return false;
+  }
   if (req.headers.has("svix-signature")) {
-    const valid = await verifySvixSignature(req, body, INBOUND_WEBHOOK_SECRET);
-    if (!valid) console.warn("[inbound] Svix signature mismatch");
+    const valid = await verifySvixSignature(req, body, secret);
+    if (!valid) console.warn("[inbound] Svix signature mismatch or replay");
     return valid;
   }
   if (req.headers.has("x-webhook-signature")) {
-    return await verifyForwardEmailSignature(req, body, INBOUND_WEBHOOK_SECRET);
+    return verifyForwardEmailSignature(req, body, secret);
   }
-  return true;
+  return false;
 };
 
-// Forward Email sends a mailparser-style payload with structured objects
-// for from/to/cc, Buffer-style attachments, etc. This normalizes it into
-// our flat InboundEmail type.
 // deno-lint-ignore no-explicit-any
 const extractAddresses = (field: any): string[] => {
   if (!field) return [];
-  // Already a string array (our own format)
   if (Array.isArray(field) && typeof field[0] === "string") {
-    return field as string[];
+    return field;
   }
-  // Array of objects with address field
   if (Array.isArray(field)) {
     // deno-lint-ignore no-explicit-any
     return field.map((v: any) => v.address ?? String(v)).filter(Boolean);
   }
-  // mailparser address object: { value: [{ address, name }], text: "..." }
   if (field.value && Array.isArray(field.value)) {
     // deno-lint-ignore no-explicit-any
     return field.value.map((v: any) => v.address).filter(Boolean);
   }
-  // Plain string
   if (typeof field === "string") return [field];
   return [];
 };
@@ -127,7 +155,6 @@ const extractAddresses = (field: any): string[] => {
 // deno-lint-ignore no-explicit-any
 const extractFromString = (field: any): string => {
   if (typeof field === "string") return field;
-  // mailparser address object - use .text for "Name <addr>" format
   if (field?.text) return field.text;
   if (field?.value?.[0]?.address) return field.value[0].address;
   return String(field ?? "");
@@ -135,10 +162,13 @@ const extractFromString = (field: any): string => {
 
 // deno-lint-ignore no-explicit-any
 const normalizeAttachments = (rawAtts: any[]): InboundAttachment[] =>
-  rawAtts.map((att) => {
+  rawAtts.slice(0, maxAttachmentsCount).map((att) => {
+    const safeName = sanitizeAttachmentFilename(
+      String(att.filename ?? att.name ?? "attachment"),
+    );
     if (typeof att.content === "string") {
       return {
-        filename: att.filename ?? att.name ?? "attachment",
+        filename: safeName,
         contentType: att.contentType ?? att.content_type ??
           "application/octet-stream",
         size: att.size ?? 0,
@@ -149,7 +179,7 @@ const normalizeAttachments = (rawAtts: any[]): InboundAttachment[] =>
       ? new Uint8Array(att.content.data)
       : new Uint8Array(0);
     return {
-      filename: att.filename ?? att.name ?? "attachment",
+      filename: safeName,
       contentType: att.contentType ?? att.content_type ??
         "application/octet-stream",
       size: att.size ?? bytes.length,
@@ -158,13 +188,14 @@ const normalizeAttachments = (rawAtts: any[]): InboundAttachment[] =>
   });
 
 const fetchResendEmailData = async (apiKey: string, emailId: string) => {
+  const encodedId = encodeURIComponent(emailId);
   const receivingRes = await fetch(
-    `https://api.resend.com/emails/receiving/${emailId}`,
+    `https://api.resend.com/emails/receiving/${encodedId}`,
     { headers: { Authorization: `Bearer ${apiKey}` } },
   );
   if (receivingRes.ok) return receivingRes.json();
   const inboundRes = await fetch(
-    `https://api.resend.com/emails/inbound/${emailId}`,
+    `https://api.resend.com/emails/inbound/${encodedId}`,
     { headers: { Authorization: `Bearer ${apiKey}` } },
   );
   return inboundRes.ok ? inboundRes.json() : null;
@@ -172,19 +203,25 @@ const fetchResendEmailData = async (apiKey: string, emailId: string) => {
 
 const fetchAttachmentContent = async (att: { download_url?: string }) => {
   if (!att.download_url) return att;
-  const dl = await fetch(att.download_url);
+  const dl = await fetch(att.download_url, { redirect: "follow" });
   const buf = new Uint8Array(await dl.arrayBuffer());
+  if (buf.byteLength > maxTotalAttachmentBytes) {
+    throw new Error("Inbound attachment exceeds maximum allowed size");
+  }
   return { ...att, content: encodeBase64(buf) };
 };
 
 const fetchResendAttachments = async (apiKey: string, emailId: string) => {
+  const encodedId = encodeURIComponent(emailId);
   const res = await fetch(
-    `https://api.resend.com/emails/receiving/${emailId}/attachments`,
+    `https://api.resend.com/emails/receiving/${encodedId}/attachments`,
     { headers: { Authorization: `Bearer ${apiKey}` } },
   );
   if (!res.ok) return [];
   const list = await res.json();
-  return Promise.all((list.data ?? []).map(fetchAttachmentContent));
+  return Promise.all(
+    (list.data ?? []).slice(0, maxAttachmentsCount).map(fetchAttachmentContent),
+  );
 };
 
 // deno-lint-ignore no-explicit-any
@@ -316,7 +353,7 @@ const countMessages = async (
   return result.messages?.length ?? 0;
 };
 
-const handleInbound = async (
+export const handleInbound = async (
   req: Request,
   _params: Record<string, string>,
   _orgId: string,
@@ -333,22 +370,20 @@ const handleInbound = async (
     }
 
     // deno-lint-ignore no-explicit-any
-    let raw: any;
-    try {
-      raw = JSON.parse(body);
-    } catch (parseErr) {
-      console.error(
-        "[inbound] JSON parse failed:",
-        parseErr,
-        "body preview:",
-        body.slice(0, 500),
-      );
+    const raw: any = (() => {
+      try {
+        return JSON.parse(body);
+      } catch {
+        return undefined;
+      }
+    })();
+    if (raw === undefined) {
       return Response.json(
-        { error: `JSON parse failed: ${parseErr}`, code: "BAD_REQUEST" },
+        { error: "JSON parse failed", code: "BAD_REQUEST" },
         { status: 400 },
       );
     }
-    // Forward Email may send an array; use first element if so
+
     const payload = Array.isArray(raw) ? raw[0] : raw;
     if (!payload || typeof payload !== "object") {
       return Response.json(
@@ -370,29 +405,20 @@ const handleInbound = async (
     });
     const isSpam = !scanResult.allowed;
 
-    console.log("[inbound] Received email", {
-      from: email.from,
-      to: email.to,
-      subject: email.subject,
-      attachmentCount: email.attachments?.length ?? 0,
-      isSpam,
-    });
-
-    // Find target account(s) by recipient address
-    const recipients = unique(
-      [
-        ...email.to,
-        ...(email.cc ?? []),
-        ...extractAddresses(
-          payload?.received_for ?? payload?.data?.received_for,
-        ),
-      ].map(extractAddress),
+    const envelopeRecipients = extractAddresses(
+      payload?.received_for ?? payload?.data?.received_for,
     );
+    const candidateRecipients = envelopeRecipients.length > 0
+      ? envelopeRecipients
+      : [...email.to, ...(email.cc ?? [])];
+
+    const domainSuffix = `@${emailDomain.toLowerCase()}`;
+    const recipients = unique(candidateRecipients.map(extractAddress))
+      .filter((addr) => addr.endsWith(domainSuffix))
+      .slice(0, maxRecipientsPerEvent);
 
     let matched = 0;
     for (const address of recipients) {
-      console.log("[inbound] Looking up account for address:", address);
-
       // deno-lint-ignore no-explicit-any
       let accounts: any[];
       try {
@@ -404,7 +430,6 @@ const handleInbound = async (
               billingUser: {},
               members: {},
             },
-            messages: {},
           },
         });
         accounts = result.accounts;
@@ -413,30 +438,19 @@ const handleInbound = async (
         continue;
       }
 
-      console.log("[inbound] Found", accounts.length, "accounts for", address);
       const account = accounts[0];
       if (!account) continue;
 
-      // organization is a "has one" link - InstantDB may return array or object
       const orgRaw = account.organization;
       const org = Array.isArray(orgRaw) ? orgRaw[0] : orgRaw;
-      if (!org) {
-        console.log("[inbound] Account found but no org linked:", account.id);
-        continue;
-      }
+      if (!org) continue;
+
       const orgId = org.id;
-      const isAdmin = Boolean(org?.admin) ||
-        org?.billingUser?.email === "uri.valevski@gmail.com" ||
-        org?.members?.some((m: { email?: string }) =>
-          m.email === "uri.valevski@gmail.com"
-        );
+      const isAdmin = Boolean(org?.admin);
 
       const now = Date.now();
       const isExpired = Boolean(account.expiresAt && account.expiresAt < now);
       if (!isAdmin && (account.isFrozen || isExpired)) {
-        console.log(
-          `[inbound] Account ${address} is inactive (frozen=${account.isFrozen}, expired=${isExpired}). Dropping email.`,
-        );
         continue;
       }
 
@@ -456,9 +470,6 @@ const handleInbound = async (
           todayUtc,
         );
         if (receivesToday >= limits.receivesPerDay) {
-          console.log(
-            `[inbound] Account ${address} reached daily receive limit (${limits.receivesPerDay}/day). Dropping email.`,
-          );
           notifyQuotaExceeded({
             orgId,
             accountAddress: address,
@@ -481,9 +492,6 @@ const handleInbound = async (
           periodStart,
         );
         if (receivesThisMonth >= limits.receivesPerMonth) {
-          console.log(
-            `[inbound] Account ${address} reached monthly receive limit (${limits.receivesPerMonth}/mo). Dropping email.`,
-          );
           notifyQuotaExceeded({
             orgId,
             accountAddress: address,
@@ -499,10 +507,8 @@ const handleInbound = async (
         }
       }
 
-      console.log("[inbound] Matched account", account.id, "in org", orgId);
       matched++;
 
-      // Store attachments in GCS
       const attachmentRecords: {
         id: string;
         filename: string;
@@ -512,22 +518,30 @@ const handleInbound = async (
       }[] = [];
 
       if (email.attachments) {
-        for (const att of email.attachments) {
-          const attId = id();
-          const storageKey = `${orgId}/${account.id}/${attId}/${att.filename}`;
+        let totalBytes = 0;
+        for (const att of email.attachments.slice(0, maxAttachmentsCount)) {
+          const safeFilename = sanitizeAttachmentFilename(att.filename);
           const data = decodeBase64(att.content);
+          totalBytes += data.byteLength;
+          if (totalBytes > maxTotalAttachmentBytes) {
+            return Response.json(
+              { error: "Attachments exceed size limit", code: "BAD_REQUEST" },
+              { status: 413 },
+            );
+          }
+          const attId = id();
+          const storageKey = `${orgId}/${account.id}/${attId}/${safeFilename}`;
           await uploadFile(storageKey, data, att.contentType);
           attachmentRecords.push({
             id: attId,
-            filename: att.filename,
+            filename: safeFilename,
             contentType: att.contentType,
-            size: att.size,
+            size: data.byteLength,
             storageKey,
           });
         }
       }
 
-      // Store message in DB
       const messageId = id();
       // deno-lint-ignore no-explicit-any
       const txOps: any[] = [
@@ -542,6 +556,7 @@ const handleInbound = async (
           status: isSpam ? "spam" : "received",
           headers: email.headers ?? {},
           timestamp: Date.now(),
+          externalId: email.messageId ?? "",
           inReplyTo: email.inReplyTo ?? "",
           references: email.references ?? "",
         }),
@@ -570,14 +585,8 @@ const handleInbound = async (
         isSpam,
       });
 
-      if (isSpam) {
-        console.log(
-          `[inbound] Message ${messageId} flagged as spam by JEV. Skipping webhook delivery.`,
-        );
-        continue;
-      }
+      if (isSpam) continue;
 
-      // Deliver to agent webhooks — await to prevent isolate eviction before delivery
       // deno-lint-ignore no-explicit-any
       const activeWebhooks = account.webhooks.filter((w: any) => w.active);
       await Promise.all(
@@ -600,6 +609,7 @@ const handleInbound = async (
                 messageId: email.messageId ?? "",
                 inReplyTo: email.inReplyTo ?? "",
                 references: email.references ?? "",
+                headers: email.headers ?? {},
                 attachments: attachmentRecords.map((a) => ({
                   id: a.id,
                   filename: a.filename,
@@ -615,32 +625,12 @@ const handleInbound = async (
       );
     }
 
-    if (matched === 0) {
-      console.log(
-        "[inbound] No matching accounts found for recipients:",
-        recipients,
-      );
-    } else {
-      console.log("[inbound] Processed", matched, "accounts");
-    }
-
-    return Response.json({ received: true });
-  } catch (e) {
-    const errorMessage = e instanceof Error ? e.message : String(e);
-    const errorStack = e instanceof Error ? e.stack : undefined;
-    console.error(
-      "[inbound] Unhandled error processing inbound email:",
-      errorMessage,
-      errorStack,
-    );
+    return Response.json({ received: true, matched });
+  } catch (err) {
+    console.error("[inbound] Unhandled error in handleInbound:", err);
     return Response.json(
-      {
-        error: `Inbound processing error: ${errorMessage}`,
-        code: "INTERNAL_ERROR",
-      },
+      { error: "Internal inbound processing error", code: "INTERNAL_ERROR" },
       { status: 500 },
     );
   }
 };
-
-export { handleInbound };

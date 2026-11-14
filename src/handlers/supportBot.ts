@@ -1,14 +1,22 @@
-import { createHmac } from "node:crypto";
 import { db } from "../db.ts";
 import { generateSupportPrompt } from "../planData.ts";
+import {
+  hmacSha256Hex,
+  markWebhookEventSeen,
+  timingSafeEqualStrings,
+} from "../security.ts";
 
-const supportBotSecret = Deno.env.get("SUPPORT_BOT_SECRET");
+const maxSkewMs = 5 * 60 * 1000;
 
-const parseBody = async (req: Request) => {
+const parseBody = async (req: Request): Promise<Record<string, unknown>> => {
   const text = await req.text();
   if (!text.trim()) return {};
   try {
-    return JSON.parse(text);
+    const parsed = JSON.parse(text);
+    return typeof parsed === "object" && parsed !== null &&
+        !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : {};
   } catch {
     return {};
   }
@@ -27,15 +35,36 @@ const extractParams = (
   return body;
 };
 
-const verifySignature = (body: Record<string, unknown>): boolean => {
-  if (!supportBotSecret) return true;
-  const signature = body.signature as string | undefined;
+export const verifySupportBotSignature = async (
+  body: Record<string, unknown>,
+): Promise<boolean> => {
+  const secret = Deno.env.get("SUPPORT_BOT_SECRET") ?? "";
+  if (!secret) return false;
+  const signature = body.signature;
   const payload = body.payload;
-  if (!signature || !payload) return false;
-  const expected = createHmac("sha256", supportBotSecret)
-    .update(JSON.stringify(payload))
-    .digest("hex");
-  return expected === signature;
+  if (typeof signature !== "string" || !signature || payload === undefined) {
+    return false;
+  }
+
+  if (typeof payload === "object" && payload !== null) {
+    const meta = (payload as Record<string, unknown>).meta as
+      | Record<string, unknown>
+      | undefined;
+    if (meta?.timestamp !== undefined) {
+      const ts = Number(meta.timestamp);
+      if (!Number.isFinite(ts) || Math.abs(Date.now() - ts) > maxSkewMs) {
+        return false;
+      }
+    }
+    if (typeof meta?.nonce === "string" && meta.nonce.length > 0) {
+      if (!markWebhookEventSeen(`support:${meta.nonce}`, maxSkewMs)) {
+        return false;
+      }
+    }
+  }
+
+  const expected = await hmacSha256Hex(secret, JSON.stringify(payload));
+  return timingSafeEqualStrings(signature.toLowerCase(), expected);
 };
 
 const normalizeAddress = (raw: string): string => {
@@ -44,9 +73,20 @@ const normalizeAddress = (raw: string): string => {
   return lower.includes("@") ? lower : `${lower}@theagentmail.net`;
 };
 
+const redactWebhookHost = (rawUrl: string): string => {
+  try {
+    return new URL(rawUrl).hostname;
+  } catch {
+    return "invalid-url";
+  }
+};
+
 export const handleSupportPrompt = async (req: Request): Promise<Response> => {
-  const body = req.method === "POST" ? await parseBody(req) : {};
-  if (!verifySignature(body)) {
+  if (req.method !== "POST") {
+    return new Response("Unauthorized", { status: 401 });
+  }
+  const body = await parseBody(req);
+  if (!await verifySupportBotSignature(body)) {
     return new Response("Unauthorized", { status: 401 });
   }
 
@@ -58,7 +98,7 @@ export const handleSupportPrompt = async (req: Request): Promise<Response> => {
 
 export const handleLookupUser = async (req: Request): Promise<Response> => {
   const body = await parseBody(req);
-  if (!verifySignature(body)) {
+  if (!await verifySupportBotSignature(body)) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -117,8 +157,9 @@ export const handleLookupUser = async (req: Request): Promise<Response> => {
         isFrozen: Boolean(acc.isFrozen),
         sendsThisMonth: acc.sendsThisMonth ?? 0,
         expiresAt: acc.expiresAt ? new Date(acc.expiresAt).toISOString() : null,
-        activeWebhooksCount:
-          (acc.webhooks ?? []).filter((w) => w.active).length,
+        activeWebhooksCount: (acc.webhooks ?? []).filter((w) =>
+          w.active
+        ).length,
       })),
     });
   }
@@ -152,7 +193,7 @@ export const handleLookupUser = async (req: Request): Promise<Response> => {
 
 export const handleLookupMailbox = async (req: Request): Promise<Response> => {
   const body = await parseBody(req);
-  if (!verifySignature(body)) {
+  if (!await verifySupportBotSignature(body)) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -208,7 +249,7 @@ export const handleLookupMailbox = async (req: Request): Promise<Response> => {
       : null,
     webhooks: (account.webhooks ?? []).map((w) => ({
       id: w.id,
-      url: w.url,
+      host: redactWebhookHost(w.url),
       active: w.active,
     })),
   });

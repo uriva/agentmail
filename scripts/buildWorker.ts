@@ -148,35 +148,6 @@ if (typeof globalThis.clearTimeout === "function") {
 if (typeof globalThis.clearInterval === "function") {
   globalThis.clearInterval = globalThis.clearInterval.bind(globalThis);
 }
-if (typeof globalThis.crypto !== "undefined" && globalThis.crypto.randomUUID) {
-  const __orig_randomUUID = globalThis.crypto.randomUUID.bind(globalThis.crypto);
-  let __uuid_counter = 0;
-  globalThis.crypto.randomUUID = function() {
-    try {
-      return __orig_randomUUID();
-    } catch (_err) {
-      __uuid_counter++;
-      return "00000000-0000-4000-8000-" + String(__uuid_counter).padStart(12, "0");
-    }
-  };
-}
-if (typeof globalThis.crypto !== "undefined" && globalThis.crypto.getRandomValues) {
-  const __orig_getRandomValues = globalThis.crypto.getRandomValues.bind(globalThis.crypto);
-  let __rv_counter = 1;
-  globalThis.crypto.getRandomValues = function(arr) {
-    try {
-      return __orig_getRandomValues(arr);
-    } catch (_err) {
-      if (arr && typeof arr.length === "number") {
-        for (let i = 0; i < arr.length; i++) {
-          __rv_counter = (__rv_counter * 1664525 + 1013904223) >>> 0;
-          arr[i] = __rv_counter & 0xff;
-        }
-      }
-      return arr;
-    }
-  };
-}
 if (typeof globalThis.setTimeout !== "undefined") {
   const __orig_setTimeout = globalThis.setTimeout.bind(globalThis);
   globalThis.setTimeout = function(fn, ms, ...args) {

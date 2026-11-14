@@ -1,17 +1,25 @@
 import { id, init } from "@instantdb/admin";
+import { createMockDb } from "@uri/instantdb-mock";
 import schema from "../instant.schema.ts";
 
 type DbInstance = ReturnType<typeof init<typeof schema>>;
 const dbCell: DbInstance[] = [];
 
-const getDb = (): DbInstance =>
-  dbCell[0] ?? (dbCell[0] = init({
-    appId: Deno.env.get("INSTANT_APP_ID") ||
-      "506a3595-23d3-4b99-aff3-33105ee29342",
-    adminToken: Deno.env.get("INSTANT_ADMIN_TOKEN") ||
-      "00000000-0000-0000-0000-000000000000",
-    schema,
-  }));
+const createDbInstance = (): DbInstance => {
+  if (Deno.env.get("DENO_ENV") === "test") {
+    return createMockDb(schema) as unknown as DbInstance;
+  }
+  const appId = Deno.env.get("INSTANT_APP_ID");
+  const adminToken = Deno.env.get("INSTANT_ADMIN_TOKEN");
+  if (!appId || !adminToken) {
+    throw new Error(
+      "INSTANT_APP_ID and INSTANT_ADMIN_TOKEN must be configured",
+    );
+  }
+  return init({ appId, adminToken, schema });
+};
+
+const getDb = (): DbInstance => dbCell[0] ?? (dbCell[0] = createDbInstance());
 
 const db = new Proxy({} as DbInstance, {
   get(_target, prop, receiver) {

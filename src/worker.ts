@@ -1,4 +1,4 @@
-import { handleRequest, isApiPath } from "./main.ts";
+import { baseSecurityHeaders, handleRequest, isApiPath } from "./main.ts";
 import { runBillingRenewalCheck } from "./services/billingCron.ts";
 import { waitBackgroundTasks } from "./services/posthog.ts";
 
@@ -15,6 +15,18 @@ const syncEnv = (env: Record<string, any>) => {
   }
 };
 
+const attachSecurityHeaders = (res: Response): Response => {
+  const headers = new Headers(res.headers);
+  for (const [k, v] of Object.entries(baseSecurityHeaders)) {
+    headers.set(k, v);
+  }
+  return new Response(res.body, {
+    status: res.status,
+    statusText: res.statusText,
+    headers,
+  });
+};
+
 export default {
   // deno-lint-ignore no-explicit-any
   async fetch(req: Request, env: Record<string, any>, ctx: any) {
@@ -28,7 +40,8 @@ export default {
         (req.method === "GET" || req.method === "HEAD") &&
         env.ASSETS
       ) {
-        return await env.ASSETS.fetch(req);
+        const assetRes = await env.ASSETS.fetch(req);
+        return attachSecurityHeaders(assetRes);
       }
     }
     return response;

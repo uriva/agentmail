@@ -56,7 +56,8 @@ const Terms = () => (
       </li>
       <li>Violate any applicable laws or regulations.</li>
       <li>
-        Attempt to game free trials, circumvent limits, or create fraudulent accounts.
+        Attempt to game free trials, circumvent limits, or create fraudulent
+        accounts.
       </li>
       <li>
         Use the service in any way that damages the shared domain's reputation
@@ -66,30 +67,30 @@ const Terms = () => (
 
     <H2>Fees, pricing, and limits</H2>
     <P>
-      We reserve the right to modify our pricing structure, subscription or rental
-      fees, free trial terms, and usage limits (including send volumes and account
-      allowances) at any time. Any changes will take effect for subsequent billing
-      cycles or upon notice.
+      We reserve the right to modify our pricing structure, subscription or
+      rental fees, free trial terms, and usage limits (including send volumes
+      and account allowances) at any time. Any changes will take effect for
+      subsequent billing cycles or upon notice.
     </P>
     <P>
-      We may enforce daily, monthly, or burst rate limits on sending and receiving
-      to ensure deliverability, system stability, and domain reputation across the
-      shared infrastructure.
+      We may enforce daily, monthly, or burst rate limits on sending and
+      receiving to ensure deliverability, system stability, and domain
+      reputation across the shared infrastructure.
     </P>
 
     <H2>Inactivity, expiration, and address recycling</H2>
     <P>
       Email addresses on the shared domain (theagentmail.net) are provided on an
-      active rental, subscription, or trial basis and are not your permanent property.
-      If a trial period ends, a subscription or rental is unpaid or lapsed, or an
-      inbox remains inactive, we reserve the right to suspend or delete the inbox and
-      associated data, and to release, recycle, or reassign the email address for use
-      by others.
+      active rental, subscription, or trial basis and are not your permanent
+      property. If a trial period ends, a subscription or rental is unpaid or
+      lapsed, or an inbox remains inactive, we reserve the right to suspend or
+      delete the inbox and associated data, and to release, recycle, or reassign
+      the email address for use by others.
     </P>
     <P>
-      You are solely responsible for migrating or updating any third-party services,
-      accounts, or credentials associated with an address prior to its expiration or
-      deletion.
+      You are solely responsible for migrating or updating any third-party
+      services, accounts, or credentials associated with an address prior to its
+      expiration or deletion.
     </P>
 
     <H2>API keys</H2>

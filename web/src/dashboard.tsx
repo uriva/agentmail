@@ -204,11 +204,19 @@ const BillingSection = ({
             label="Cost / Mailbox / Mo"
           />
           <StatNumber
-            value={isAdmin ? "Unlimited" : isTrialAvailable ? "20/day (100/mo)" : "200/day (1k/mo)"}
+            value={isAdmin
+              ? "Unlimited"
+              : isTrialAvailable
+              ? "20/day (100/mo)"
+              : "200/day (1k/mo)"}
             label="Sends Allowed"
           />
           <StatNumber
-            value={isAdmin ? "Unlimited" : isTrialAvailable ? "50/day (200/mo)" : "200/day (1k/mo)"}
+            value={isAdmin
+              ? "Unlimited"
+              : isTrialAvailable
+              ? "50/day (200/mo)"
+              : "200/day (1k/mo)"}
             label="Receives Allowed"
           />
         </div>
@@ -242,7 +250,8 @@ const BillingSection = ({
 
       {!isAdmin && currentBalance <= 0 && !isTrialAvailable && (
         <div class="mt-4 p-3 bg-red-900/30 border border-red-700 rounded-lg text-red-300 text-sm">
-          Your balance is $0.00. Expired mailboxes will be paused until topped up.
+          Your balance is $0.00. Expired mailboxes will be paused until topped
+          up.
         </div>
       )}
 
@@ -250,7 +259,13 @@ const BillingSection = ({
         <div class="mt-4 p-3.5 bg-blue-950/40 border border-blue-500/30 rounded-lg text-blue-200 text-sm flex items-start gap-2.5">
           <span class="text-base leading-none mt-0.5">🎁</span>
           <div>
-            <span class="font-medium text-white">Free 30-day trial available:</span> Your first mailbox is free with 20 sends/day (100/mo) and 50 receives/day (200/mo). Upgrading to a paid account ($1/mo with $5 deposit) increases limits to 1,000 sends & 1,000 receives/mo (200/day).
+            <span class="font-medium text-white">
+              Free 30-day trial available:
+            </span>{" "}
+            Your first mailbox is free with 20 sends/day (100/mo) and 50
+            receives/day (200/mo). Upgrading to a paid account ($1/mo with $5
+            deposit) increases limits to 1,000 sends & 1,000 receives/mo
+            (200/day).
           </div>
         </div>
       )}
@@ -259,7 +274,9 @@ const BillingSection = ({
         <div class="mt-4 p-3 bg-slate-800/40 border border-slate-700/60 rounded-lg text-slate-300 text-xs flex items-center gap-2">
           <span>ℹ️</span>
           <span>
-            Paid accounts include 1,000 sends & 1,000 receives per month per mailbox (capped at 200 sends/day & 200 receives/day). Daily limits reset at 00:00 UTC.
+            Paid accounts include 1,000 sends & 1,000 receives per month per
+            mailbox (capped at 200 sends/day & 200 receives/day). Daily limits
+            reset at 00:00 UTC.
           </span>
         </div>
       )}
@@ -399,7 +416,11 @@ const AccountsList = ({
         <div class="mb-4 p-3.5 bg-red-950/40 border border-red-700/60 rounded-lg text-red-300 text-xs flex items-start gap-2.5">
           <span class="text-base leading-none mt-0.5">⚠️</span>
           <div>
-            <span class="font-semibold text-white">Quota reached on one or more mailboxes:</span> Daily limits reset at 00:00 UTC. Incoming emails to capped mailboxes are dropped cleanly to preserve delivery.
+            <span class="font-semibold text-white">
+              Quota reached on one or more mailboxes:
+            </span>{" "}
+            Daily limits reset at 00:00 UTC. Incoming emails to capped mailboxes
+            are dropped cleanly to preserve delivery.
           </div>
         </div>
       )}
@@ -409,7 +430,10 @@ const AccountsList = ({
           <div class="flex items-center gap-2.5">
             <span class="text-base">✨</span>
             <span class="text-blue-100">
-              <strong class="text-white">Free Trial Available:</strong> Your first mailbox is completely free for 30 days (20 sends/day, 50 receives/day, up to 100 sends & 200 receives/mo). No deposit required!
+              <strong class="text-white">Free Trial Available:</strong>{" "}
+              Your first mailbox is completely free for 30 days (20 sends/day,
+              50 receives/day, up to 100 sends & 200 receives/mo). No deposit
+              required!
             </span>
           </div>
         </div>
@@ -438,7 +462,13 @@ const AccountsList = ({
           class="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white text-sm font-medium rounded-lg transition-colors flex-shrink-0 flex items-center justify-center gap-2"
         >
           {creating && <Spinner />}
-          <span>{creating ? "Creating..." : trialAvailable ? "Create Free Account (30 Days)" : "Create Account"}</span>
+          <span>
+            {creating
+              ? "Creating..."
+              : trialAvailable
+              ? "Create Free Account (30 Days)"
+              : "Create Account"}
+          </span>
         </button>
       </div>
       <p class="text-xs text-slate-400 mb-4">
@@ -487,14 +517,16 @@ const AccountsList = ({
                   (m) => m.direction === "inbound" && m.timestamp >= todayUtc,
                 ).length;
                 const receivesThisMonth = msgs.filter(
-                  (m) => m.direction === "inbound" && m.timestamp >= thirtyDaysAgo,
+                  (m) =>
+                    m.direction === "inbound" && m.timestamp >= thirtyDaysAgo,
                 ).length;
                 const sendsThisMonth = account.sendsThisMonth ?? 0;
 
                 const isOverDailySend = sendsToday >= maxSendsToday;
                 const isOverDailyReceive = receivesToday >= maxReceivesToday;
                 const isOverMonthlySend = sendsThisMonth >= maxSendsMonth;
-                const isOverMonthlyReceive = receivesThisMonth >= maxReceivesMonth;
+                const isOverMonthlyReceive =
+                  receivesThisMonth >= maxReceivesMonth;
 
                 return (
                   <div key={account.id}>
@@ -509,39 +541,44 @@ const AccountsList = ({
                               ({account.displayName})
                             </span>
                           )}
-                          {account.isFrozen ? (
-                            <span class="text-xs px-2 py-0.5 bg-red-900/60 text-red-300 rounded border border-red-700">
-                              Paused (Balance Empty)
-                            </span>
-                          ) : account.expiresAt && account.expiresAt > 0 ? (
-                            (() => {
-                              const daysLeft = Math.max(
-                                0,
-                                Math.ceil(
-                                  (account.expiresAt - Date.now()) /
-                                    (24 * 60 * 60 * 1000),
-                                ),
-                              );
-                              return (
-                                <span
-                                  class={`text-xs px-2 py-0.5 rounded border ${
-                                    daysLeft <= 3
-                                      ? "bg-amber-900/40 text-amber-300 border-amber-700"
-                                      : "bg-emerald-900/30 text-emerald-300 border-emerald-800"
-                                  }`}
-                                >
-                                  Active ({daysLeft}d left)
-                                </span>
-                              );
-                            })()
-                          ) : (
-                            <span class="text-xs px-2 py-0.5 bg-blue-900/40 text-blue-300 rounded border border-blue-800">
-                              Unlimited
-                            </span>
-                          )}
+                          {account.isFrozen
+                            ? (
+                              <span class="text-xs px-2 py-0.5 bg-red-900/60 text-red-300 rounded border border-red-700">
+                                Paused (Balance Empty)
+                              </span>
+                            )
+                            : account.expiresAt && account.expiresAt > 0
+                            ? (
+                              (() => {
+                                const daysLeft = Math.max(
+                                  0,
+                                  Math.ceil(
+                                    (account.expiresAt - Date.now()) /
+                                      (24 * 60 * 60 * 1000),
+                                  ),
+                                );
+                                return (
+                                  <span
+                                    class={`text-xs px-2 py-0.5 rounded border ${
+                                      daysLeft <= 3
+                                        ? "bg-amber-900/40 text-amber-300 border-amber-700"
+                                        : "bg-emerald-900/30 text-emerald-300 border-emerald-800"
+                                    }`}
+                                  >
+                                    Active ({daysLeft}d left)
+                                  </span>
+                                );
+                              })()
+                            )
+                            : (
+                              <span class="text-xs px-2 py-0.5 bg-blue-900/40 text-blue-300 rounded border border-blue-800">
+                                Unlimited
+                              </span>
+                            )}
                           {isOverDailyReceive && (
                             <span class="text-xs px-2 py-0.5 bg-red-950/80 text-red-300 rounded border border-red-700">
-                              ⚠️ Inbound Capped ({receivesToday}/{maxReceivesToday})
+                              ⚠️ Inbound Capped
+                              ({receivesToday}/{maxReceivesToday})
                             </span>
                           )}
                           {isOverDailySend && (
@@ -559,11 +596,26 @@ const AccountsList = ({
                               ⚠️ Monthly Outbound Limit
                             </span>
                           )}
-                          <span class={`text-xs font-mono ${isOverDailySend || isOverMonthlySend ? "text-red-400 font-medium" : "text-slate-400"}`}>
-                            📤 {sendsToday}/{maxSendsToday} today ({sendsThisMonth}/{maxSendsMonth} mo sends)
+                          <span
+                            class={`text-xs font-mono ${
+                              isOverDailySend || isOverMonthlySend
+                                ? "text-red-400 font-medium"
+                                : "text-slate-400"
+                            }`}
+                          >
+                            📤 {sendsToday}/{maxSendsToday}{" "}
+                            today ({sendsThisMonth}/{maxSendsMonth} mo sends)
                           </span>
-                          <span class={`text-xs font-mono ${isOverDailyReceive || isOverMonthlyReceive ? "text-red-400 font-medium" : "text-slate-400"}`}>
-                            📥 {receivesToday}/{maxReceivesToday} today ({receivesThisMonth}/{maxReceivesMonth} mo receives)
+                          <span
+                            class={`text-xs font-mono ${
+                              isOverDailyReceive || isOverMonthlyReceive
+                                ? "text-red-400 font-medium"
+                                : "text-slate-400"
+                            }`}
+                          >
+                            📥 {receivesToday}/{maxReceivesToday}{" "}
+                            today ({receivesThisMonth}/{maxReceivesMonth}{" "}
+                            mo receives)
                           </span>
                         </div>
                         <div class="flex items-center gap-3">
@@ -577,7 +629,9 @@ const AccountsList = ({
                               )}
                             disabled={isOverDailySend || isOverMonthlySend}
                             class="text-xs px-2 py-1 bg-emerald-700 hover:bg-emerald-600 disabled:bg-slate-700 disabled:text-slate-500 text-white rounded transition-colors"
-                            title={isOverDailySend || isOverMonthlySend ? "Send limit reached for today or this month" : undefined}
+                            title={isOverDailySend || isOverMonthlySend
+                              ? "Send limit reached for today or this month"
+                              : undefined}
                           >
                             {sendingFor === account.id
                               ? "Cancel"
@@ -599,9 +653,7 @@ const AccountsList = ({
                             }}
                             class="text-xs px-2 py-1 bg-blue-700 hover:bg-blue-600 text-white rounded transition-colors"
                           >
-                            {messagesFor === account.id
-                              ? "Hide"
-                              : "Messages"}
+                            {messagesFor === account.id ? "Hide" : "Messages"}
                           </button>
                           <button
                             onClick={() =>
@@ -1626,11 +1678,7 @@ const Dashboard = () => {
   }
 
   const activeOrg = orgs.find((o: { id: string }) => o.id === activeOrgId);
-  const isOrgAdmin = Boolean(
-    activeOrg?.admin ||
-      activeOrg?.billingUser?.email === "uri.valevski@gmail.com" ||
-      user?.email === "uri.valevski@gmail.com",
-  );
+  const isOrgAdmin = Boolean(activeOrg?.admin);
   const isTrialAvailable = !isOrgAdmin && !Boolean(activeOrg?.trialUsed);
 
   return (
