@@ -103,14 +103,14 @@ const scanOutboundEmail = async (
         : undefined,
     );
     if (!result.allowed && orgId) {
-      captureEvent(orgId, "outbound_email_blocked_by_jev", {
+      captureEvent(orgId, "outbound_email_blocked", {
         subject: params.subject,
         to: params.to,
       });
     }
     return result;
   } catch (err) {
-    console.error("JEV scan failed:", err);
+    console.error("Outbound email guard failed:", err);
     return Deno.env.get("DENO_ENV") === "test" ? { allowed: true } : {
       allowed: false,
       reason: "Temporary content safety check failure; please retry shortly",
@@ -142,7 +142,7 @@ const scanInboundEmail = async (
         : undefined,
     );
     if (!result.allowed && orgId) {
-      captureEvent(orgId, "inbound_email_blocked_by_jev", {
+      captureEvent(orgId, "inbound_email_blocked", {
         from: params.from,
         subject: params.subject,
         to: params.to,
@@ -150,7 +150,7 @@ const scanInboundEmail = async (
     }
     return result;
   } catch (err) {
-    console.error("JEV inbound scan failed, allowing email fallback:", err);
+    console.error("Inbound email guard failed, allowing email fallback:", err);
     return { allowed: true };
   }
 };

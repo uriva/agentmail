@@ -1,6 +1,6 @@
 import { assertEquals } from "@std/assert";
 import { isDecisionModelAvailable } from "ai-utils";
-import { scanOutboundEmail } from "../src/services/jev.ts";
+import { scanOutboundEmail } from "../src/services/emailGuard.ts";
 
 Deno.test({
   name: "scanOutboundEmail allows contextual 1:1 technical outreach while blocking phishing and bulk spam",

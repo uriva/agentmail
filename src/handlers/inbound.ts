@@ -8,7 +8,7 @@ import {
   sanitizeAttachmentFilename,
   timingSafeEqualStrings,
 } from "../security.ts";
-import { scanInboundEmail } from "../services/jev.ts";
+import { scanInboundEmail } from "../services/emailGuard.ts";
 import { captureEvent } from "../services/posthog.ts";
 import { notifyQuotaExceeded } from "../services/quotaNotifier.ts";
 import { emailDomain } from "../services/resend.ts";

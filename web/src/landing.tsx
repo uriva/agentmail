@@ -78,7 +78,7 @@ const faqs = [
   },
   {
     q: "How do you stop spam from ruining deliverability?",
-    a: "Every outbound message is scanned in real time by JEV before it leaves the server. Phishing and cold-spam blasts are blocked instantly, so the shared domain stays trusted and legitimate agent mail lands in the inbox.",
+    a: "Every outbound message is scanned in real time by our AI decision model before it leaves the server. Phishing and bulk spam blasts are blocked instantly, so the shared domain stays trusted and legitimate agent mail lands in the inbox.",
   },
 ];
 
@@ -256,7 +256,7 @@ const Landing = () => {
             {
               n: "02",
               t: "Send like a human",
-              d: "Outbound scanned by JEV so the domain stays trusted.",
+              d: "Outbound scanned in real time so the domain stays trusted.",
               code: sdkExample,
               lang: "typescript",
             },
@@ -323,7 +323,7 @@ const Landing = () => {
             </p>
             <p class="text-slate-200 leading-relaxed mb-4">
               One shared domain with managed reputation. Every outbound message
-              is evaluated in real time by JEV — phishing and spam blasts die
+              is evaluated in real time by our AI decision model — phishing and spam blasts die
               before they leave the server.
             </p>
             <p class="text-slate-400 text-sm leading-relaxed mb-5">

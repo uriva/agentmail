@@ -611,7 +611,7 @@ const verifyWebhook = (body: string, signature: string, timestamp: string, secre
       <div class="text-slate-400 text-sm space-y-3 mb-6">
         <h4 class="text-white font-medium">Real-time outbound protection</h4>
         <p>
-          Every outbound email is inspected in real time by JEV before leaving
+          Every outbound email is inspected in real time by our AI decision model before leaving
           the server. Phishing, credential harvesting, deceptive impersonation,
           and unsolicited mass spam are immediately blocked with a{" "}
           <code class="text-white">400 Bad Request</code> (code{" "}

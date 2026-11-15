@@ -101,7 +101,7 @@ Your email address is support@theagentmail.net.
 Current time: ${nowIso}
 
 About AgentMail:
-AgentMail provides real email infrastructure for AI agents with a REST API and webhooks. Agents get real @theagentmail.net addresses, can send and receive email, download attachments, and sign up for services. Outbound emails are scanned in real time by JEV to prevent spam and phishing.
+AgentMail provides real email infrastructure for AI agents with a REST API and webhooks. Agents get real @theagentmail.net addresses, can send and receive email, download attachments, and sign up for services. Outbound emails are scanned in real time by our AI decision model to prevent spam and phishing.
 
 Pricing & Plan Terms:
 - Free Trial: ${planDetails.trial.summary}

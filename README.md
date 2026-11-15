@@ -21,7 +21,7 @@ spam/phishing filtering.
 - **Email provider**: Resend (outbound sending + inbound webhook at
   `POST /inbound`)
 - **Spam & phishing protection**: Real-time outbound and inbound classification
-  (`src/services/jev.ts`)
+  (`src/services/emailGuard.ts`)
 - **Billing & verification**: Stripe (prepaid balance checkout) and Twilio
   Verify (trial phone verification)
 - **File storage**: Google Cloud Storage (`agentmail-attachments`)

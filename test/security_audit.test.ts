@@ -18,7 +18,7 @@ import {
   sanitizeAttachmentFilename,
   validateWebhookTargetUrl,
 } from "../src/security.ts";
-import { combineScanBody } from "../src/services/jev.ts";
+import { combineScanBody } from "../src/services/emailGuard.ts";
 import { resolveAllowedCheckoutReturnUrl } from "../src/services/stripe.ts";
 import { checkTwilioVerification } from "../src/services/twilio.ts";
 import { buildEmailIframeSrcDoc } from "../web/src/sanitizeHtml.ts";
@@ -507,7 +507,7 @@ Deno.test("reserved CA DCV addresses, local-part validation, and concurrent tria
   assertEquals(statuses, [201, 402, 402, 402, 402]);
 });
 
-Deno.test("webhook SSRF guard, phone canonicalization, JEV dual body scan, Stripe redirect guard, and email HTML sandbox", async () => {
+Deno.test("webhook SSRF guard, phone canonicalization, dual body scan, Stripe redirect guard, and email HTML sandbox", async () => {
   // Webhook SSRF
   const prevEnv = Deno.env.get("DENO_ENV");
   Deno.env.set("DENO_ENV", "production");

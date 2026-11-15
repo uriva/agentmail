@@ -2,7 +2,7 @@ import { decodeBase64 } from "@std/encoding/base64";
 import { db, id } from "../db.ts";
 import { getUtcDayStart, isPayingOrg, planDetails } from "../planData.ts";
 import { sanitizeAttachmentFilename, withKeyedLock } from "../security.ts";
-import { scanOutboundEmail } from "../services/jev.ts";
+import { scanOutboundEmail } from "../services/emailGuard.ts";
 import { captureEvent } from "../services/posthog.ts";
 import { notifyQuotaExceeded } from "../services/quotaNotifier.ts";
 import { sendEmail } from "../services/resend.ts";
