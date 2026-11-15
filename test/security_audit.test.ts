@@ -1,6 +1,8 @@
-import { assert, assertEquals, assertThrows } from "@std/assert";
+import { assert, assertEquals, assertRejects, assertThrows } from "@std/assert";
 import { encodeBase64 } from "@std/encoding/base64";
+import { createPermissionedMockDb } from "@uri/instantdb-mock";
 import rules from "../instant.perms.ts";
+import schema from "../instant.schema.ts";
 import { db, id } from "../src/db.ts";
 import { createAccount } from "../src/handlers/accounts.ts";
 import { handleInbound } from "../src/handlers/inbound.ts";
@@ -79,6 +81,62 @@ Deno.test("instant.perms.ts enforces default deny, blocks all client writes, and
     (perms.attachments as { fields: Record<string, string> }).fields.storageKey,
     "false",
   );
+});
+
+Deno.test("InstantDB behavioral signup & isolation: external email signup succeeds, @theagentmail.net and guest signups fail, and keyHash/storageKey stay masked", async () => {
+  const permDb = createPermissionedMockDb(schema, rules);
+
+  await assertRejects(() => permDb.signUpAsGuest());
+  await assertRejects(() =>
+    permDb.signUpWithEmail({ email: "spoof@theagentmail.net" })
+  );
+
+  const { user: member, created } = await permDb.signUpWithEmail({
+    email: "dev@example.com",
+  });
+  assertEquals(created, true);
+  const { user: outsider } = await permDb.signUpWithEmail({
+    email: "outsider@example.com",
+  });
+
+  await permDb.admin.transact([
+    permDb.admin.tx.organizations["org-1"]
+      .update({
+        name: "Dev Org",
+        createdAt: 1000,
+        balance: 5,
+        trialUsed: false,
+        processedCheckoutSessions: ["cs_1"],
+      })
+      .link({ members: member.id }),
+    permDb.admin.tx.apiKeys["key-1"]
+      .update({
+        keyHash: "secret-hash",
+        prefix: "am_live_",
+        name: "Prod",
+        createdAt: 1000,
+      })
+      .link({ organization: "org-1" }),
+  ]);
+
+  const memberView = await permDb.asUser(member).query({
+    organizations: {},
+    apiKeys: {},
+  });
+  assertEquals(memberView.organizations.length, 1);
+  assertEquals(
+    "processedCheckoutSessions" in memberView.organizations[0],
+    false,
+  );
+  assertEquals(memberView.apiKeys.length, 1);
+  assertEquals("keyHash" in memberView.apiKeys[0], false);
+
+  const outsiderView = await permDb.asUser(outsider).query({
+    organizations: {},
+    apiKeys: {},
+  });
+  assertEquals(outsiderView.organizations.length, 0);
+  assertEquals(outsiderView.apiKeys.length, 0);
 });
 
 Deno.test("inbound webhook: rejects unsigned, unconfigured, stale, and replayed requests, and enforces envelope routing", async () => {
