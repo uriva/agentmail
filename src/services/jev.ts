@@ -25,12 +25,12 @@ const outboundQuestions = {
   email_classification: {
     type: "choice" as const,
     instructions:
-      "Classify whether this outgoing email is legitimate or abusive/spam/phishing. Choose 'allow' for legitimate personal, transactional, notification, or genuine business communications. Choose 'block' for phishing, credential harvesting, scams, unsolicited mass spam/cold pitches, unauthorized vulnerability scans, or deceptive content.",
+      "Classify whether this outgoing email is legitimate correspondence or abusive spam/phishing. Choose 'allow' for legitimate personal, transactional, notification, customer support, or individualized 1:1 business/technical correspondence (including respectful, context-specific B2B or developer outreach that engages with the recipient's specific work, issue, or company). Choose 'block' for phishing, credential harvesting, scams, malware, extortion, deceptive impersonation, generic untargeted mass-spam blasts, or unauthorized vulnerability scans.",
     criteria: {
       allow:
-        "Legitimate email: standard business, personal, notification, or genuine correspondence.",
+        "Legitimate email: personal, transactional, notification, support, or genuine individualized business/technical correspondence (even if introducing a relevant product or service).",
       block:
-        "Abusive email: phishing, scam, credential harvesting, mass cold-sales spam, unsolicited commercial blast, or malicious outreach.",
+        "Abusive email: phishing, scam, credential harvesting, deceptive impersonation, generic untargeted bulk spam blast, extortion, or malicious content.",
     },
   },
 };
