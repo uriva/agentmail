@@ -347,6 +347,7 @@ const countMessages = async (
           direction,
           timestamp: { $gte: since },
         },
+        fields: ["id"],
       },
     },
   });

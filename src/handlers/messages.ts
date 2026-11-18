@@ -52,6 +52,7 @@ const countOutboundRecipientsSince = async (
           direction: "outbound",
           timestamp: { $gte: since },
         },
+        fields: ["to", "cc", "bcc"],
       },
     },
   });
@@ -368,8 +369,15 @@ const listMessages = async (
 
   const { accounts } = await db.query({
     accounts: {
-      $: { where: { id: accountId, "organization.id": orgId } },
-      messages: {},
+      $: {
+        where: { id: accountId, "organization.id": orgId },
+        fields: ["id"],
+      },
+      messages: {
+        $: {
+          fields: ["from", "to", "subject", "direction", "status", "timestamp"],
+        },
+      },
     },
   });
   const account = accounts[0];

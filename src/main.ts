@@ -4,6 +4,7 @@ import {
   createAccount,
   deleteAccount,
   getAccount,
+  getAccountsUsage,
   listAccounts,
 } from "./handlers/accounts.ts";
 import {
@@ -152,6 +153,12 @@ const routes: readonly Route[] = [
   // Organization-level account management (rejects account-scoped API keys)
   route("POST", "/v1/accounts", createAccount, "orgApiKeyOrUserToken"),
   route("GET", "/v1/accounts", listAccounts, "orgApiKeyOrUserToken"),
+  route(
+    "GET",
+    "/v1/accounts/usage",
+    getAccountsUsage,
+    "orgApiKeyOrUserToken",
+  ),
   route("GET", "/v1/accounts/:accountId", getAccount, "apiKeyOrUserToken"),
   route(
     "DELETE",

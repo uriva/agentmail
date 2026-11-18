@@ -1,5 +1,5 @@
 import { db, id } from "../db.ts";
-import { planDetails } from "../planData.ts";
+import { getUtcDayStart, planDetails } from "../planData.ts";
 import { withKeyedLock } from "../security.ts";
 import { captureEvent } from "../services/posthog.ts";
 import { emailDomain, sendEmail } from "../services/resend.ts";
@@ -287,6 +287,84 @@ const listAccounts = async (
   );
 };
 
+const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+
+const messageRecipientCount = (m: {
+  to?: unknown;
+  cc?: unknown;
+  bcc?: unknown;
+}): number =>
+  Math.max(
+    1,
+    (Array.isArray(m.to) ? m.to.length : 1) +
+      (Array.isArray(m.cc) ? m.cc.length : 0) +
+      (Array.isArray(m.bcc) ? m.bcc.length : 0),
+  );
+
+const summarizeAccountUsage = (
+  now: number,
+  todayUtc: number,
+  account: {
+    sendsThisMonth?: number;
+    sendPeriodStart?: number;
+    messages?: {
+      direction?: string;
+      timestamp?: number;
+      to?: unknown;
+      cc?: unknown;
+      bcc?: unknown;
+    }[];
+  },
+) => {
+  const msgs = account.messages ?? [];
+  const sendsToday = msgs
+    .filter((m) => m.direction === "outbound" && (m.timestamp ?? 0) >= todayUtc)
+    .reduce((sum, m) => sum + messageRecipientCount(m), 0);
+  const receivesToday = msgs.filter(
+    (m) => m.direction === "inbound" && (m.timestamp ?? 0) >= todayUtc,
+  ).length;
+  const receivesThisMonth = msgs.filter(
+    (m) => m.direction === "inbound",
+  ).length;
+  const isStalePeriod = !account.sendPeriodStart ||
+    now - account.sendPeriodStart > thirtyDaysMs;
+  const sendsThisMonth = isStalePeriod ? 0 : (account.sendsThisMonth ?? 0);
+  return { sendsToday, sendsThisMonth, receivesToday, receivesThisMonth };
+};
+
+const getAccountsUsage = async (
+  _req: Request,
+  _params: Record<string, string>,
+  orgId: string,
+): Promise<Response> => {
+  const now = Date.now();
+  const todayUtc = getUtcDayStart(new Date(now));
+  const thirtyDaysAgo = now - thirtyDaysMs;
+  const { accounts } = await db.query({
+    accounts: {
+      $: {
+        where: { "organization.id": orgId },
+        fields: ["sendsThisMonth", "sendPeriodStart"],
+      },
+      messages: {
+        $: {
+          where: { timestamp: { $gte: thirtyDaysAgo } },
+          fields: ["direction", "timestamp", "to", "cc", "bcc"],
+        },
+      },
+    },
+  });
+  const usageByAccount = Object.fromEntries(
+    accounts.map((acc) => [
+      acc.id,
+      summarizeAccountUsage(now, todayUtc, acc),
+    ]),
+  );
+  return Response.json(
+    { data: usageByAccount } satisfies ApiResponse<unknown>,
+  );
+};
+
 const getAccount = async (
   _req: Request,
   params: Record<string, string>,
@@ -338,8 +416,14 @@ const deleteAccount = async (
   }
   const { accounts } = await db.query({
     accounts: {
-      $: { where: { id: params.accountId, "organization.id": orgId } },
-      messages: { attachments: {} },
+      $: {
+        where: { id: params.accountId, "organization.id": orgId },
+        fields: ["address"],
+      },
+      messages: {
+        $: { fields: ["id"] },
+        attachments: { $: { fields: ["storageKey"] } },
+      },
     },
   });
   const account = accounts[0];
@@ -364,4 +448,10 @@ const deleteAccount = async (
   return new Response(null, { status: 204 });
 };
 
-export { createAccount, deleteAccount, getAccount, listAccounts };
+export {
+  createAccount,
+  deleteAccount,
+  getAccount,
+  getAccountsUsage,
+  listAccounts,
+};

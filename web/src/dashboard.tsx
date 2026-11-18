@@ -5,7 +5,7 @@ import { AccountMessagesList } from "./AccountMessagesList.tsx";
 import { PhoneVerification } from "./PhoneVerification.tsx";
 
 // @ts-ignore: Vite injects import.meta.env at build time
-const API_BASE: string = import.meta.env.VITE_API_BASE_URL ?? "";
+const API_BASE: string = import.meta.env?.VITE_API_BASE_URL ?? "";
 
 const apiHeaders = (userToken: string, orgId: string) => ({
   "Content-Type": "application/json",
@@ -284,24 +284,71 @@ const BillingSection = ({
   );
 };
 
+type AccountUsageStats = {
+  sendsToday: number;
+  sendsThisMonth: number;
+  receivesToday: number;
+  receivesThisMonth: number;
+};
+
+const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+
+const fallbackMonthlySends = (
+  now: number,
+  acc: { sendsThisMonth?: number; sendPeriodStart?: number },
+): number =>
+  !acc.sendPeriodStart || now - acc.sendPeriodStart > thirtyDaysMs
+    ? 0
+    : (acc.sendsThisMonth ?? 0);
+
 const AccountsList = ({
   orgId,
   userToken,
+  isAdmin,
   trialAvailable,
   onAccountChanged,
 }: {
   orgId: string;
   userToken: string;
+  isAdmin?: boolean;
   trialAvailable?: boolean;
   onAccountChanged?: () => void;
 }) => {
-  const { isLoading, error, data } = useQuery({
+  const { isLoading, error, data, retry } = useQuery({
     accounts: {
       $: { where: { "organization.id": orgId } },
       webhooks: {},
-      messages: {},
     },
   });
+
+  const [usageByAccount, setUsageByAccount] = useState<
+    Record<string, AccountUsageStats>
+  >({});
+  const [usageRefreshKey, setUsageRefreshKey] = useState(0);
+
+  useEffect(() => {
+    if (!userToken || !orgId) return;
+    const controller = new AbortController();
+    const fetchUsage = () => {
+      fetch(`${API_BASE}/v1/accounts/usage`, {
+        headers: apiHeaders(userToken, orgId),
+        signal: controller.signal,
+      })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((json) => {
+          if (!controller.signal.aborted && json?.data) {
+            setUsageByAccount(json.data);
+          }
+        })
+        .catch(() => {});
+    };
+    fetchUsage();
+    const interval = setInterval(fetchUsage, 30000);
+    return () => {
+      controller.abort();
+      clearInterval(interval);
+    };
+  }, [orgId, userToken, usageRefreshKey]);
 
   const [newAddress, setNewAddress] = useState("");
   const [newDisplayName, setNewDisplayName] = useState("");
@@ -365,50 +412,41 @@ const AccountsList = ({
   if (isLoading) return <div class="text-slate-400">Loading accounts...</div>;
   if (error) {
     return (
-      <div class="text-red-400">Error loading accounts: {error.message}</div>
+      <div class="text-red-400 flex items-center gap-3">
+        <span>Error loading accounts: {error.message}</span>
+        <button
+          type="button"
+          onClick={retry}
+          class="text-xs px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded border border-slate-600 transition-colors"
+        >
+          Retry
+        </button>
+      </div>
     );
   }
 
   const accounts = data?.accounts ?? [];
-
   const now = Date.now();
-  const todayUtc = Date.UTC(
-    new Date().getUTCFullYear(),
-    new Date().getUTCMonth(),
-    new Date().getUTCDate(),
-  );
-  const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
 
   const maxSendsToday = trialAvailable ? 20 : 200;
   const maxReceivesToday = trialAvailable ? 50 : 200;
   const maxSendsMonth = trialAvailable ? 100 : 1000;
   const maxReceivesMonth = trialAvailable ? 200 : 1000;
 
-  const anyAccountOverQuota = accounts.some(
-    // deno-lint-ignore no-explicit-any
-    (acc: any) => {
-      const msgs = acc.messages ?? [];
-      const sToday = msgs.filter(
-        // deno-lint-ignore no-explicit-any
-        (m: any) => m.direction === "outbound" && m.timestamp >= todayUtc,
-      ).length;
-      const rToday = msgs.filter(
-        // deno-lint-ignore no-explicit-any
-        (m: any) => m.direction === "inbound" && m.timestamp >= todayUtc,
-      ).length;
-      const rMonth = msgs.filter(
-        // deno-lint-ignore no-explicit-any
-        (m: any) => m.direction === "inbound" && m.timestamp >= thirtyDaysAgo,
-      ).length;
-      const sMonth = acc.sendsThisMonth ?? 0;
+  const anyAccountOverQuota = !isAdmin &&
+    accounts.some((acc) => {
+      const usage = usageByAccount[acc.id];
+      const sToday = usage?.sendsToday ?? 0;
+      const rToday = usage?.receivesToday ?? 0;
+      const rMonth = usage?.receivesThisMonth ?? 0;
+      const sMonth = usage?.sendsThisMonth ?? fallbackMonthlySends(now, acc);
       return (
         sToday >= maxSendsToday ||
         rToday >= maxReceivesToday ||
         sMonth >= maxSendsMonth ||
         rMonth >= maxReceivesMonth
       );
-    },
-  );
+    });
 
   return (
     <Card title={`Email Accounts (${accounts.length})`}>
@@ -497,10 +535,7 @@ const AccountsList = ({
                 isFrozen?: boolean;
                 expiresAt?: number;
                 sendsThisMonth?: number;
-                messages?: {
-                  direction: string;
-                  timestamp: number;
-                }[];
+                sendPeriodStart?: number;
                 webhooks: {
                   id: string;
                   url: string;
@@ -509,23 +544,19 @@ const AccountsList = ({
                 }[];
                 createdAt: number;
               }) => {
-                const msgs = account.messages ?? [];
-                const sendsToday = msgs.filter(
-                  (m) => m.direction === "outbound" && m.timestamp >= todayUtc,
-                ).length;
-                const receivesToday = msgs.filter(
-                  (m) => m.direction === "inbound" && m.timestamp >= todayUtc,
-                ).length;
-                const receivesThisMonth = msgs.filter(
-                  (m) =>
-                    m.direction === "inbound" && m.timestamp >= thirtyDaysAgo,
-                ).length;
-                const sendsThisMonth = account.sendsThisMonth ?? 0;
+                const usage = usageByAccount[account.id];
+                const sendsToday = usage?.sendsToday ?? 0;
+                const receivesToday = usage?.receivesToday ?? 0;
+                const receivesThisMonth = usage?.receivesThisMonth ?? 0;
+                const sendsThisMonth = usage?.sendsThisMonth ??
+                  fallbackMonthlySends(now, account);
 
-                const isOverDailySend = sendsToday >= maxSendsToday;
-                const isOverDailyReceive = receivesToday >= maxReceivesToday;
-                const isOverMonthlySend = sendsThisMonth >= maxSendsMonth;
-                const isOverMonthlyReceive =
+                const isOverDailySend = !isAdmin && sendsToday >= maxSendsToday;
+                const isOverDailyReceive = !isAdmin &&
+                  receivesToday >= maxReceivesToday;
+                const isOverMonthlySend = !isAdmin &&
+                  sendsThisMonth >= maxSendsMonth;
+                const isOverMonthlyReceive = !isAdmin &&
                   receivesThisMonth >= maxReceivesMonth;
 
                 return (
@@ -603,8 +634,9 @@ const AccountsList = ({
                                 : "text-slate-400"
                             }`}
                           >
-                            📤 {sendsToday}/{maxSendsToday}{" "}
-                            today ({sendsThisMonth}/{maxSendsMonth} mo sends)
+                            📤 {isAdmin
+                              ? `${sendsToday} today (${sendsThisMonth} mo sends)`
+                              : `${sendsToday}/${maxSendsToday} today (${sendsThisMonth}/${maxSendsMonth} mo sends)`}
                           </span>
                           <span
                             class={`text-xs font-mono ${
@@ -613,9 +645,9 @@ const AccountsList = ({
                                 : "text-slate-400"
                             }`}
                           >
-                            📥 {receivesToday}/{maxReceivesToday}{" "}
-                            today ({receivesThisMonth}/{maxReceivesMonth}{" "}
-                            mo receives)
+                            📥 {isAdmin
+                              ? `${receivesToday} today (${receivesThisMonth} mo receives)`
+                              : `${receivesToday}/${maxReceivesToday} today (${receivesThisMonth}/${maxReceivesMonth} mo receives)`}
                           </span>
                         </div>
                         <div class="flex items-center gap-3">
@@ -710,6 +742,7 @@ const AccountsList = ({
                         fromAddress={account.address}
                         userToken={userToken}
                         orgId={orgId}
+                        onSent={() => setUsageRefreshKey((k) => k + 1)}
                         onDone={() => setSendingFor(null)}
                       />
                     )}
@@ -1031,12 +1064,14 @@ const SendMessageForm = ({
   fromAddress,
   userToken,
   orgId,
+  onSent,
   onDone,
 }: {
   accountId: string;
   fromAddress: string;
   userToken: string;
   orgId: string;
+  onSent?: () => void;
   onDone: () => void;
 }) => {
   const [to, setTo] = useState("");
@@ -1071,6 +1106,7 @@ const SendMessageForm = ({
         throw new Error(err.error || "Failed to send message");
       }
       setSent(true);
+      onSent?.();
       setTimeout(() => {
         setSent(false);
         onDone();
@@ -1584,12 +1620,16 @@ const Dashboard = () => {
       .finally(() => setCheckingPhone(false));
   }, [userToken]);
 
-  const { isLoading, data } = useQuery({
-    organizations: {
-      $: { where: { "members.id": user?.id ?? "" } },
-      billingUser: {},
-    },
-  });
+  const { isLoading, error: orgLoadError, data, retry: retryOrgs } = useQuery(
+    user?.id
+      ? {
+        organizations: {
+          $: { where: { "members.id": user.id } },
+          billingUser: {},
+        },
+      }
+      : null,
+  );
 
   const orgs = data?.organizations ?? [];
 
@@ -1632,6 +1672,23 @@ const Dashboard = () => {
     return (
       <div class="flex items-center justify-center h-64">
         <div class="text-slate-400">Loading dashboard...</div>
+      </div>
+    );
+  }
+
+  if (orgLoadError && !data) {
+    return (
+      <div class="flex flex-col items-center justify-center h-64 gap-3">
+        <div class="text-red-400">
+          Error loading organization: {orgLoadError.message}
+        </div>
+        <button
+          type="button"
+          onClick={retryOrgs}
+          class="text-sm px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg border border-slate-600 transition-colors"
+        >
+          Retry
+        </button>
       </div>
     );
   }
@@ -1732,6 +1789,7 @@ const Dashboard = () => {
           <AccountsList
             orgId={activeOrgId}
             userToken={userToken}
+            isAdmin={isOrgAdmin}
             trialAvailable={isTrialAvailable}
             onAccountChanged={() => setBalanceRefreshKey((k) => k + 1)}
           />

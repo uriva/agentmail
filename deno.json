@@ -10,7 +10,7 @@
     "build:worker": "deno run -A scripts/buildWorker.ts",
     "deploy": "npx wrangler deploy",
     "start": "deno run --allow-net --allow-env --allow-read src/main.ts",
-    "check": "deno check src/main.ts instant.perms.ts instant.schema.ts && deno check sdk/src/index.ts",
+    "check": "deno check src/main.ts instant.perms.ts instant.schema.ts web/src/dashboard.tsx && deno check sdk/src/index.ts",
     "test": "DENO_ENV=test deno test -A test/",
     "push-schema": "npx instant-cli push schema --yes",
     "push-perms": "npx instant-cli push perms --yes"

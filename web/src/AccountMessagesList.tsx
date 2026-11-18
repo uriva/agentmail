@@ -13,13 +13,25 @@ export const AccountMessagesList = ({
     null,
   );
 
-  const { data, isLoading, error, loadNextPage, canLoadNextPage } =
+  const { data, isLoading, error, loadNextPage, canLoadNextPage, retry } =
     useInfiniteQuery({
       messages: {
         $: {
           where: { "account.id": accountId },
           limit: 20,
           order: { timestamp: "desc" },
+          fields: [
+            "from",
+            "to",
+            "cc",
+            "bcc",
+            "subject",
+            "bodyText",
+            "bodyHtml",
+            "direction",
+            "status",
+            "timestamp",
+          ],
         },
       },
     });
@@ -34,8 +46,15 @@ export const AccountMessagesList = ({
 
   if (error) {
     return (
-      <div class="mt-2 p-4 bg-slate-900/50 border border-slate-700 rounded-lg text-red-400 text-center text-sm">
-        Error loading messages.
+      <div class="mt-2 p-4 bg-slate-900/50 border border-slate-700 rounded-lg text-red-400 text-center text-sm flex items-center justify-center gap-3">
+        <span>Error loading messages.</span>
+        <button
+          type="button"
+          onClick={retry}
+          class="text-xs px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded border border-slate-600 transition-colors"
+        >
+          Retry
+        </button>
       </div>
     );
   }
