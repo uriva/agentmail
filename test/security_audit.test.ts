@@ -21,6 +21,7 @@ import {
 import { combineScanBody } from "../src/services/emailGuard.ts";
 import { resolveAllowedCheckoutReturnUrl } from "../src/services/stripe.ts";
 import { checkTwilioVerification } from "../src/services/twilio.ts";
+import { deliverWebhook } from "../src/services/webhookDelivery.ts";
 import { buildEmailIframeSrcDoc } from "../web/src/sanitizeHtml.ts";
 
 Deno.env.set("DENO_ENV", "test");
@@ -576,4 +577,87 @@ Deno.test("webhook SSRF guard, phone canonicalization, dual body scan, Stripe re
     '<img src=x onerror="alert(1)"><script>evil()</script>',
   );
   assert(srcDoc.includes("default-src 'none'"));
+});
+
+Deno.test("webhook delivery uses Cloudflare Workers-compatible redirect:manual and blocks 3xx redirects without following them", async () => {
+  const srcFiles: string[] = [];
+  const collectTsFiles = async (dir: string) => {
+    for await (const entry of Deno.readDir(dir)) {
+      const fullPath = `${dir}/${entry.name}`;
+      if (entry.isDirectory) {
+        await collectTsFiles(fullPath);
+      } else if (entry.isFile && entry.name.endsWith(".ts")) {
+        srcFiles.push(fullPath);
+      }
+    }
+  };
+  await collectTsFiles(new URL("../src", import.meta.url).pathname);
+  for (const file of srcFiles) {
+    const content = await Deno.readTextFile(file);
+    assertEquals(
+      /redirect\s*:\s*["']error["']/.test(content),
+      false,
+      `${file} uses redirect: "error", which throws in Cloudflare Workers`,
+    );
+  }
+
+  let secretHits = 0;
+  let receivedHeaders: Headers | null = null;
+  let receivedBody = "";
+
+  const server = Deno.serve({ hostname: "127.0.0.1", port: 0 }, async (req) => {
+    const url = new URL(req.url);
+    if (url.pathname === "/ok") {
+      receivedHeaders = req.headers;
+      receivedBody = await req.text();
+      return new Response("ok", { status: 200 });
+    }
+    if (url.pathname === "/redirect") {
+      return new Response(null, {
+        status: 302,
+        headers: { Location: `${url.origin}/secret` },
+      });
+    }
+    if (url.pathname === "/secret") {
+      secretHits++;
+      return new Response("secret", { status: 200 });
+    }
+    return new Response("not found", { status: 404 });
+  });
+
+  try {
+    const baseUrl = `http://127.0.0.1:${server.addr.port}`;
+    const payload = {
+      event: "email.received",
+      data: { id: "msg-1", from: "sender@example.com" },
+      timestamp: Date.now(),
+    };
+    const secret = "test-webhook-secret";
+
+    const okResult = await deliverWebhook(
+      `${baseUrl}/ok`,
+      secret,
+      payload,
+      "org-test",
+    );
+    assertEquals(okResult, true);
+    assertEquals(receivedBody, JSON.stringify(payload));
+    const expectedSig = await hmacSha256Hex(secret, receivedBody);
+    assertEquals(receivedHeaders!.get("x-agentmail-signature"), expectedSig);
+    assertEquals(
+      receivedHeaders!.get("x-agentmail-timestamp"),
+      String(payload.timestamp),
+    );
+
+    const redirectResult = await deliverWebhook(
+      `${baseUrl}/redirect`,
+      secret,
+      payload,
+      "org-test",
+    );
+    assertEquals(redirectResult, false);
+    assertEquals(secretHits, 0);
+  } finally {
+    await server.shutdown();
+  }
 });

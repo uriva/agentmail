@@ -47,7 +47,7 @@ const deliverWebhook = async (
   try {
     const res = await fetch(safeUrl, {
       method: "POST",
-      redirect: "error",
+      redirect: "manual",
       headers: {
         "Content-Type": "application/json",
         "X-AgentMail-Signature": signature,
@@ -58,7 +58,7 @@ const deliverWebhook = async (
       signal: AbortSignal.timeout(10_000),
     });
 
-    const success = res.ok;
+    const success = res.ok && res.type !== "opaqueredirect";
     await res.body?.cancel().catch(() => {});
     captureEvent(orgId, "webhook_delivered", {
       url: safeUrl,
