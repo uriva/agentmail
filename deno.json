@@ -19,7 +19,7 @@
     "@std/assert": "jsr:@std/assert@^1.0.13",
     "@std/encoding/base64": "jsr:@std/encoding@^1.0.10/base64",
     "@uri/instantdb-mock": "jsr:@uri/instantdb-mock@^0.1.0",
-    "ai-utils": "jsr:@uri/ai-utils@^0.3.130",
+    "@uriv/chaff": "npm:@uriv/chaff@^0.4.3",
     "gamla": "jsr:@uri/gamla",
     "@instantdb/admin": "npm:@instantdb/admin@1.0.65",
     "@instantdb/react": "npm:@instantdb/react@1.0.65",

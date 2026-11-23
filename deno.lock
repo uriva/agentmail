@@ -2,25 +2,14 @@
   "version": "5",
   "specifiers": {
     "jsr:@noble/hashes@2.0.0": "2.0.0",
-    "jsr:@std/assert@*": "1.0.19",
     "jsr:@std/assert@^1.0.13": "1.0.19",
     "jsr:@std/dotenv@*": "0.225.8",
-    "jsr:@std/encoding@*": "1.0.11",
     "jsr:@std/encoding@0.224.0": "0.224.0",
-    "jsr:@std/encoding@1": "1.0.11",
     "jsr:@std/encoding@^1.0.10": "1.0.11",
     "jsr:@std/internal@^1.0.12": "1.0.14",
-    "jsr:@std/internal@^1.0.14": "1.0.14",
-    "jsr:@std/path@1": "1.1.6",
-    "jsr:@uri/ai-utils@~0.3.130": "0.3.130",
-    "jsr:@uri/gamla@*": "0.0.17",
-    "jsr:@uri/gamla@0.0.16": "0.0.16",
-    "jsr:@uri/inject@0.0.2": "0.0.2",
+    "jsr:@uri/gamla@*": "0.0.18",
     "jsr:@uri/instantdb-mock@0.1": "0.1.0",
-    "jsr:@uri/rmmbr@0.1.5": "0.1.5",
-    "npm:@anthropic-ai/sdk@0.39.0": "0.39.0",
     "npm:@deno/vite-plugin@^1.0.5": "1.0.6_vite@7.3.1",
-    "npm:@google/genai@2.10.0": "2.10.0",
     "npm:@instantdb/admin@*": "1.0.65",
     "npm:@instantdb/admin@1.0.41": "1.0.41",
     "npm:@instantdb/admin@1.0.65": "1.0.65",
@@ -30,19 +19,16 @@
     "npm:@preact/preset-vite@2.10.2": "2.10.2_@babel+core@7.29.0_vite@7.3.1_preact@10.26.7",
     "npm:@preact/signals@2.1.1": "2.1.1_preact@10.26.7",
     "npm:@tailwindcss/vite@4.2.1": "4.2.1_vite@7.3.1",
+    "npm:@uriv/chaff@~0.4.3": "0.4.3",
     "npm:instant-cli@*": "0.22.142_acorn@8.16.0",
-    "npm:js-tiktoken@1.0.21": "1.0.21",
-    "npm:openai@5.2.0": "5.2.0_zod@3.25.57",
     "npm:posthog-js@^1.359.0": "1.359.0_@opentelemetry+api@1.9.0",
     "npm:preact-iso@2.9.1": "2.9.1_preact@10.26.7",
     "npm:preact@10.26.7": "10.26.7",
-    "npm:sjcl@^1.0.9": "1.0.9",
     "npm:stripe@23.0.1": "23.0.1",
     "npm:tailwindcss@4.2.1": "4.2.1",
     "npm:vite-prerender-plugin@0.5.12": "0.5.12_vite@7.3.1",
     "npm:vite@*": "7.3.1_picomatch@4.0.3",
-    "npm:vite@^7.1.5": "7.3.1_picomatch@4.0.3",
-    "npm:zod@3.25.57": "3.25.57"
+    "npm:vite@^7.1.5": "7.3.1_picomatch@4.0.3"
   },
   "jsr": {
     "@noble/hashes@2.0.0": {
@@ -51,7 +37,7 @@
     "@std/assert@1.0.19": {
       "integrity": "eaada96ee120cb980bc47e040f82814d786fe8162ecc53c91d8df60b8755991e",
       "dependencies": [
-        "jsr:@std/internal@^1.0.12"
+        "jsr:@std/internal"
       ]
     },
     "@std/dotenv@0.225.8": {
@@ -66,56 +52,18 @@
     "@std/internal@1.0.14": {
       "integrity": "291516b3d4c35024d6ffbc0a9df5bf4c64116e05b50012cf846710152d2ffdf7"
     },
-    "@std/path@1.1.6": {
-      "integrity": "c68485c2a4dfbb5ae3cc74fae4e8c4e5d874cf8a8ed12927917235c758b46cbe",
-      "dependencies": [
-        "jsr:@std/internal@^1.0.14"
-      ]
-    },
-    "@uri/ai-utils@0.3.130": {
-      "integrity": "23dcf2ec40e87fce7d38c6ffb85cf9316769bbc6a74640de1406feff91d8ebe1",
-      "dependencies": [
-        "jsr:@std/encoding@^1.0.10",
-        "jsr:@uri/gamla@0.0.16",
-        "jsr:@uri/inject",
-        "jsr:@uri/rmmbr",
-        "npm:@anthropic-ai/sdk",
-        "npm:@google/genai",
-        "npm:js-tiktoken",
-        "npm:openai",
-        "npm:zod"
-      ]
-    },
-    "@uri/gamla@0.0.16": {
-      "integrity": "96a92fa0340b10447e7625b0d8a1a53d301aeb04aeee90c9b7cc899e7774e072",
+    "@uri/gamla@0.0.18": {
+      "integrity": "96305b48b134ce84db5218c6b71868e8268e62faf9da273687a1601594668498",
       "dependencies": [
         "jsr:@noble/hashes",
         "jsr:@std/encoding@0.224.0"
       ]
-    },
-    "@uri/gamla@0.0.17": {
-      "integrity": "fa61927f47c28214285e83cedc4b7d293b2e0d0a92242f561a1b3da90928281f",
-      "dependencies": [
-        "jsr:@noble/hashes",
-        "jsr:@std/encoding@0.224.0"
-      ]
-    },
-    "@uri/inject@0.0.2": {
-      "integrity": "532740259eddbb8e00b886fc4cb8b048f009be623225745cf3ce8cf229d6d30a"
     },
     "@uri/instantdb-mock@0.1.0": {
       "integrity": "994ca70a8bf9dd9fc5efbcb89ee1148f3ceea7733172cd7142f3090fc06e89c6",
       "dependencies": [
         "npm:@instantdb/admin@1.0.41",
         "npm:@instantdb/core@1.0.41"
-      ]
-    },
-    "@uri/rmmbr@0.1.5": {
-      "integrity": "022040f275aff288aeb383f99f133d12f99fa86a480b7721ad497fa12ba2194e",
-      "dependencies": [
-        "jsr:@std/encoding@1",
-        "jsr:@std/path",
-        "npm:sjcl"
       ]
     }
   },
@@ -571,8 +519,8 @@
         "heap"
       ]
     },
-    "@google/genai@2.10.0": {
-      "integrity": "sha512-e4cFxj3tiuMtsgOT4G9c1hXyGJhg7/Buj7VVeBacRY3fRtkRZZ59Q3nuVp2xbq8BGQXLXCDB253qMhklMOeUDg==",
+    "@google/genai@2.32.0": {
+      "integrity": "sha512-60c79uXpR0a47bmGqDxbXEBuQUalNmwo5mx5kqb91jIW4FoqpsLSt86DeVhRhtH5+s/16Wqxt3sXzFQn2U1OHQ==",
       "dependencies": [
         "google-auth-library",
         "p-retry",
@@ -1136,6 +1084,16 @@
     },
     "@types/trusted-types@2.0.7": {
       "integrity": "sha512-ScaPdn1dQczgbl0QFTeTOmVHFULt394XJgOQNoyVhZ6r2vLnMLJfBPd53SB52T/3G36VI1/g2MZaX0cwDuXsfw=="
+    },
+    "@uriv/chaff@0.4.3": {
+      "integrity": "sha512-PVIjoT1zWiNGO0yGg/TLZWZTwLBE0cVErYU83LwWc61DRfWBO6+VLvlkCAmwYL1YBiYXmY84pGGXsnJyDJ4vPg==",
+      "dependencies": [
+        "@anthropic-ai/sdk",
+        "@google/genai",
+        "js-tiktoken",
+        "openai",
+        "zod"
+      ]
     },
     "abort-controller@3.0.0": {
       "integrity": "sha512-h8lQ8tacZYnR3vNQTgibj+tODHI5/+l06Au2Pcriv/Gmet0eaj4TwWH41sO9wnHDiQsEj19q0drzdWdeAHtweg==",
@@ -1982,8 +1940,8 @@
         "wsl-utils"
       ]
     },
-    "openai@5.2.0_zod@3.25.57": {
-      "integrity": "sha512-b+Sf2Yk2eApDkhqHr7C4d5hux9gkHUvyqQ7RrdSfLsjrXkCZpJPqkME0u5Py7RPB28Ozz+RkJZpW7YPTOoChew==",
+    "openai@5.23.2_zod@3.25.76": {
+      "integrity": "sha512-MQBzmTulj+MM5O8SKEk/gL8a7s5mktS9zUtAkU257WjvobGc9nKcBuVwjyEEcb9SI8a8Y2G/mzn3vm9n1Jlleg==",
       "dependencies": [
         "zod"
       ],
@@ -2161,9 +2119,6 @@
     },
     "sisteransi@1.0.5": {
       "integrity": "sha512-bLGGlR1QxBcynn2d5YmDX4MGjlZvy2MRBDRNHLJ8VI6l6+9FUiyTFNJ0IveOSP0bcXgVDPRcfGqA0pjaqUpfVg=="
-    },
-    "sjcl@1.0.9": {
-      "integrity": "sha512-dWM71tkSHxe7zEZj0/COjtJdmErIxp7UMp8a6D4xx8dTTtJLc4lFL+HAX8s6lvASyQQ2iYMHwa7rhhQq7MT5MA=="
     },
     "source-map-js@1.2.1": {
       "integrity": "sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA=="
@@ -2362,8 +2317,8 @@
         "strip-ansi@7.1.2"
       ]
     },
-    "ws@8.22.2": {
-      "integrity": "sha512-/rEZ2ejown2N5gxVTHUu9bVVC7ttu0/Tgzf5hbTOixR3Fs7mbbXgn2DbdbcKgJOmpQMtrIUWivtYuVMnp/W/yA=="
+    "ws@8.23.0": {
+      "integrity": "sha512-wCkmX8QMOrKjgO8HW2WyDbTSGeqkocxgDzS9iR79rEAexty6/2qzilx3Ag8Tqf9ykop3irLKle0MtVn5qjVnoQ=="
     },
     "wsl-utils@0.1.0": {
       "integrity": "sha512-h3Fbisa2nKGPxCpm89Hk33lBLsnaGBvctQopaBSOW/uIs6FTe1ATyAnKFJrzVs9vpGdsTe73WF3V4lIsk4Gacw==",
@@ -2374,8 +2329,8 @@
     "yallist@3.1.1": {
       "integrity": "sha512-a4UGQaWPH59mOXUYnAG2ewncQS4i4F43Tv3JoAM+s2VDAmS9NsK8GpDMLrCHPksFT7h3K6TOoUNn2pb7RoXx4g=="
     },
-    "zod@3.25.57": {
-      "integrity": "sha512-6tgzLuwVST5oLUxXTmBqoinKMd3JeesgbgseXeFasKKj8Q1FCZrHnbqJOyiEvr4cVAlbug+CgIsmJ8cl/pU5FA=="
+    "zod@3.25.76": {
+      "integrity": "sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ=="
     }
   },
   "redirects": {
@@ -2397,7 +2352,6 @@
     "dependencies": [
       "jsr:@std/assert@^1.0.13",
       "jsr:@std/encoding@^1.0.10",
-      "jsr:@uri/ai-utils@~0.3.130",
       "jsr:@uri/gamla@*",
       "jsr:@uri/instantdb-mock@0.1",
       "npm:@deno/vite-plugin@^1.0.5",
@@ -2407,6 +2361,7 @@
       "npm:@preact/preset-vite@2.10.2",
       "npm:@preact/signals@2.1.1",
       "npm:@tailwindcss/vite@4.2.1",
+      "npm:@uriv/chaff@~0.4.3",
       "npm:posthog-js@^1.359.0",
       "npm:preact-iso@2.9.1",
       "npm:preact@10.26.7",

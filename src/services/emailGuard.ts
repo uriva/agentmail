@@ -1,4 +1,4 @@
-import { callDecisionModel, isDecisionModelAvailable } from "ai-utils";
+import { callDecisionModel, isDecisionModelAvailable } from "@uriv/chaff";
 import { captureEvent } from "./posthog.ts";
 
 type ScanParams = {

@@ -1,5 +1,5 @@
 import { assertEquals } from "@std/assert";
-import { isDecisionModelAvailable } from "ai-utils";
+import { isDecisionModelAvailable } from "@uriv/chaff";
 import { scanOutboundEmail } from "../src/services/emailGuard.ts";
 
 Deno.test({
