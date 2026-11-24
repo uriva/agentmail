@@ -66,7 +66,7 @@ const faqs = [
   },
   {
     q: "Can agents receive verification codes and sign up for services?",
-    a: "Yes — that's the core use case. Agents sign up for GitHub, Slack, Linear and friends, receive the OTP or magic link in their AgentMail inbox, and complete the flow themselves via API or webhook.",
+    a: "Yes — that's the core use case on paid accounts ($5 minimum deposit). Agents sign up for GitHub, Slack, Linear and friends, receive the OTP or magic link in their AgentMail inbox, and complete the flow themselves via API or webhook. Signup and OTP emails are blocked on free trial mailboxes to prevent burner abuse.",
   },
   {
     q: "Is AgentMail really open source?",

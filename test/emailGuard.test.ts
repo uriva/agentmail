@@ -1,6 +1,10 @@
 import { assertEquals } from "@std/assert";
 import { isDecisionModelAvailable } from "@uriv/chaff";
-import { scanOutboundEmail } from "../src/services/emailGuard.ts";
+import {
+  isLikelyVerificationEmail,
+  scanInboundEmail,
+  scanOutboundEmail,
+} from "../src/services/emailGuard.ts";
 
 Deno.test({
   name: "scanOutboundEmail allows contextual 1:1 technical outreach while blocking phishing and bulk spam",
@@ -47,5 +51,63 @@ Deno.test({
         "Dear Sir/Madam Website Owner, We noticed your website has low traffic and poor SEO score! Buy 50,000 DA90 guest post backlinks + 10,000 Instagram followers for only $19 today! Reply YES to unsubscribe or order now.",
     });
     assertEquals(genericSeoSpam.allowed, false);
+  },
+});
+
+Deno.test("isLikelyVerificationEmail detects signup, activation, and OTP emails without false positives", () => {
+  assertEquals(
+    isLikelyVerificationEmail({
+      subject: "Activate Your Apollo Account",
+      text: "Click here to activate your Apollo account and start prospecting.",
+    }),
+    true,
+  );
+  assertEquals(
+    isLikelyVerificationEmail({
+      subject: "Your verification code: 481516",
+      text: "Enter 481516 to finish signing up for GitHub.",
+    }),
+    true,
+  );
+  assertEquals(
+    isLikelyVerificationEmail({
+      subject: "Re: Deploy status for Friday",
+      text: "Hey, all checks are green and ready to merge.",
+    }),
+    false,
+  );
+});
+
+Deno.test({
+  name: "scanInboundEmail classifies signup/OTP emails separately from normal correspondence",
+  ignore: !isDecisionModelAvailable(),
+  fn: async () => {
+    const apolloActivation = await scanInboundEmail({
+      from: "support@apollo.io",
+      to: ["bot@theagentmail.net"],
+      subject: "Activate Your Apollo Account",
+      text:
+        "Welcome to Apollo! Click https://app.apollo.io/confirm?token=abc to confirm your email address and activate your account.",
+    });
+    assertEquals(apolloActivation.allowed, true);
+    assertEquals(apolloActivation.isVerification, true);
+
+    const githubOtp = await scanInboundEmail({
+      from: "noreply@github.com",
+      to: ["bot@theagentmail.net"],
+      subject: "GitHub — Your verification code: 481516",
+      text: "Use verification code 481516 to complete your GitHub sign-up.",
+    });
+    assertEquals(githubOtp.allowed, true);
+    assertEquals(githubOtp.isVerification, true);
+
+    const normalMail = await scanInboundEmail({
+      from: "alex@company.com",
+      to: ["bot@theagentmail.net"],
+      subject: "Re: Q4 roadmap notes",
+      text: "Thanks for sending the summary! Let's catch up Tuesday afternoon.",
+    });
+    assertEquals(normalMail.allowed, true);
+    assertEquals(normalMail.isVerification, false);
   },
 });

@@ -21,6 +21,27 @@ type ScanResult = {
   readonly reason?: string;
 };
 
+type InboundScanResult = ScanResult & {
+  readonly isVerification: boolean;
+};
+
+const verificationPatterns: readonly RegExp[] = [
+  /\b(verification|verify|confirm|confirmation|activation|activate)\b.{0,30}\b(code|email|account|address|link)\b/i,
+  /\b(code|link)\b.{0,20}\b(verify|confirm|activate|sign[- ]?in|log[- ]?in|reset)\b/i,
+  /\b(one[- ]?time|otp|2fa|two[- ]?factor|passcode|magic[- ]?link|security code|login code|sign[- ]?in code|reset your password|confirm your sign[- ]?up)\b/i,
+  /\bactivate your\b.{0,40}\baccount\b/i,
+  /\b(verify|confirm) your\b.{0,40}\b(email|account|address)\b/i,
+];
+
+const isLikelyVerificationEmail = ({
+  subject,
+  text,
+  html,
+}: Pick<InboundScanParams, "subject" | "text" | "html">): boolean => {
+  const haystack = `${subject}\n${text ?? ""}\n${html ?? ""}`;
+  return verificationPatterns.some((pattern) => pattern.test(haystack));
+};
+
 const outboundQuestions = {
   email_classification: {
     type: "choice" as const,
@@ -45,6 +66,17 @@ const inboundQuestions = {
         "Legitimate email: standard business, personal, notification, verification code, newsletter, or genuine correspondence.",
       block:
         "Abusive spam or phishing: scams, extortion, credential theft, malware/phishing links, or mass cold-spam blasts.",
+    },
+  },
+  verification_or_signup: {
+    type: "choice" as const,
+    instructions:
+      "Classify whether this incoming email is an account verification, activation, sign-up confirmation, magic login link, one-time passcode (OTP), or password reset email from a third-party service. Choose 'yes' if the email contains a verification/OTP/2FA code, sign-up or account activation link, email confirmation link, magic sign-in link, or password reset code/link. Choose 'no' for regular human correspondence, receipts, alerts, newsletters, or general notifications without a verification/activation code or link.",
+    criteria: {
+      yes:
+        "Account signup confirmation, account activation link, email verification, OTP/2FA/passcode, magic sign-in link, or password reset email.",
+      no:
+        "Regular conversation, support thread, alert, receipt, newsletter, or notification without a signup/verification code or link.",
     },
   },
 };
@@ -121,9 +153,9 @@ const scanOutboundEmail = async (
 const scanInboundEmail = async (
   params: InboundScanParams,
   orgId?: string,
-): Promise<ScanResult> => {
+): Promise<InboundScanResult> => {
   if (!isDecisionModelAvailable()) {
-    return { allowed: true };
+    return { allowed: true, isVerification: isLikelyVerificationEmail(params) };
   }
   try {
     const answers = await callDecisionModel(
@@ -136,11 +168,15 @@ const scanInboundEmail = async (
       inboundQuestions,
     );
     const classification = answers.email_classification;
+    const verification = answers.verification_or_signup;
     const result = parseScanAnswer(
       classification && classification.type === "choice"
         ? classification.choice
         : undefined,
     );
+    const isVerification = verification?.type === "choice"
+      ? verification.choice === "yes"
+      : isLikelyVerificationEmail(params);
     if (!result.allowed && orgId) {
       captureEvent(orgId, "inbound_email_blocked", {
         from: params.from,
@@ -148,12 +184,17 @@ const scanInboundEmail = async (
         to: params.to,
       });
     }
-    return result;
+    return { ...result, isVerification };
   } catch (err) {
     console.error("Inbound email guard failed, allowing email fallback:", err);
-    return { allowed: true };
+    return { allowed: true, isVerification: isLikelyVerificationEmail(params) };
   }
 };
 
-export { combineScanBody, scanInboundEmail, scanOutboundEmail };
-export type { InboundScanParams, ScanParams, ScanResult };
+export {
+  combineScanBody,
+  isLikelyVerificationEmail,
+  scanInboundEmail,
+  scanOutboundEmail,
+};
+export type { InboundScanParams, InboundScanResult, ScanParams, ScanResult };

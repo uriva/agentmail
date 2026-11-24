@@ -18,7 +18,14 @@ export type Message = {
   readonly to: readonly string[];
   readonly subject: string;
   readonly direction: "inbound" | "outbound";
-  readonly status: "queued" | "sent" | "delivered" | "failed" | "received";
+  readonly status:
+    | "queued"
+    | "sent"
+    | "delivered"
+    | "failed"
+    | "received"
+    | "spam"
+    | "blocked";
   readonly timestamp: number;
 };
 

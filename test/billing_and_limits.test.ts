@@ -651,6 +651,114 @@ Deno.test("Billing & account expiration flow", async (t) => {
     },
   );
 
+  await t.step(
+    "Inbound blocks and redacts verification emails on free trial orgs but delivers them to paying orgs",
+    async () => {
+      const trialOrgId = id();
+      const trialAccountId = id();
+      const trialAddress = `trial-otp-${trialAccountId}@theagentmail.net`;
+      const paidOrgId = id();
+      const paidAccountId = id();
+      const paidAddress = `paid-otp-${paidAccountId}@theagentmail.net`;
+
+      await db.transact([
+        db.tx.organizations[trialOrgId]!.update({
+          name: "Trial OTP Org",
+          createdAt: Date.now(),
+          balance: 0,
+          trialUsed: true,
+          admin: false,
+        }),
+        db.tx.accounts[trialAccountId]!.update({
+          address: trialAddress,
+          createdAt: Date.now(),
+          expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
+          isFrozen: false,
+        }),
+        db.tx.accounts[trialAccountId]!.link({ organization: trialOrgId }),
+        db.tx.organizations[paidOrgId]!.update({
+          name: "Paid OTP Org",
+          createdAt: Date.now(),
+          balance: 5,
+          trialUsed: true,
+          admin: false,
+        }),
+        db.tx.accounts[paidAccountId]!.update({
+          address: paidAddress,
+          createdAt: Date.now(),
+          expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
+          isFrozen: false,
+        }),
+        db.tx.accounts[paidAccountId]!.link({ organization: paidOrgId }),
+      ]);
+
+      Deno.env.set("INBOUND_WEBHOOK_SECRET", "test-inbound-secret-xyz");
+
+      const makeSignedInbound = async (toAddress: string) => {
+        const body = JSON.stringify({
+          from: "support@apollo.io",
+          to: [toAddress],
+          subject: "Activate Your Apollo Account — code 918273",
+          text: "Your verification code is 918273. Activate at https://app.apollo.io/activate?t=secret",
+          html: "<p>Click <a href='https://app.apollo.io/activate?t=secret'>activate</a></p>",
+          headers: { subject: "Activate Your Apollo Account — code 918273" },
+        });
+        const sig = await hmacSha256Hex("test-inbound-secret-xyz", body);
+        return new Request("http://localhost/v1/inbound", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-webhook-signature": sig,
+          },
+          body,
+        });
+      };
+
+      const trialRes = await handleInbound(
+        await makeSignedInbound(trialAddress),
+        {},
+        trialOrgId,
+      );
+      assertEquals(trialRes.status, 200);
+
+      const paidRes = await handleInbound(
+        await makeSignedInbound(paidAddress),
+        {},
+        paidOrgId,
+      );
+      assertEquals(paidRes.status, 200);
+
+      const { messages: trialMessages } = await db.query({
+        messages: { $: { where: { "account.id": trialAccountId } } },
+      });
+      assertEquals(trialMessages.length, 1);
+      assertEquals(trialMessages[0]!.status, "blocked");
+      assertEquals(
+        trialMessages[0]!.subject,
+        "[Verification email blocked on free trial]",
+      );
+      assertEquals(trialMessages[0]!.bodyText?.includes("918273"), false);
+      assertEquals(trialMessages[0]!.bodyHtml, "");
+      assertEquals(trialMessages[0]!.headers, {});
+
+      const { messages: paidMessages } = await db.query({
+        messages: { $: { where: { "account.id": paidAccountId } } },
+      });
+      assertEquals(paidMessages.length, 1);
+      assertEquals(paidMessages[0]!.status, "received");
+      assertEquals(paidMessages[0]!.bodyText?.includes("918273"), true);
+
+      await db.transact([
+        db.tx.messages[trialMessages[0]!.id]!.delete(),
+        db.tx.messages[paidMessages[0]!.id]!.delete(),
+        db.tx.accounts[trialAccountId]!.delete(),
+        db.tx.accounts[paidAccountId]!.delete(),
+        db.tx.organizations[trialOrgId]!.delete(),
+        db.tx.organizations[paidOrgId]!.delete(),
+      ]);
+    },
+  );
+
   // Cleanup test entities
   const { accounts: orgAccounts } = await db.query({
     accounts: { $: { where: { "organization.id": testOrgId } } },

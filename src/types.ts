@@ -6,7 +6,8 @@ export type MessageStatus =
   | "delivered"
   | "failed"
   | "received"
-  | "spam";
+  | "spam"
+  | "blocked";
 
 export type CreateAccountInput = {
   readonly address: string;

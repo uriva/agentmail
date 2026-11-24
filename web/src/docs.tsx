@@ -599,7 +599,9 @@ const verifyWebhook = (body: string, signature: string, timestamp: string, secre
             {planDetails.limits.trial.sendsPerDay} sends/day (up to{" "}
             {planDetails.limits.trial.sendsPerMonth}/mo) and{" "}
             {planDetails.limits.trial.receivesPerDay} receives/day (up to{" "}
-            {planDetails.limits.trial.receivesPerMonth}/mo).
+            {planDetails.limits.trial.receivesPerMonth}/mo). Inbound signup,
+            OTP, and account activation emails are blocked on free trials until
+            a {planDetails.topup.priceDisplay} deposit is added.
           </li>
           <li>
             <strong>Webhooks:</strong>{" "}

@@ -21,6 +21,51 @@ const replayTtlMs = 10 * 60 * 1000;
 const maxRecipientsPerEvent = 10;
 const maxAttachmentsCount = 10;
 const maxTotalAttachmentBytes = 15 * 1024 * 1024;
+const trialVerificationBlockedSubject =
+  "[Verification email blocked on free trial]";
+const trialVerificationBlockedBody =
+  "Verification, OTP, and account activation emails are blocked on free trial mailboxes. Top up $5 in your dashboard (https://theagentmail.net/app) to unlock signup & verification emails.";
+
+const buildInboundMessageRecord = ({
+  email,
+  isSpam,
+  isTrialVerificationBlocked,
+}: {
+  email: InboundEmail;
+  isSpam: boolean;
+  isTrialVerificationBlocked: boolean;
+}) =>
+  isTrialVerificationBlocked
+    ? {
+      from: email.from,
+      to: [...email.to],
+      cc: email.cc ? [...email.cc] : undefined,
+      subject: trialVerificationBlockedSubject,
+      bodyText: trialVerificationBlockedBody,
+      bodyHtml: "",
+      direction: "inbound",
+      status: "blocked",
+      headers: {},
+      timestamp: Date.now(),
+      externalId: email.messageId ?? "",
+      inReplyTo: "",
+      references: "",
+    }
+    : {
+      from: email.from,
+      to: [...email.to],
+      cc: email.cc ? [...email.cc] : undefined,
+      subject: email.subject,
+      bodyText: typeof email.text === "string" ? email.text : "",
+      bodyHtml: typeof email.html === "string" ? email.html : "",
+      direction: "inbound",
+      status: isSpam ? "spam" : "received",
+      headers: email.headers ?? {},
+      timestamp: Date.now(),
+      externalId: email.messageId ?? "",
+      inReplyTo: email.inReplyTo ?? "",
+      references: email.references ?? "",
+    };
 
 const extractAddress = (raw: string): string => {
   const addr = raw.includes("<") ? raw.match(/<(.+)>/)?.[1] ?? raw : raw;
@@ -448,6 +493,9 @@ export const handleInbound = async (
 
       const orgId = org.id;
       const isAdmin = Boolean(org?.admin);
+      const isPaying = isPayingOrg(org);
+      const isTrialVerificationBlocked = !isAdmin && !isPaying && !isSpam &&
+        scanResult.isVerification;
 
       const now = Date.now();
       const isExpired = Boolean(account.expiresAt && account.expiresAt < now);
@@ -456,7 +504,6 @@ export const handleInbound = async (
       }
 
       if (!isAdmin) {
-        const isPaying = isPayingOrg(org);
         const limits = isPaying
           ? planDetails.limits.paid
           : planDetails.limits.trial;
@@ -518,7 +565,7 @@ export const handleInbound = async (
         storageKey: string;
       }[] = [];
 
-      if (email.attachments) {
+      if (!isTrialVerificationBlocked && email.attachments) {
         let totalBytes = 0;
         for (const att of email.attachments.slice(0, maxAttachmentsCount)) {
           const safeFilename = sanitizeAttachmentFilename(att.filename);
@@ -546,21 +593,13 @@ export const handleInbound = async (
       const messageId = id();
       // deno-lint-ignore no-explicit-any
       const txOps: any[] = [
-        db.tx.messages[messageId]!.update({
-          from: email.from,
-          to: [...email.to],
-          cc: email.cc ? [...email.cc] : undefined,
-          subject: email.subject,
-          bodyText: typeof email.text === "string" ? email.text : "",
-          bodyHtml: typeof email.html === "string" ? email.html : "",
-          direction: "inbound",
-          status: isSpam ? "spam" : "received",
-          headers: email.headers ?? {},
-          timestamp: Date.now(),
-          externalId: email.messageId ?? "",
-          inReplyTo: email.inReplyTo ?? "",
-          references: email.references ?? "",
-        }),
+        db.tx.messages[messageId]!.update(
+          buildInboundMessageRecord({
+            email,
+            isSpam,
+            isTrialVerificationBlocked,
+          }),
+        ),
         db.tx.messages[messageId]!.link({ account: account.id }),
       ];
 
@@ -578,6 +617,14 @@ export const handleInbound = async (
       }
 
       await db.transact(txOps);
+
+      if (isTrialVerificationBlocked) {
+        captureEvent(orgId, "trial_verification_blocked", {
+          from: email.from,
+          to: address,
+        });
+        continue;
+      }
 
       captureEvent(orgId, "email_received", {
         from: email.from,

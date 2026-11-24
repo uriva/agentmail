@@ -15,7 +15,7 @@ export const planDetails = {
     requiresPhoneVerification: true,
     badgeText: "1 mailbox free · 30 days",
     summary:
-      "One mailbox is free for 30 days after phone verification (20 sends/day, 50 receives/day, up to 100 sends & 200 receives/mo). Inbound & webhooks included.",
+      "One mailbox is free for 30 days after phone verification (20 sends/day, 50 receives/day, up to 100 sends & 200 receives/mo). Inbound & webhooks included; signup/OTP verification emails unlock with a $5 deposit.",
     features: [
       "1 email inbox free for 30 days",
       "Phone-verified to prevent abuse",
@@ -23,7 +23,7 @@ export const planDetails = {
       "50 receives/day (200 receives/mo included)",
       "Unlimited webhooks & API access",
       "Full attachment support",
-      "Real-time AI spam & phishing protection",
+      "Excludes signup, OTP & activation emails (unlocked with $5 deposit)",
     ],
   },
   rental: {
@@ -47,6 +47,7 @@ export const planDetails = {
       "Deposit funds never expire",
       "1,000 sends/mo included (200/day)",
       "1,000 receives/mo included (200/day)",
+      "Receive signup, OTP & activation emails",
       "Unlimited webhooks",
       "Add as many agent mailboxes as you need",
       "Self-serve instant Stripe checkout",
@@ -79,7 +80,7 @@ export const planDetails = {
     trialDays: 30,
   },
   faqCostAnswer:
-    "One mailbox is free for 30 days after phone verification (20 sends/day, 50 receives/day, up to 100 sends & 200 receives/mo). Paid mailboxes ($1/mo) include 1,000 sends & 1,000 receives per month (200/day). Inbound emails and webhooks are included.",
+    "One mailbox is free for 30 days after phone verification (20 sends/day, 50 receives/day, up to 100 sends & 200 receives/mo; signup/OTP verification emails require a $5 deposit). Paid mailboxes ($1/mo) include 1,000 sends & 1,000 receives per month (200/day), full signup/OTP email delivery, and webhooks.",
 } as const;
 
 export const getUtcDayStart = (d = new Date()): number =>
@@ -108,6 +109,7 @@ Pricing & Plan Terms:
 - Mailbox Rental: ${planDetails.rental.priceDisplay}${planDetails.rental.periodDisplay}. ${planDetails.rental.sendsDisplay}.
 - Top-Up: ${planDetails.topup.priceDisplay} ${planDetails.topup.periodDisplay}. ${planDetails.topup.summary}
 - Sending Limits: ${planDetails.limits.sendsPerMonthPerMailbox.toLocaleString()} sends/month included per mailbox.
+- Trial Verification Block: Free trial mailboxes block inbound signup, OTP, and account activation emails to prevent burner abuse. Topping up $5 in the dashboard immediately unlocks verification emails for all future messages.
 - If a mailbox is frozen:
   * Mailboxes are frozen if they expire after their ${planDetails.limits.trialDays}-day period and the organization balance is $0.
   * Users can top up their balance in the dashboard at https://theagentmail.net/app to automatically unfreeze and renew their mailbox.

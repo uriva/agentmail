@@ -82,6 +82,7 @@ export const AccountMessagesList = ({
             {messages.map((msg) => {
               const isExpanded = expandedMessageId === msg.id;
               const isSpam = msg.status === "spam";
+              const isBlocked = msg.status === "blocked";
               const toList = Array.isArray(msg.to) ? msg.to : [String(msg.to)];
               const ccList = Array.isArray(msg.cc) ? msg.cc : [];
               const bccList = Array.isArray(msg.bcc) ? msg.bcc : [];
@@ -121,6 +122,8 @@ export const AccountMessagesList = ({
                         class={`text-xs ${
                           msg.status === "sent" || msg.status === "delivered"
                             ? "text-green-400"
+                            : isBlocked
+                            ? "text-amber-400"
                             : msg.status === "failed" || isSpam
                             ? "text-red-400"
                             : "text-slate-400"
@@ -177,7 +180,14 @@ export const AccountMessagesList = ({
                         </div>
                       </div>
                       <div class="border-t border-slate-700 pt-3">
-                        {isSpam
+                        {isBlocked
+                          ? (
+                            <div class="p-3 rounded-lg bg-amber-950/40 border border-amber-500/30 text-amber-200 text-sm">
+                              {msg.bodyText ||
+                                "Verification, OTP, and account activation emails are blocked on free trial mailboxes. Top up $5 in your dashboard to unlock them."}
+                            </div>
+                          )
+                          : isSpam
                           ? (
                             <pre class="text-slate-300 whitespace-pre-wrap font-sans break-words">
                           {msg.bodyText ||
