@@ -9,6 +9,7 @@ import {
   timingSafeEqualStrings,
 } from "../security.ts";
 import { scanInboundEmail } from "../services/emailGuard.ts";
+import { notifyMessageBlocked } from "../services/blockNotifier.ts";
 import { captureEvent } from "../services/posthog.ts";
 import { notifyQuotaExceeded } from "../services/quotaNotifier.ts";
 import { emailDomain } from "../services/resend.ts";
@@ -494,6 +495,11 @@ export const handleInbound = async (
       const orgId = org.id;
       const isAdmin = Boolean(org?.admin);
       const isPaying = isPayingOrg(org);
+      const billingUser = Array.isArray(org?.billingUser)
+        ? org.billingUser[0]
+        : org?.billingUser;
+      const billingEmail = billingUser?.email ||
+        org?.members?.find((m: { email?: string }) => Boolean(m.email))?.email;
       const isTrialVerificationBlocked = !isAdmin && !isPaying && !isSpam &&
         scanResult.isVerification;
 
@@ -507,9 +513,6 @@ export const handleInbound = async (
         const limits = isPaying
           ? planDetails.limits.paid
           : planDetails.limits.trial;
-        const billingEmail = org?.billingUser?.email ||
-          org?.members?.find((m: { email?: string }) => Boolean(m.email))
-            ?.email;
 
         const todayUtc = getUtcDayStart();
         const receivesToday = await countMessages(
@@ -623,6 +626,14 @@ export const handleInbound = async (
           from: email.from,
           to: address,
         });
+        notifyMessageBlocked({
+          orgId,
+          accountAddress: address,
+          accountId: account.id,
+          blockReason: "trial_verification",
+          billingEmail,
+          detail: email.from,
+        }).catch((err) => console.error("[inbound] Block notify error:", err));
         continue;
       }
 

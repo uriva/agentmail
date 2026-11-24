@@ -3,6 +3,7 @@ import { db, id } from "../db.ts";
 import { getUtcDayStart, isPayingOrg, planDetails } from "../planData.ts";
 import { sanitizeAttachmentFilename, withKeyedLock } from "../security.ts";
 import { scanOutboundEmail } from "../services/emailGuard.ts";
+import { notifyMessageBlocked } from "../services/blockNotifier.ts";
 import { captureEvent } from "../services/posthog.ts";
 import { notifyQuotaExceeded } from "../services/quotaNotifier.ts";
 import { sendEmail } from "../services/resend.ts";
@@ -112,16 +113,6 @@ const sendMessage = async (
     );
   }
 
-  if (containsSpam(input)) {
-    return Response.json(
-      {
-        error: "Message rejected: content flagged as spam or phishing",
-        code: "SPAM_REJECTED",
-      },
-      { status: 400 },
-    );
-  }
-
   return withKeyedLock(`acct:${accountId}`, async () => {
     const { accounts } = await db.query({
       accounts: {
@@ -142,6 +133,11 @@ const sendMessage = async (
       ? account.organization[0]
       : account.organization;
     const isAdmin = Boolean(org?.admin);
+    const billingUser = Array.isArray(org?.billingUser)
+      ? org.billingUser[0]
+      : org?.billingUser;
+    const billingEmail = billingUser?.email ||
+      org?.members?.find((m: { email?: string }) => Boolean(m.email))?.email;
 
     const now = Date.now();
     const periodLengthMs = 30 * 24 * 60 * 60 * 1000;
@@ -173,8 +169,6 @@ const sendMessage = async (
         accountId,
         todayUtc,
       );
-      const billingEmail = org?.billingUser?.email ||
-        org?.members?.find((m: { email?: string }) => Boolean(m.email))?.email;
 
       if (sendsToday + recipientCount > limits.sendsPerDay) {
         notifyQuotaExceeded({
@@ -227,8 +221,21 @@ const sendMessage = async (
       }
     }
 
-    const scanResult = await scanOutboundEmail(input, orgId);
+    const scanResult = containsSpam(input)
+      ? {
+        allowed: false,
+        reason: "Message rejected: content flagged as spam or phishing",
+      }
+      : await scanOutboundEmail(input, orgId);
     if (!scanResult.allowed) {
+      notifyMessageBlocked({
+        orgId,
+        accountAddress: account.address,
+        accountId: account.id,
+        blockReason: "outbound_spam",
+        billingEmail,
+        detail: input.subject,
+      }).catch((err) => console.error("[messages] Block notify error:", err));
       return Response.json(
         {
           error: scanResult.reason ??

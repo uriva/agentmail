@@ -11,6 +11,7 @@ import {
 } from "../src/handlers/supportBot.ts";
 import { handleInbound } from "../src/handlers/inbound.ts";
 import { notifyQuotaExceeded } from "../src/services/quotaNotifier.ts";
+import { notifyMessageBlocked } from "../src/services/blockNotifier.ts";
 import { handleStripeWebhook } from "../src/handlers/billing.ts";
 import { stripe } from "../src/services/stripe.ts";
 
@@ -756,6 +757,64 @@ Deno.test("Billing & account expiration flow", async (t) => {
         db.tx.organizations[trialOrgId]!.delete(),
         db.tx.organizations[paidOrgId]!.delete(),
       ]);
+    },
+  );
+
+  await t.step(
+    "Block notification sends at most 1 email per 24h per mailbox and block reason",
+    async () => {
+      const notifyOrgId = id();
+      const notifyAccountId = id();
+      await db.transact([
+        db.tx.organizations[notifyOrgId]!.update({
+          name: "Block Notify Org",
+          createdAt: Date.now(),
+          balance: 0,
+          trialUsed: true,
+        }),
+      ]);
+
+      const firstTrial = await notifyMessageBlocked({
+        orgId: notifyOrgId,
+        accountAddress: `notify-${notifyAccountId}@theagentmail.net`,
+        accountId: notifyAccountId,
+        blockReason: "trial_verification",
+        billingEmail: "delivered@resend.dev",
+        detail: "support@apollo.io",
+      });
+      assertEquals(firstTrial, true);
+
+      const secondTrial = await notifyMessageBlocked({
+        orgId: notifyOrgId,
+        accountAddress: `notify-${notifyAccountId}@theagentmail.net`,
+        accountId: notifyAccountId,
+        blockReason: "trial_verification",
+        billingEmail: "delivered@resend.dev",
+        detail: "support@apollo.io",
+      });
+      assertEquals(secondTrial, false);
+
+      const firstSpam = await notifyMessageBlocked({
+        orgId: notifyOrgId,
+        accountAddress: `notify-${notifyAccountId}@theagentmail.net`,
+        accountId: notifyAccountId,
+        blockReason: "outbound_spam",
+        billingEmail: "delivered@resend.dev",
+        detail: "Suspicious subject",
+      });
+      assertEquals(firstSpam, true);
+
+      const { karmaEvents } = await db.query({
+        karmaEvents: {
+          $: { where: { "organization.id": notifyOrgId } },
+        },
+      });
+      // deno-lint-ignore no-explicit-any
+      const deleteOps: any[] = karmaEvents.map((e) =>
+        db.tx.karmaEvents[e.id]!.delete()
+      );
+      deleteOps.push(db.tx.organizations[notifyOrgId]!.delete());
+      await db.transact(deleteOps);
     },
   );
 
