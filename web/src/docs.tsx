@@ -108,6 +108,7 @@ const Docs = () => (
         <TocLink href="#billing">Billing & Limits</TocLink>
         <TocLink href="#organizations">Organizations</TocLink>
         <TocLink href="#errors">Errors</TocLink>
+        <TocLink href="#mcp">Remote MCP Server</TocLink>
         <TocLink href="#sdk">TypeScript &amp; Python</TocLink>
         <TocLink href="#opencode">Agent Skills &amp; llms.txt</TocLink>
       </div>
@@ -782,6 +783,51 @@ const verifyWebhook = (
           </div>
         ))}
       </div>
+    </Section>
+
+    {/* Remote MCP Server */}
+    <Section id="mcp" title="Remote MCP Server">
+      <div class="text-slate-400 text-sm space-y-3 mb-4">
+        <p>
+          Connect Claude Code, Claude Desktop, OpenCode, Cursor, Windsurf, or
+          any Streamable HTTP MCP client directly to{" "}
+          <code class="text-white">https://api.theagentmail.net/mcp</code> — no
+          local bridge or npm install required.
+        </p>
+        <p class="text-xs text-slate-500">
+          Pass an account-scoped API key to restrict the agent to a single
+          mailbox (<code class="text-white">get_mailbox</code>,{" "}
+          <code class="text-white">list_messages</code>,{" "}
+          <code class="text-white">get_message</code>,{" "}
+          <code class="text-white">send_email</code>,{" "}
+          <code class="text-white">get_attachment_url</code>, webhook tools), or
+          an org key to also expose{" "}
+          <code class="text-white">list_mailboxes</code>,{" "}
+          <code class="text-white">create_mailbox</code>, and{" "}
+          <code class="text-white">get_balance</code>.
+        </p>
+      </div>
+      <p class="text-xs text-slate-500 mb-2">Claude Code (one command)</p>
+      <CodeBlock
+        code={`claude mcp add --transport http agentmail https://api.theagentmail.net/mcp \\
+  --header "Authorization: Bearer am_..."`}
+      />
+      <p class="text-xs text-slate-500 mt-5 mb-2">
+        Cursor / OpenCode / MCP JSON config
+      </p>
+      <CodeBlock
+        lang="json"
+        code={`{
+  "mcpServers": {
+    "agentmail": {
+      "url": "https://api.theagentmail.net/mcp",
+      "headers": {
+        "Authorization": "Bearer am_..."
+      }
+    }
+  }
+}`}
+      />
     </Section>
 
     {/* SDK & Zero-Dep Snippets */}

@@ -28,6 +28,32 @@ Pass `Authorization: Bearer am_...` on every request.
 
 All success responses return `{"data": ...}`. All errors return `{"error": "...", "code": "..."}`.
 
+## Remote MCP Server (Zero Install)
+
+Connect Claude Code, Claude Desktop, Cursor, Windsurf, OpenCode, or any Streamable HTTP MCP client directly to `https://api.theagentmail.net/mcp` using your `Authorization: Bearer am_...` token:
+
+```bash
+claude mcp add --transport http agentmail https://api.theagentmail.net/mcp \
+  --header "Authorization: Bearer $AGENTMAIL_KEY"
+```
+
+MCP JSON config:
+
+```json
+{
+  "mcpServers": {
+    "agentmail": {
+      "url": "https://api.theagentmail.net/mcp",
+      "headers": {
+        "Authorization": "Bearer am_..."
+      }
+    }
+  }
+}
+```
+
+Tools exposed for account-scoped keys: `get_mailbox`, `list_messages`, `get_message`, `send_email`, `get_attachment_url`, `list_webhooks`, `create_webhook`, `delete_webhook`. Org-scoped keys also expose `list_mailboxes`, `create_mailbox`, and `get_balance`.
+
 ## Quickstart (REST API)
 
 ### 1. Create a mailbox (org key)

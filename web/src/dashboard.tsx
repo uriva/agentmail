@@ -948,6 +948,7 @@ const AccountApiKey = ({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [copiedPrompt, setCopiedPrompt] = useState(false);
+  const [copiedMcp, setCopiedMcp] = useState(false);
 
   const handleCreate = async () => {
     setCreating(true);
@@ -998,11 +999,23 @@ const AccountApiKey = ({
 
   const handleCopyPrompt = async (key: string) => {
     const prompt =
-      `You have your own email inbox at ${accountAddress}. Use Bearer token ${key} with the AgentMail REST API (docs: https://theagentmail.net/llms.txt).`;
+      `You have your own email inbox at ${accountAddress}. Use Bearer token ${key} with the AgentMail REST API (docs: https://theagentmail.net/llms.txt) or remote MCP at https://api.theagentmail.net/mcp.`;
     try {
       await navigator.clipboard.writeText(prompt);
       setCopiedPrompt(true);
       setTimeout(() => setCopiedPrompt(false), 2000);
+    } catch {
+      // fallback
+    }
+  };
+
+  const handleCopyMcp = async (key: string) => {
+    const cmd =
+      `claude mcp add --transport http agentmail https://api.theagentmail.net/mcp --header "Authorization: Bearer ${key}"`;
+    try {
+      await navigator.clipboard.writeText(cmd);
+      setCopiedMcp(true);
+      setTimeout(() => setCopiedMcp(false), 2000);
     } catch {
       // fallback
     }
@@ -1034,14 +1047,22 @@ const AccountApiKey = ({
           </div>
           <div class="pt-1 border-t border-emerald-800/60 flex items-center justify-between gap-2 flex-wrap">
             <span class="text-xs text-slate-300">
-              Hand directly to Claude Code, OpenCode, Cursor, or OpenClaw:
+              Connect Claude Code, OpenCode, Cursor, or OpenClaw:
             </span>
-            <button
-              onClick={() => handleCopyPrompt(createdKey)}
-              class="px-2.5 py-1 bg-blue-600 hover:bg-blue-500 text-white text-xs rounded transition-colors"
-            >
-              {copiedPrompt ? "Prompt Copied!" : "Copy Agent Prompt"}
-            </button>
+            <div class="flex items-center gap-2">
+              <button
+                onClick={() => handleCopyMcp(createdKey)}
+                class="px-2.5 py-1 bg-purple-600 hover:bg-purple-500 text-white text-xs rounded transition-colors"
+              >
+                {copiedMcp ? "MCP Copied!" : "Copy Claude MCP"}
+              </button>
+              <button
+                onClick={() => handleCopyPrompt(createdKey)}
+                class="px-2.5 py-1 bg-blue-600 hover:bg-blue-500 text-white text-xs rounded transition-colors"
+              >
+                {copiedPrompt ? "Prompt Copied!" : "Copy Agent Prompt"}
+              </button>
+            </div>
           </div>
           <button
             onClick={() => setCreatedKey(null)}

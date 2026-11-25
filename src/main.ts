@@ -21,6 +21,7 @@ import {
   syncCheckout,
 } from "./handlers/billing.ts";
 import { handleInbound } from "./handlers/inbound.ts";
+import { handleMcp } from "./handlers/mcp.ts";
 import { inviteMember, listMembers, removeMember } from "./handlers/members.ts";
 import { getMessage, listMessages, sendMessage } from "./handlers/messages.ts";
 import {
@@ -301,6 +302,9 @@ const routes: readonly Route[] = [
     handleLookupMailbox,
     "none",
   ),
+
+  // MCP (Streamable HTTP JSON-RPC 2.0)
+  route("POST", "/mcp", handleMcp, "apiKeyOrUserToken"),
 
   // Health
   route(
@@ -673,6 +677,7 @@ const handleStatic = async (req: Request): Promise<Response | null> => {
 
 export const isApiPath = (pathname: string): boolean =>
   pathname.startsWith("/v1/") ||
+  pathname === "/mcp" ||
   pathname === "/inbound" ||
   pathname === "/stripe-webhook" ||
   pathname === "/health";

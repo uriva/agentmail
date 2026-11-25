@@ -6,6 +6,8 @@ attachments, and a real-time AI spam/phishing guard — **$1/month per mailbox**
 (first mailbox free for 30 days) or self-host on Cloudflare Workers.
 
 - **Hosted app**: [https://theagentmail.net](https://theagentmail.net)
+- **Remote MCP Server**: `https://api.theagentmail.net/mcp` (Streamable HTTP,
+  zero local setup)
 - **API Docs**: [https://theagentmail.net/docs](https://theagentmail.net/docs)
 - **LLM / Agent Docs**:
   [https://theagentmail.net/llms.txt](https://theagentmail.net/llms.txt)
@@ -23,6 +25,16 @@ attachments, and a real-time AI spam/phishing guard — **$1/month per mailbox**
 | Pricing | **$1/mo per mailbox** ($5 prepaid, never expires) | $200/mo Startup (150 inboxes) + $2/extra | Domain + email host + warmup |
 | Outbound spam guard | **Real-time AI spam & phishing filter** | Account-level | None |
 | Agent integration | REST API, webhooks, `/llms.txt`, OpenCode skill | SDK + REST API | IMAP/SMTP boilerplate |
+
+## Connect via Remote MCP (Claude Code / Cursor / OpenCode)
+
+Zero npm packages or local bridge required — connect any Streamable HTTP MCP
+client directly to `https://api.theagentmail.net/mcp`:
+
+```bash
+claude mcp add --transport http agentmail https://api.theagentmail.net/mcp \
+  --header "Authorization: Bearer $AGENTMAIL_KEY"
+```
 
 ## 30-Second Quickstart
 

@@ -48,7 +48,7 @@ const rows = [
   ],
   [
     "Agent discovery",
-    "REST API, webhooks, /llms.txt, OpenCode skill",
+    "Remote MCP (/mcp), REST API, webhooks, /llms.txt, OpenCode skill",
     "SDK + REST API",
     "IMAP/SMTP boilerplate",
   ],

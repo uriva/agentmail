@@ -245,14 +245,21 @@ const Landing = () => {
           Three calls. One working inbox.
         </h2>
         <p class="text-slate-400 max-w-2xl mb-10">
-          Plain REST API (curl, fetch, Python) or point any coding agent at{" "}
+          Plain REST API (curl, fetch, Python), native{" "}
+          <a
+            href="/docs#mcp"
+            class="font-mono text-blue-400 hover:text-blue-300 underline underline-offset-4"
+          >
+            remote MCP server
+          </a>{" "}
+          for Claude Code / Cursor / OpenCode, or point any agent at{" "}
           <a
             href="https://theagentmail.net/llms.txt"
             class="font-mono text-blue-400 hover:text-blue-300 underline underline-offset-4"
           >
             theagentmail.net/llms.txt
-          </a>{" "}
-          so it integrates itself in one shot.
+          </a>
+          .
         </p>
         <div class="grid md:grid-cols-3 gap-4">
           {[
