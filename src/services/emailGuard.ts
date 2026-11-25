@@ -136,8 +136,8 @@ const scanOutboundEmail = async (
     );
     if (!result.allowed && orgId) {
       captureEvent(orgId, "outbound_email_blocked", {
-        subject: params.subject,
-        to: params.to,
+        reason: "spam_or_phishing",
+        recipientCount: params.to.length,
       });
     }
     return result;
@@ -179,9 +179,9 @@ const scanInboundEmail = async (
       : isLikelyVerificationEmail(params);
     if (!result.allowed && orgId) {
       captureEvent(orgId, "inbound_email_blocked", {
-        from: params.from,
-        subject: params.subject,
-        to: params.to,
+        reason: "spam_or_phishing",
+        isVerification,
+        recipientCount: params.to.length,
       });
     }
     return { ...result, isVerification };

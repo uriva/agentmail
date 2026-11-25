@@ -340,9 +340,10 @@ const sendMessage = async (
 
     await db.transact(txOps);
     captureEvent(orgId, "email_sent", {
-      from,
-      to: input.to,
+      accountId,
+      recipientCount,
       hasAttachments: attachmentRecords.length > 0,
+      attachmentCount: attachmentRecords.length,
     });
 
     return Response.json(

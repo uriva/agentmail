@@ -25,6 +25,8 @@ type WebhookPayload = {
   readonly timestamp: number;
 };
 
+const getWebhookHost = (rawUrl: string): string => new URL(rawUrl).hostname;
+
 const deliverWebhook = async (
   url: string,
   secret: string,
@@ -37,6 +39,7 @@ const deliverWebhook = async (
     return false;
   }
 
+  const host = getWebhookHost(safeUrl);
   const body = JSON.stringify(payload);
   const timestamp = String(payload.timestamp);
   const [signature, timestampedSignature] = await Promise.all([
@@ -61,7 +64,7 @@ const deliverWebhook = async (
     const success = res.ok && res.type !== "opaqueredirect";
     await res.body?.cancel().catch(() => {});
     captureEvent(orgId, "webhook_delivered", {
-      url: safeUrl,
+      host,
       success,
       statusCode: res.status,
       event: payload.event,
@@ -69,7 +72,7 @@ const deliverWebhook = async (
     return success;
   } catch (err) {
     captureEvent(orgId, "webhook_delivery_failed", {
-      url: safeUrl,
+      host,
       error: err instanceof Error ? err.message : "Unknown error",
       event: payload.event,
     });

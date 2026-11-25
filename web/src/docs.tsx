@@ -302,8 +302,8 @@ const Docs = () => (
         description="Delete an email account. With an account token: DELETE /v1/account"
       >
         <p class="text-slate-500 text-xs">
-          Messages are retained for reference. The address becomes available for
-          reuse.
+          Permanently deletes the mailbox along with its messages, attachments,
+          and webhooks. The address becomes available for reuse.
         </p>
       </Endpoint>
     </Section>
@@ -605,7 +605,7 @@ const verifyWebhook = (body: string, signature: string, timestamp: string, secre
           </li>
           <li>
             <strong>Webhooks:</strong>{" "}
-            Unlimited real-time webhooks for all accepted emails.
+            Real-time webhooks (up to 5 per mailbox) for all accepted emails.
           </li>
         </ul>
       </div>
@@ -613,9 +613,10 @@ const verifyWebhook = (body: string, signature: string, timestamp: string, secre
       <div class="text-slate-400 text-sm space-y-3 mb-6">
         <h4 class="text-white font-medium">Real-time outbound protection</h4>
         <p>
-          Every outbound email is inspected in real time by our AI decision model before leaving
-          the server. Phishing, credential harvesting, deceptive impersonation,
-          and unsolicited mass spam are immediately blocked with a{" "}
+          Every outbound email is inspected in real time by an automated AI spam
+          and phishing filter before leaving the server. Phishing, credential
+          harvesting, deceptive impersonation, and unsolicited mass spam are
+          immediately blocked with a{" "}
           <code class="text-white">400 Bad Request</code> (code{" "}
           <code class="text-white">SPAM_REJECTED</code>).
         </p>

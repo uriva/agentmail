@@ -146,6 +146,21 @@ const Login = () => {
               </button>
             </div>
           )}
+
+        <p class="mt-6 text-xs text-slate-400 text-center leading-relaxed">
+          By signing in, you agree to our{" "}
+          <a href="/terms" class="text-blue-400 hover:text-blue-300 underline">
+            Terms of Service
+          </a>{" "}
+          and{" "}
+          <a
+            href="/privacy"
+            class="text-blue-400 hover:text-blue-300 underline"
+          >
+            Privacy Policy
+          </a>
+          .
+        </p>
       </div>
     </div>
   );

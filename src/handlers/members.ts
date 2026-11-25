@@ -104,7 +104,7 @@ export const inviteMember = async (
     db.tx.organizations[orgId]!.link({ members: targetUser.id }),
   ]);
 
-  captureEvent(orgId, "member_invited", { email });
+  captureEvent(orgId, "member_invited", { memberId: targetUser.id });
 
   return Response.json({
     data: { id: targetUser.id, email, role: "admin" },

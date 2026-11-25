@@ -20,6 +20,9 @@ if (typeof window !== "undefined") {
         api_host: "https://us.i.posthog.com",
         capture_pageview: true,
         capture_pageleave: true,
+        autocapture: false,
+        disable_session_recording: true,
+        persistence: "memory",
       });
     });
   }

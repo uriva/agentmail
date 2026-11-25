@@ -623,8 +623,7 @@ export const handleInbound = async (
 
       if (isTrialVerificationBlocked) {
         captureEvent(orgId, "trial_verification_blocked", {
-          from: email.from,
-          to: address,
+          accountId: account.id,
         });
         notifyMessageBlocked({
           orgId,
@@ -638,8 +637,7 @@ export const handleInbound = async (
       }
 
       captureEvent(orgId, "email_received", {
-        from: email.from,
-        to: address,
+        accountId: account.id,
         hasAttachments: attachmentRecords.length > 0,
         isSpam,
       });

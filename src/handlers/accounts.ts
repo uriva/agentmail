@@ -190,7 +190,6 @@ const createAccount = async (
       if (!isPhoneVerified) {
         captureEvent(orgId, "account_creation_blocked", {
           reason: "phone_verification_required",
-          address,
         });
         return Response.json(
           {
@@ -205,7 +204,6 @@ const createAccount = async (
       captureEvent(orgId, "account_creation_blocked", {
         reason: "insufficient_balance",
         balance: currentBalance,
-        address,
       });
       return Response.json(
         {
@@ -245,7 +243,7 @@ const createAccount = async (
 
     await db.transact(txOps);
 
-    captureEvent(orgId, "account_created", { address });
+    captureEvent(orgId, "account_created", { accountId, isTrial });
     await notifyOverseer(address, input.displayName, orgId);
 
     return Response.json(
@@ -443,7 +441,7 @@ const deleteAccount = async (
 
   await db.transact([db.tx.accounts[account.id]!.delete()]);
 
-  captureEvent(orgId, "account_deleted", { address: account.address });
+  captureEvent(orgId, "account_deleted", { accountId: account.id });
 
   return new Response(null, { status: 204 });
 };

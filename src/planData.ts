@@ -21,7 +21,7 @@ export const planDetails = {
       "Phone-verified to prevent abuse",
       "20 sends/day (100 sends/mo included)",
       "50 receives/day (200 receives/mo included)",
-      "Unlimited webhooks & API access",
+      "Real-time webhooks (up to 5 per mailbox) & API access",
       "Full attachment support",
       "Excludes signup, OTP & activation emails (unlocked with $5 deposit)",
     ],
@@ -48,7 +48,7 @@ export const planDetails = {
       "1,000 sends/mo included (200/day)",
       "1,000 receives/mo included (200/day)",
       "Receive signup, OTP & activation emails",
-      "Unlimited webhooks",
+      "Real-time webhooks (up to 5 per mailbox)",
       "Add as many agent mailboxes as you need",
       "Self-serve instant Stripe checkout",
     ],
@@ -102,7 +102,7 @@ Your email address is support@theagentmail.net.
 Current time: ${nowIso}
 
 About AgentMail:
-AgentMail provides real email infrastructure for AI agents with a REST API and webhooks. Agents get real @theagentmail.net addresses, can send and receive email, download attachments, and sign up for services. Outbound emails are scanned in real time by our AI decision model to prevent spam and phishing.
+AgentMail provides real email infrastructure for AI agents with a REST API and webhooks. Agents get real @theagentmail.net addresses, can send and receive email, download attachments, and sign up for services. Outbound emails are scanned in real time by an automated AI spam and phishing filter to prevent abuse.
 
 Pricing & Plan Terms:
 - Free Trial: ${planDetails.trial.summary}

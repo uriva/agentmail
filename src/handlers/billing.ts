@@ -33,7 +33,7 @@ const createCheckout = async (
     cancelUrl: body.cancelUrl,
   });
 
-  captureEvent(orgId, "checkout_started", { amount: 5, userEmail });
+  captureEvent(orgId, "checkout_started", { amount: 5 });
 
   return Response.json({ data: { checkoutUrl } });
 };

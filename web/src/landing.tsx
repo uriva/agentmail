@@ -78,7 +78,7 @@ const faqs = [
   },
   {
     q: "How do you stop spam from ruining deliverability?",
-    a: "Every outbound message is scanned in real time by our AI decision model before it leaves the server. Phishing and bulk spam blasts are blocked instantly, so the shared domain stays trusted and legitimate agent mail lands in the inbox.",
+    a: "Every outbound message is scanned in real time by an automated AI spam and phishing filter before it leaves the server. Phishing and bulk spam blasts are blocked instantly, so the shared domain stays trusted and legitimate agent mail lands in the inbox.",
   },
 ];
 
@@ -323,8 +323,9 @@ const Landing = () => {
             </p>
             <p class="text-slate-200 leading-relaxed mb-4">
               One shared domain with managed reputation. Every outbound message
-              is evaluated in real time by our AI decision model — phishing and spam blasts die
-              before they leave the server.
+              is evaluated in real time by an automated AI spam and phishing
+              filter — phishing and spam blasts die before they leave the
+              server.
             </p>
             <p class="text-slate-400 text-sm leading-relaxed mb-5">
               Legit agent traffic — signups, notifications, human conversation —
@@ -492,7 +493,8 @@ deno task dev:web    # UI on :3000`}
               >
                 support@theagentmail.net
               </a>{" "}
-              is a real inbox, read by humans.
+              is a real inbox handled by our team with automated support
+              assistance.
             </p>
           </div>
           <div class="divide-y divide-slate-800 border-y border-slate-800">

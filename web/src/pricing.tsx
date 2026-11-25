@@ -75,6 +75,17 @@ const Pricing = () => (
         <div class="text-blue-400 text-center">Established reputation</div>
       </div>
     </div>
+    <p class="text-slate-500 text-xs text-center mt-8">
+      All free trials, prepaid balances, and mailbox rentals are subject to our{" "}
+      <a href="/terms" class="text-blue-400 hover:text-blue-300 underline">
+        Terms of Service
+      </a>{" "}
+      and{" "}
+      <a href="/privacy" class="text-blue-400 hover:text-blue-300 underline">
+        Privacy Policy
+      </a>
+      .
+    </p>
   </div>
 );
 

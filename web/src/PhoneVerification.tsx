@@ -116,6 +116,24 @@ export const PhoneVerification = ({
               >
                 {loading ? "Sending SMS..." : "Send Verification Code"}
               </button>
+              <p class="text-xs text-slate-400 mt-4 leading-relaxed">
+                One-time SMS verification code via Twilio; standard message
+                &amp; data rates may apply. By continuing, you agree to our{" "}
+                <a
+                  href="/terms"
+                  class="text-blue-400 hover:text-blue-300 underline"
+                >
+                  Terms of Service
+                </a>{" "}
+                and{" "}
+                <a
+                  href="/privacy"
+                  class="text-blue-400 hover:text-blue-300 underline"
+                >
+                  Privacy Policy
+                </a>
+                .
+              </p>
             </div>
           )
           : (

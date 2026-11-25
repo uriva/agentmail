@@ -51,14 +51,14 @@ const runBillingRenewalCheck = async (): Promise<void> => {
               }),
             ]);
             captureEvent(org.id, "mailbox_renewed", {
-              address: acc.address,
+              accountId: acc.id,
               remainingBalance: balance,
             });
           } else if (!acc.isFrozen) {
             await db.transact([
               db.tx.accounts[acc.id]!.update({ isFrozen: true }),
             ]);
-            captureEvent(org.id, "mailbox_frozen", { address: acc.address });
+            captureEvent(org.id, "mailbox_frozen", { accountId: acc.id });
 
             if (billingEmail) {
               await sendEmail({
@@ -70,7 +70,7 @@ const runBillingRenewalCheck = async (): Promise<void> => {
 
 Your agent mailbox ${acc.address} has expired and has been paused because your account balance is $0.00.
 
-Outbound email sending has been paused. Inbound messages will continue to be received during a grace period.
+Both outbound sending and inbound delivery are paused while your mailbox is expired/frozen until you top up your balance.
 
 To reactivate your mailbox, top up your balance ($5 covers 5 mailbox-months):
 https://theagentmail.net/app
