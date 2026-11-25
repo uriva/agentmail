@@ -1,0 +1,154 @@
+# AgentMail (theagentmail.net)
+
+> 100% open-source (MIT) email infrastructure for AI agents. Give every agent its own `@theagentmail.net` mailbox with sending, receiving, real-time webhooks, attachments, and an automated AI outbound spam/phishing guard. $1/month per mailbox ($5 prepaid deposit, never expires) or self-host on Cloudflare Workers.
+
+- Website: https://theagentmail.net
+- API Base URL: https://api.theagentmail.net
+- Docs: https://theagentmail.net/docs
+- Pricing: https://theagentmail.net/pricing
+- Comparison (vs agentmail.to & DIY): https://theagentmail.net/compare
+- Source Code (MIT): https://github.com/uriva/agentmail
+- Support: support@theagentmail.net
+
+## Pricing & Quotas
+
+- **Free Trial**: 1 mailbox free for 30 days after phone verification (20 sends/day, 50 receives/day, 100 sends/mo, 200 receives/mo). Inbound signup/OTP/activation emails are blocked on free trials to prevent burner abuse and unlock immediately with a $5 deposit.
+- **Paid Mailbox**: **$1/month per active mailbox** with a **$5 minimum prepaid top-up** (5 mailbox-months, funds never expire, zero platform fee). Includes 1,000 sends/month, 1,000 receives/month (200/day cap), full OTP/signup email delivery, attachments, and up to 5 real-time webhooks per mailbox.
+- **Self-Hosting**: MIT licensed, runs on Cloudflare Workers + InstantDB + Resend + GCS.
+
+## Authentication
+
+Pass `Authorization: Bearer am_...` on every request.
+
+1. **Org-scoped key** (`am_org_...`, created in dashboard at https://theagentmail.net/app):
+   - Full org access: create/list/delete mailboxes, mint account-scoped keys, send/receive, webhooks, check balance, create Stripe checkout URLs.
+2. **Account-scoped key** (`am_...`, created via `POST /v1/accounts/:accountId/api-keys` or dashboard):
+   - Scoped to one mailbox (safe to give directly to an individual AI agent).
+   - Supports shortcut routes without `:accountId`: `GET /v1/account`, `POST /v1/messages`, `GET /v1/messages`, `GET /v1/messages/:messageId`, `GET /v1/messages/:messageId/attachments/:attachmentId`, `POST /v1/webhooks`, `GET /v1/webhooks`, `DELETE /v1/webhooks/:webhookId`.
+
+All success responses return `{"data": ...}`. All errors return `{"error": "...", "code": "..."}`.
+
+## Quickstart (REST API)
+
+### 1. Create a mailbox (org key)
+
+```bash
+curl -X POST https://api.theagentmail.net/v1/accounts \
+  -H "Authorization: Bearer $AGENTMAIL_ORG_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"address": "my-agent", "displayName": "My Agent"}'
+```
+
+### 2. Mint a scoped key for the agent (org key)
+
+```bash
+curl -X POST https://api.theagentmail.net/v1/accounts/ACCOUNT_ID/api-keys \
+  -H "Authorization: Bearer $AGENTMAIL_ORG_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "agent-runtime"}'
+```
+
+### 3. Send email (account key)
+
+```bash
+curl -X POST https://api.theagentmail.net/v1/messages \
+  -H "Authorization: Bearer $AGENTMAIL_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "to": ["recipient@example.com"],
+    "subject": "Deploy complete",
+    "text": "All checks passed."
+  }'
+```
+
+Optional fields: `cc` (`string[]`), `bcc` (`string[]`), `html` (`string`), `inReplyTo` (`string`), `references` (`string`), `attachments` (`Array<{filename, contentType, content}>` with base64 `content`).
+
+### 4. Read inbox & message body (account key)
+
+```bash
+# List messages (most recent first)
+curl https://api.theagentmail.net/v1/messages \
+  -H "Authorization: Bearer $AGENTMAIL_KEY"
+
+# Read full message body and attachment metadata
+curl https://api.theagentmail.net/v1/messages/MESSAGE_ID \
+  -H "Authorization: Bearer $AGENTMAIL_KEY"
+
+# Get 1-hour signed attachment download URL
+curl https://api.theagentmail.net/v1/messages/MESSAGE_ID/attachments/ATTACHMENT_ID \
+  -H "Authorization: Bearer $AGENTMAIL_KEY"
+```
+
+### 5. Register real-time inbound webhook (account key)
+
+```bash
+curl -X POST https://api.theagentmail.net/v1/webhooks \
+  -H "Authorization: Bearer $AGENTMAIL_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://your-agent.example.com/inbox"}'
+```
+
+Webhook deliveries POST JSON `{ "event": "email.received", "data": { "id", "account_id", "account_address", "from", "to", "cc", "subject", "text", "html", "messageId", "inReplyTo", "references", "attachments" }, "timestamp" }` signed with:
+- `X-AgentMail-Signature-256`: `v1=<hex>` HMAC-SHA256 of `${timestamp}.${rawBody}` using your webhook `secret`.
+- `X-AgentMail-Timestamp`: millisecond epoch timestamp (reject if older than 5 minutes).
+
+## Zero-Dependency TypeScript Example
+
+```typescript
+const headers = {
+  Authorization: `Bearer ${process.env.AGENTMAIL_KEY}`,
+  "Content-Type": "application/json",
+};
+
+await fetch("https://api.theagentmail.net/v1/messages", {
+  method: "POST",
+  headers,
+  body: JSON.stringify({
+    to: ["you@example.com"],
+    subject: "Build green",
+    text: "Deployment finished with zero errors.",
+  }),
+});
+
+const { data: messages } = await fetch("https://api.theagentmail.net/v1/messages", {
+  headers,
+}).then((r) => r.json());
+```
+
+## Zero-Dependency Python Example
+
+```python
+import os, requests
+
+HEADERS = {"Authorization": f"Bearer {os.environ['AGENTMAIL_KEY']}"}
+
+requests.post(
+    "https://api.theagentmail.net/v1/messages",
+    headers=HEADERS,
+    json={
+        "to": ["you@example.com"],
+        "subject": "Build green",
+        "text": "Deployment finished with zero errors.",
+    },
+).raise_for_status()
+
+messages = requests.get(
+    "https://api.theagentmail.net/v1/messages",
+    headers=HEADERS,
+).json()["data"]
+```
+
+## Billing Endpoints (org key)
+
+- `GET /v1/billing/balance` -> `{"data": {"balance": 5, "admin": false, "trialUsed": true}}`
+- `POST /v1/billing/checkout` -> `{"data": {"checkoutUrl": "https://checkout.stripe.com/..."}}`
+
+## Error Codes
+
+- `400 SPAM_REJECTED`: Outbound email blocked by real-time AI spam/phishing filter.
+- `400 RESERVED_ADDRESS`: Reserved local-part (e.g. `support`, `postmaster`).
+- `401 UNAUTHORIZED`: Missing or invalid Bearer token.
+- `402 INSUFFICIENT_BALANCE` / `ACCOUNT_EXPIRED`: Top up prepaid balance at https://theagentmail.net/app.
+- `403 FORBIDDEN` / `PHONE_VERIFICATION_REQUIRED`: Wrong token scope or phone not verified.
+- `409 ADDRESS_EXISTS`: Mailbox address already taken.
+- `429 SEND_LIMIT_REACHED` / `DAILY_SEND_LIMIT_REACHED`: Quota exceeded.

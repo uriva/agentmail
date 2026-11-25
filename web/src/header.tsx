@@ -23,6 +23,12 @@ const Header = () => {
             Docs
           </a>
           <a
+            href="/compare"
+            class="text-sm text-slate-400 hover:text-white transition-colors"
+          >
+            Compare
+          </a>
+          <a
             href="https://github.com/uriva/agentmail"
             target="_blank"
             rel="noopener noreferrer"

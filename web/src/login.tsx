@@ -101,10 +101,14 @@ const Login = () => {
                 type="email"
                 value={email}
                 onInput={(e) => setEmail((e.target as HTMLInputElement).value)}
-                placeholder="you@company.com"
-                class="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500 mb-4"
+                placeholder="you@gmail.com"
+                class="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500 mb-2"
                 onKeyDown={(e) => e.key === "Enter" && sendCode()}
               />
+              <p class="text-xs text-slate-500 mb-4">
+                Use a personal email (Gmail, Outlook, Proton, iCloud, etc.) —
+                helps keep @theagentmail.net spam-free.
+              </p>
               <button
                 onClick={sendCode}
                 disabled={loading || !email}

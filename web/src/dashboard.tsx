@@ -249,9 +249,22 @@ const BillingSection = ({
       )}
 
       {!isAdmin && currentBalance <= 0 && !isTrialAvailable && (
-        <div class="mt-4 p-3 bg-red-900/30 border border-red-700 rounded-lg text-red-300 text-sm">
-          Your balance is $0.00. Expired mailboxes will be paused until topped
-          up.
+        <div class="mt-4 p-3.5 bg-amber-950/40 border border-amber-600/50 rounded-lg text-amber-200 text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <span class="font-medium text-white">
+              Unlock full inbox &amp; OTP emails:
+            </span>{" "}
+            Your balance is $0.00. Add a $5.00 prepaid top-up (5 mailbox-months,
+            never expires) to unlock signup/OTP verification emails, 1,000
+            sends/mo, and prevent mailbox pausing.
+          </div>
+          <button
+            onClick={handleTopup}
+            disabled={isTopupLoading}
+            class="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 text-white text-xs font-medium rounded-lg transition-colors flex-shrink-0"
+          >
+            {isTopupLoading ? "Opening Stripe..." : "Unlock for $5.00 →"}
+          </button>
         </div>
       )}
 
@@ -757,6 +770,7 @@ const AccountsList = ({
                     {apiKeyFor === account.id && (
                       <AccountApiKey
                         accountId={account.id}
+                        accountAddress={account.address}
                         userToken={userToken}
                         orgId={orgId}
                       />
@@ -913,10 +927,12 @@ const WebhookManager = ({
 
 const AccountApiKey = ({
   accountId,
+  accountAddress,
   userToken,
   orgId,
 }: {
   accountId: string;
+  accountAddress: string;
   userToken: string;
   orgId: string;
 }) => {
@@ -931,6 +947,7 @@ const AccountApiKey = ({
   const [createError, setCreateError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [copiedPrompt, setCopiedPrompt] = useState(false);
 
   const handleCreate = async () => {
     setCreating(true);
@@ -979,6 +996,18 @@ const AccountApiKey = ({
     }
   };
 
+  const handleCopyPrompt = async (key: string) => {
+    const prompt =
+      `You have your own email inbox at ${accountAddress}. Use Bearer token ${key} with the AgentMail REST API (docs: https://theagentmail.net/llms.txt).`;
+    try {
+      await navigator.clipboard.writeText(prompt);
+      setCopiedPrompt(true);
+      setTimeout(() => setCopiedPrompt(false), 2000);
+    } catch {
+      // fallback
+    }
+  };
+
   const keys = data?.apiKeys ?? [];
 
   return (
@@ -988,8 +1017,8 @@ const AccountApiKey = ({
       </div>
 
       {createdKey && (
-        <div class="p-3 bg-emerald-900/30 border border-emerald-700 rounded-lg">
-          <div class="text-emerald-300 text-sm mb-1">
+        <div class="p-3 bg-emerald-900/30 border border-emerald-700 rounded-lg space-y-2.5">
+          <div class="text-emerald-300 text-sm">
             Key created. Copy it now -- it won't be shown again.
           </div>
           <div class="flex items-center gap-2">
@@ -998,14 +1027,25 @@ const AccountApiKey = ({
             </code>
             <button
               onClick={() => handleCopy(createdKey)}
-              class="px-2 py-1 bg-emerald-700 hover:bg-emerald-600 text-white text-xs rounded transition-colors flex-shrink-0"
+              class="px-2.5 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white text-xs rounded transition-colors flex-shrink-0"
             >
-              {copied ? "Copied!" : "Copy"}
+              {copied ? "Copied!" : "Copy Key"}
+            </button>
+          </div>
+          <div class="pt-1 border-t border-emerald-800/60 flex items-center justify-between gap-2 flex-wrap">
+            <span class="text-xs text-slate-300">
+              Hand directly to Claude Code, OpenCode, Cursor, or OpenClaw:
+            </span>
+            <button
+              onClick={() => handleCopyPrompt(createdKey)}
+              class="px-2.5 py-1 bg-blue-600 hover:bg-blue-500 text-white text-xs rounded transition-colors"
+            >
+              {copiedPrompt ? "Prompt Copied!" : "Copy Agent Prompt"}
             </button>
           </div>
           <button
             onClick={() => setCreatedKey(null)}
-            class="block mt-2 text-xs text-slate-400 hover:text-white"
+            class="block text-xs text-slate-400 hover:text-white"
           >
             Dismiss
           </button>

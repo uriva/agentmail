@@ -108,8 +108,8 @@ const Docs = () => (
         <TocLink href="#billing">Billing & Limits</TocLink>
         <TocLink href="#organizations">Organizations</TocLink>
         <TocLink href="#errors">Errors</TocLink>
-        <TocLink href="#sdk">TypeScript SDK</TocLink>
-        <TocLink href="#opencode">OpenCode skill</TocLink>
+        <TocLink href="#sdk">TypeScript &amp; Python</TocLink>
+        <TocLink href="#opencode">Agent Skills &amp; llms.txt</TocLink>
       </div>
     </nav>
 
@@ -784,52 +784,100 @@ const verifyWebhook = (
       </div>
     </Section>
 
-    {/* SDK */}
-    <Section id="sdk" title="TypeScript SDK">
-      <div class="text-slate-400 text-sm mb-4">
+    {/* SDK & Zero-Dep Snippets */}
+    <Section id="sdk" title="TypeScript & Python Examples">
+      <div class="text-slate-400 text-sm mb-4 space-y-2">
         <p>
-          If you prefer typed method calls over raw HTTP, use the TypeScript
-          SDK.
+          No SDK package is required. The REST API works out of the box with
+          built-in <code class="text-white">fetch</code> in TypeScript/Node/Deno/Bun
+          or <code class="text-white">requests</code> in Python.
+        </p>
+        <p class="text-xs text-slate-500">
+          Prefer a typed wrapper? The MIT TypeScript client lives directly in{" "}
+          <a
+            href="https://github.com/uriva/agentmail/tree/main/sdk"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-blue-400 hover:text-blue-300"
+          >
+            github.com/uriva/agentmail/tree/main/sdk
+          </a>
+          .
         </p>
       </div>
+      <p class="text-xs text-slate-500 mb-2">TypeScript (zero dependencies)</p>
       <CodeBlock
         lang="typescript"
-        code={`import { createClient } from "@agentmail/sdk";
+        code={`const headers = {
+  Authorization: \`Bearer \${process.env.AGENTMAIL_KEY}\`,
+  "Content-Type": "application/json",
+};
 
-// With an account-scoped token (no accountId needed)
-const mail = createClient({ apiKey: "am_..." });
-
-// Send an email
-await mail.messages.send({
-  to: ["human@example.com"],
-  subject: "Hello from my agent",
-  text: "This email was sent by an AI agent.",
+// Send an email (account-scoped key)
+await fetch("https://api.theagentmail.net/v1/messages", {
+  method: "POST",
+  headers,
+  body: JSON.stringify({
+    to: ["human@example.com"],
+    subject: "Hello from my agent",
+    text: "This email was sent by an AI agent.",
+  }),
 });
 
 // Check inbox
-const messages = await mail.messages.list();
+const { data: messages } = await fetch(
+  "https://api.theagentmail.net/v1/messages",
+  { headers },
+).then((r) => r.json());
 
 // Register a webhook
-await mail.webhooks.create({
-  url: "https://my-agent.example.com/inbox",
-});
-
-// Get account info
-const account = await mail.accounts.get();
-
-// With an org-level token (accountId required)
-const orgMail = createClient({ apiKey: "am_org_..." });
-await orgMail.messages.send(accountId, {
-  to: ["human@example.com"],
-  subject: "Hello",
-  text: "Sent via org token.",
+await fetch("https://api.theagentmail.net/v1/webhooks", {
+  method: "POST",
+  headers,
+  body: JSON.stringify({ url: "https://my-agent.example.com/inbox" }),
 });`}
+      />
+      <p class="text-xs text-slate-500 mt-5 mb-2">Python (requests)</p>
+      <CodeBlock
+        lang="bash"
+        code={`import os, requests
+
+HEADERS = {"Authorization": f"Bearer {os.environ['AGENTMAIL_KEY']}"}
+
+# Send an email
+requests.post(
+    "https://api.theagentmail.net/v1/messages",
+    headers=HEADERS,
+    json={
+        "to": ["human@example.com"],
+        "subject": "Hello from my agent",
+        "text": "This email was sent by an AI agent.",
+    },
+).raise_for_status()
+
+# List inbox messages
+messages = requests.get(
+    "https://api.theagentmail.net/v1/messages",
+    headers=HEADERS,
+).json()["data"]`}
       />
     </Section>
 
-    {/* OpenCode skill */}
-    <Section id="opencode" title="OpenCode skill">
+    {/* Agent Skills & llms.txt */}
+    <Section id="opencode" title="Agent Skills & llms.txt">
       <div class="text-slate-400 text-sm space-y-3">
+        <p>
+          Point any AI coding agent (Claude Code, OpenCode, Cursor, OpenClaw,
+          Codex) at{" "}
+          <a
+            href="https://theagentmail.net/llms.txt"
+            class="text-blue-400 hover:text-blue-300 font-mono"
+          >
+            https://theagentmail.net/llms.txt
+          </a>{" "}
+          with an account-scoped API key and it can immediately send, read, and
+          wire up webhooks without extra docs.
+        </p>
         <p>
           If your agent runs on{" "}
           <a
@@ -838,8 +886,7 @@ await orgMail.messages.send(accountId, {
           >
             OpenCode
           </a>
-          , install the AgentMail skill and it learns the full API
-          automatically. No SDK needed.
+          , you can also install the AgentMail skill directly:
         </p>
       </div>
       <div class="mt-4">

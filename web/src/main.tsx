@@ -7,6 +7,7 @@ import { Docs } from "./docs.tsx";
 import { Privacy } from "./privacy.tsx";
 import { Terms } from "./terms.tsx";
 import { Pricing } from "./pricing.tsx";
+import { Compare } from "./compare.tsx";
 import { Header } from "./header.tsx";
 import { useAuth } from "./db.ts";
 import "./app.css";
@@ -66,6 +67,7 @@ const App = () => (
           <Route path="/privacy" component={Privacy} />
           <Route path="/terms" component={Terms} />
           <Route path="/pricing" component={Pricing} />
+          <Route path="/compare" component={Compare} />
           <Route default component={NotFound} />
         </Router>
       </main>

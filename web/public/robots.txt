@@ -1,0 +1,17 @@
+User-agent: *
+Allow: /
+Disallow: /app
+
+User-agent: GPTBot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+Sitemap: https://theagentmail.net/sitemap.xml

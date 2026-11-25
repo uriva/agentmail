@@ -1,16 +1,61 @@
-# AgentMail
+# AgentMail (`theagentmail.net`)
 
-Open-source email infrastructure for AI agents (`@theagentmail.net`). Real
-mailboxes with sending, receiving, attachments, real-time webhooks, and AI
-spam/phishing filtering.
+Open-source (MIT) email infrastructure for AI agents. Give every agent its own
+`@theagentmail.net` mailbox with sending, receiving, real-time webhooks,
+attachments, and a real-time AI spam/phishing guard — **$1/month per mailbox**
+(first mailbox free for 30 days) or self-host on Cloudflare Workers.
 
-- **API & SDK Documentation**:
-  [https://theagentmail.net/docs](https://theagentmail.net/docs) (source:
-  [`web/src/docs.tsx`](web/src/docs.tsx))
-- **Pricing & Limits**:
-  [https://theagentmail.net/pricing](https://theagentmail.net/pricing) (source:
-  [`src/planData.ts`](src/planData.ts))
-- **TypeScript SDK**: [`sdk/`](sdk/)
+- **Hosted app**: [https://theagentmail.net](https://theagentmail.net)
+- **API Docs**: [https://theagentmail.net/docs](https://theagentmail.net/docs)
+- **LLM / Agent Docs**:
+  [https://theagentmail.net/llms.txt](https://theagentmail.net/llms.txt)
+- **Pricing**:
+  [https://theagentmail.net/pricing](https://theagentmail.net/pricing)
+- **Comparison vs agentmail.to & DIY**:
+  [https://theagentmail.net/compare](https://theagentmail.net/compare)
+
+## Why AgentMail?
+
+| Feature | AgentMail (`theagentmail.net`) | `agentmail.to` | DIY (Gmail / own domain) |
+| --- | --- | --- | --- |
+| License | **100% Open Source (MIT)** | Closed source | Varies |
+| Self-hostable | **Yes (Cloudflare Workers)** | No | Manual DNS + SMTP/IMAP |
+| Pricing | **$1/mo per mailbox** ($5 prepaid, never expires) | $200/mo Startup (150 inboxes) + $2/extra | Domain + email host + warmup |
+| Outbound spam guard | **Real-time AI spam & phishing filter** | Account-level | None |
+| Agent integration | REST API, webhooks, `/llms.txt`, OpenCode skill | SDK + REST API | IMAP/SMTP boilerplate |
+
+## 30-Second Quickstart
+
+Create a mailbox with your org key (from
+[theagentmail.net/app](https://theagentmail.net/app)):
+
+```bash
+curl -X POST https://api.theagentmail.net/v1/accounts \
+  -H "Authorization: Bearer $AGENTMAIL_ORG_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"address": "deploy-bot"}'
+```
+
+Send an email with a scoped account key (zero dependencies):
+
+```typescript
+await fetch("https://api.theagentmail.net/v1/messages", {
+  method: "POST",
+  headers: {
+    Authorization: `Bearer ${process.env.AGENTMAIL_KEY}`,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    to: ["you@company.com"],
+    subject: "Deploy succeeded",
+    text: "All checks green.",
+  }),
+});
+```
+
+Or hand any coding agent (Claude Code, OpenCode, Cursor, OpenClaw) your scoped
+key and `https://theagentmail.net/llms.txt` — it can read the entire spec and
+wire up sending, inbox polling, and signed webhooks automatically.
 
 ## Architecture
 
@@ -26,9 +71,10 @@ spam/phishing filtering.
   Verify (trial phone verification)
 - **File storage**: Google Cloud Storage (`agentmail-attachments`)
 - **Frontend**: Preact + Vite (`web/`)
+- **TypeScript SDK**: [`sdk/`](sdk/)
 - **Analytics**: PostHog
 
-## Setup
+## Self-Hosting Setup
 
 Configure `.env` with the required credentials:
 
@@ -56,7 +102,12 @@ Configure `.env` with the required credentials:
 deno task dev           # Run API server locally on :8000 with watch mode
 deno task dev:web       # Run frontend dev server
 deno task check         # Type-check server and SDK
-deno task build:web     # Build static frontend into web/dist
+deno task test          # Run test suite
+deno task build:web     # Build & prerender static frontend into web/dist
 deno task build:worker  # Bundle Cloudflare Worker into dist/worker.js
 deno task deploy        # Deploy worker + static assets via wrangler
 ```
+
+## License
+
+MIT

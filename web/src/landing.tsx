@@ -41,15 +41,18 @@ const curlExample = `curl -X POST https://api.theagentmail.net/v1/accounts \\
 
 # → deploy-bot@theagentmail.net is live`;
 
-const sdkExample = `import { AgentMail } from "@agentmail/sdk";
-
-const mail = new AgentMail(process.env.AGENTMAIL_KEY!);
-
-const inbox = await mail.accounts.create({ address: "deploy-bot" });
-await mail.messages.send(inbox.id, {
-  to: ["you@company.com"],
-  subject: "Deploy succeeded",
-  text: "All checks green.",
+const sdkExample = `// Zero dependencies — works in Node, Deno, Bun, Workers
+await fetch("https://api.theagentmail.net/v1/messages", {
+  method: "POST",
+  headers: {
+    Authorization: \`Bearer \${process.env.AGENTMAIL_KEY}\`,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    to: ["you@company.com"],
+    subject: "Deploy succeeded",
+    text: "All checks green.",
+  }),
 });`;
 
 const webhookExample = `POST /your-webhook  event: email.received
@@ -241,8 +244,15 @@ const Landing = () => {
         <h2 class="display-serif text-4xl sm:text-5xl text-white mb-4 max-w-2xl">
           Three calls. One working inbox.
         </h2>
-        <p class="text-slate-400 max-w-xl mb-10">
-          REST API or TypeScript SDK. Poll for mail or get pushed by webhooks.
+        <p class="text-slate-400 max-w-2xl mb-10">
+          Plain REST API (curl, fetch, Python) or point any coding agent at{" "}
+          <a
+            href="https://theagentmail.net/llms.txt"
+            class="font-mono text-blue-400 hover:text-blue-300 underline underline-offset-4"
+          >
+            theagentmail.net/llms.txt
+          </a>{" "}
+          so it integrates itself in one shot.
         </p>
         <div class="grid md:grid-cols-3 gap-4">
           {[
@@ -361,12 +371,20 @@ const Landing = () => {
           <h2 class="display-serif text-4xl sm:text-5xl text-white">
             Honest pricing.
           </h2>
-          <a
-            href="/pricing"
-            class="font-mono text-sm text-blue-400 hover:text-blue-300"
-          >
-            Full pricing →
-          </a>
+          <div class="flex items-center gap-5">
+            <a
+              href="/compare"
+              class="font-mono text-sm text-slate-400 hover:text-white"
+            >
+              Compare vs agentmail.to →
+            </a>
+            <a
+              href="/pricing"
+              class="font-mono text-sm text-blue-400 hover:text-blue-300"
+            >
+              Full pricing →
+            </a>
+          </div>
         </div>
         <div class="grid sm:grid-cols-3 gap-4">
           {[
@@ -574,6 +592,17 @@ deno task dev:web    # UI on :3000`}
           <span class="text-slate-700">|</span>
           <a href="/pricing" class="hover:text-white transition-colors">
             Pricing
+          </a>
+          <span class="text-slate-700">|</span>
+          <a href="/compare" class="hover:text-white transition-colors">
+            Compare
+          </a>
+          <span class="text-slate-700">|</span>
+          <a
+            href="https://theagentmail.net/llms.txt"
+            class="hover:text-white transition-colors"
+          >
+            llms.txt
           </a>
           <span class="text-slate-700">|</span>
           <a href="/privacy" class="hover:text-white transition-colors">
