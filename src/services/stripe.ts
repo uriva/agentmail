@@ -130,8 +130,11 @@ const applyCheckoutSession = async (
   const session = await getStripe().checkout.sessions.retrieve(sessionId);
   if (
     session.payment_status !== "paid" ||
-    (session.mode && session.mode !== "payment") ||
-    (session.metadata?.product && session.metadata.product !== "agentmail")
+    session.mode !== "payment" ||
+    (session.status && session.status !== "complete") ||
+    (session.currency && session.currency.toLowerCase() !== "usd") ||
+    session.metadata?.product !== "agentmail" ||
+    (session.metadata?.type && session.metadata.type !== "balance_topup")
   ) {
     return { success: false };
   }
@@ -164,9 +167,9 @@ const applyCheckoutSession = async (
     }
 
     const amountDollars = typeof session.amount_total === "number" &&
-        session.amount_total > 0
+        session.amount_total >= 100
       ? Math.floor(session.amount_total / 100)
-      : Number(session.metadata?.amount ?? topupAmountDollars);
+      : 0;
     if (!Number.isFinite(amountDollars) || amountDollars <= 0) {
       return { success: false };
     }

@@ -62,9 +62,10 @@ const sendEmail = async (params: SendEmailParams): Promise<unknown> => {
   });
   if (!res.ok) {
     const body = await res.text();
+    console.error("[resend] Email send failed:", res.status, body);
     throw {
-      status: res.status,
-      error: `Resend API error: ${body}`,
+      status: res.status >= 400 && res.status < 500 ? res.status : 502,
+      error: "Email delivery provider error",
       code: "EMAIL_PROVIDER_ERROR",
     };
   }

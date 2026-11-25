@@ -17,7 +17,10 @@ export const makeWebhooks = (
 ): WebhooksResource => ({
   create: (accountIdOrParams, params?) => {
     const [path, body] = typeof accountIdOrParams === "string"
-      ? [`/v1/accounts/${accountIdOrParams}/webhooks`, params!]
+      ? [
+        `/v1/accounts/${encodeURIComponent(accountIdOrParams)}/webhooks`,
+        params!,
+      ]
       : [`/v1/webhooks`, accountIdOrParams];
     return request<ApiResponse<Webhook>>("POST", path, body).then(
       (r) => r.data,
@@ -26,12 +29,16 @@ export const makeWebhooks = (
   list: (accountId?) =>
     request<ApiResponse<readonly Webhook[]>>(
       "GET",
-      accountId ? `/v1/accounts/${accountId}/webhooks` : `/v1/webhooks`,
+      accountId
+        ? `/v1/accounts/${encodeURIComponent(accountId)}/webhooks`
+        : `/v1/webhooks`,
     ).then((r) => r.data),
   delete: (accountIdOrWebhookId, webhookId?) => {
     const path = webhookId
-      ? `/v1/accounts/${accountIdOrWebhookId}/webhooks/${webhookId}`
-      : `/v1/webhooks/${accountIdOrWebhookId}`;
+      ? `/v1/accounts/${encodeURIComponent(accountIdOrWebhookId)}/webhooks/${
+        encodeURIComponent(webhookId)
+      }`
+      : `/v1/webhooks/${encodeURIComponent(accountIdOrWebhookId)}`;
     return request<void>("DELETE", path);
   },
 });

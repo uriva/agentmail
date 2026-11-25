@@ -117,7 +117,11 @@ const scanOutboundEmail = async (
   orgId?: string,
 ): Promise<ScanResult> => {
   if (!isDecisionModelAvailable()) {
-    return { allowed: true };
+    return Deno.env.get("DENO_ENV") === "test" ? { allowed: true } : {
+      allowed: false,
+      reason:
+        "Temporary content safety check unavailable; please retry shortly",
+    };
   }
   try {
     const answers = await callDecisionModel(
@@ -174,9 +178,9 @@ const scanInboundEmail = async (
         ? classification.choice
         : undefined,
     );
-    const isVerification = verification?.type === "choice"
-      ? verification.choice === "yes"
-      : isLikelyVerificationEmail(params);
+    const isVerification =
+      (verification?.type === "choice" && verification.choice === "yes") ||
+      isLikelyVerificationEmail(params);
     if (!result.allowed && orgId) {
       captureEvent(orgId, "inbound_email_blocked", {
         reason: "spam_or_phishing",

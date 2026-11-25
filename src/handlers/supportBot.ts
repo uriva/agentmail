@@ -42,29 +42,63 @@ export const verifySupportBotSignature = async (
   if (!secret) return false;
   const signature = body.signature;
   const payload = body.payload;
-  if (typeof signature !== "string" || !signature || payload === undefined) {
+  if (
+    typeof signature !== "string" || !signature ||
+    typeof payload !== "object" || payload === null || Array.isArray(payload)
+  ) {
     return false;
   }
 
-  if (typeof payload === "object" && payload !== null) {
-    const meta = (payload as Record<string, unknown>).meta as
-      | Record<string, unknown>
-      | undefined;
-    if (meta?.timestamp !== undefined) {
-      const ts = Number(meta.timestamp);
-      if (!Number.isFinite(ts) || Math.abs(Date.now() - ts) > maxSkewMs) {
-        return false;
-      }
-    }
-    if (typeof meta?.nonce === "string" && meta.nonce.length > 0) {
-      if (!markWebhookEventSeen(`support:${meta.nonce}`, maxSkewMs)) {
-        return false;
-      }
-    }
+  // Verify HMAC signature BEFORE checking/recording replay nonces so
+  // unauthenticated callers cannot evict or pre-poison the replay cache.
+  const expected = await hmacSha256Hex(secret, JSON.stringify(payload));
+  if (!await timingSafeEqualStrings(signature.toLowerCase(), expected)) {
+    return false;
   }
 
-  const expected = await hmacSha256Hex(secret, JSON.stringify(payload));
-  return timingSafeEqualStrings(signature.toLowerCase(), expected);
+  const meta = (payload as Record<string, unknown>).meta as
+    | Record<string, unknown>
+    | undefined;
+  if (meta?.timestamp === undefined) return false;
+  const ts = Number(meta.timestamp);
+  if (!Number.isFinite(ts) || Math.abs(Date.now() - ts) > maxSkewMs) {
+    return false;
+  }
+  if (typeof meta?.nonce !== "string" || meta.nonce.length === 0) {
+    return false;
+  }
+  return markWebhookEventSeen(`support:${meta.nonce}`, maxSkewMs);
+};
+
+const extractSupportEmailCaller = (
+  body: Record<string, unknown>,
+): string | null => {
+  const payload = body.payload as Record<string, unknown> | undefined;
+  const meta = payload?.meta as Record<string, unknown> | undefined;
+  if (!meta) return null;
+  const network = typeof meta.network === "string"
+    ? meta.network.toLowerCase()
+    : "";
+  if (network !== "email" && network !== "agentmail") return null;
+  const rawUserId = typeof meta.userId === "string"
+    ? meta.userId
+    : typeof meta.conversationId === "string"
+    ? meta.conversationId
+    : "";
+  const cleaned = rawUserId.includes("<")
+    ? rawUserId.match(/<(.+)>/)?.[1] ?? rawUserId
+    : rawUserId;
+  const email = cleaned.toLowerCase().trim();
+  return email.includes("@") ? email : null;
+};
+
+const isSupportAdminCaller = async (callerEmail: string): Promise<boolean> => {
+  const { organizations } = await db.query({
+    organizations: {
+      $: { where: { "members.email": callerEmail } },
+    },
+  });
+  return organizations.some((org) => Boolean(org.admin));
 };
 
 const normalizeAddress = (raw: string): string => {
@@ -107,6 +141,18 @@ export const handleLookupUser = async (req: Request): Promise<Response> => {
   if (!email) {
     return Response.json({ error: "Email parameter required" }, {
       status: 400,
+    });
+  }
+
+  const callerEmail = extractSupportEmailCaller(body);
+  if (
+    callerEmail && callerEmail !== email &&
+    !await isSupportAdminCaller(callerEmail)
+  ) {
+    return Response.json({
+      found: false,
+      message:
+        "For privacy, support can only inspect account details for your own email address.",
     });
   }
 
@@ -211,6 +257,7 @@ export const handleLookupMailbox = async (req: Request): Promise<Response> => {
       $: { where: { address } },
       organization: {
         billingUser: {},
+        members: {},
       },
       webhooks: {},
     },
@@ -226,6 +273,23 @@ export const handleLookupMailbox = async (req: Request): Promise<Response> => {
 
   const orgRaw = account.organization;
   const org = Array.isArray(orgRaw) ? orgRaw[0] : orgRaw;
+
+  const callerEmail = extractSupportEmailCaller(body);
+  if (callerEmail && !await isSupportAdminCaller(callerEmail)) {
+    const memberEmails = [
+      org?.billingUser?.email,
+      ...(org?.members ?? []).map((m: { email?: string }) => m.email),
+    ]
+      .filter((e): e is string => typeof e === "string")
+      .map((e) => e.toLowerCase().trim());
+    if (!memberEmails.includes(callerEmail)) {
+      return Response.json({
+        found: false,
+        message:
+          "For privacy, support can only inspect mailboxes belonging to your organization.",
+      });
+    }
+  }
 
   return Response.json({
     found: true,

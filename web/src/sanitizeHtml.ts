@@ -19,6 +19,7 @@ const blockedTags = new Set([
   "math",
   "noscript",
   "template",
+  "dialog",
 ]);
 
 const urlAttributes = new Set([
@@ -63,7 +64,8 @@ const isSafeUrlValue = (raw: string): boolean => {
   }
   const lower = cleaned.toLowerCase();
   if (!lower) return true;
-  if (lower.startsWith("#") || lower.startsWith("/")) return true;
+  if (lower.startsWith("#")) return true;
+  if (lower.startsWith("/") && !lower.startsWith("//")) return true;
   return (
     lower.startsWith("https://") ||
     lower.startsWith("http://") ||
@@ -100,7 +102,13 @@ export const sanitizeEmailHtml = (rawHtml: string): string => {
 
     for (const attr of Array.from(el.attributes)) {
       const name = attr.name.toLowerCase();
-      if (name.startsWith("on") || name === "srcdoc" || name === "style") {
+      if (
+        name.startsWith("on") ||
+        name === "srcdoc" ||
+        name === "style" ||
+        name === "ping" ||
+        name === "download"
+      ) {
         el.removeAttribute(attr.name);
         continue;
       }

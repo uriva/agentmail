@@ -57,27 +57,153 @@ const isPrivateIpv4 = (octets: readonly number[]): boolean => {
     a >= 224;
 };
 
+const parseIpv6Hextets = (rawHost: string): readonly number[] | null => {
+  const stripped = rawHost.startsWith("[") && rawHost.endsWith("]")
+    ? rawHost.slice(1, -1).toLowerCase()
+    : rawHost.toLowerCase();
+  if (!stripped.includes(":")) return null;
+  if (stripped.includes("%")) return [0xfe80, 0, 0, 0, 0, 0, 0, 0];
+
+  const zoneLess = stripped;
+  const doubleColonParts = zoneLess.split("::");
+  if (doubleColonParts.length > 2) return null;
+
+  const parseSegmentList = (seg: string): number[] | null => {
+    if (!seg) return [];
+    const parts = seg.split(":");
+    const out: number[] = [];
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i]!;
+      if (i === parts.length - 1 && part.includes(".")) {
+        const v4 = parseIpv4(part);
+        if (!v4) return null;
+        out.push((v4[0]! << 8) | v4[1]!, (v4[2]! << 8) | v4[3]!);
+      } else {
+        if (!/^[0-9a-f]{1,4}$/.test(part)) return null;
+        out.push(parseInt(part, 16));
+      }
+    }
+    return out;
+  };
+
+  if (doubleColonParts.length === 1) {
+    const groups = parseSegmentList(doubleColonParts[0]!);
+    return groups && groups.length === 8 ? groups : null;
+  }
+
+  const left = parseSegmentList(doubleColonParts[0]!);
+  const right = parseSegmentList(doubleColonParts[1]!);
+  if (!left || !right) return null;
+  const missing = 8 - (left.length + right.length);
+  if (missing < 1) return null;
+  return [...left, ...Array(missing).fill(0), ...right];
+};
+
 const isBlockedIpv6Literal = (rawHost: string): boolean => {
   const stripped = rawHost.startsWith("[") && rawHost.endsWith("]")
     ? rawHost.slice(1, -1).toLowerCase()
     : rawHost.toLowerCase();
   if (!stripped.includes(":")) return false;
-  return stripped === "::" ||
-    stripped === "::1" ||
-    stripped.includes("%") ||
-    stripped.startsWith("fe8") ||
-    stripped.startsWith("fe9") ||
-    stripped.startsWith("fea") ||
-    stripped.startsWith("feb") ||
-    stripped.startsWith("fc") ||
-    stripped.startsWith("fd") ||
-    stripped.startsWith("ff") ||
-    stripped.startsWith("2001:db8") ||
-    stripped.startsWith("2001:0:") ||
-    stripped.startsWith("2001:0000:") ||
-    stripped.startsWith("2002:") ||
-    stripped.startsWith("64:ff9b:") ||
-    stripped.includes("::ffff:");
+  if (stripped.includes("%")) return true;
+  const h = parseIpv6Hextets(stripped);
+  if (!h) return true;
+
+  const [h0, h1, h2, h3, h4, h5, h6, h7] = h as [
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+  ];
+  const isAllZeroPrefix6 = h0 === 0 && h1 === 0 && h2 === 0 && h3 === 0 &&
+    h4 === 0 && h5 === 0;
+  const isV4Mapped = h0 === 0 && h1 === 0 && h2 === 0 && h3 === 0 &&
+    h4 === 0 && h5 === 0xffff;
+  const isNat64 = h0 === 0x0064 && h1 === 0xff9b && h2 === 0 && h3 === 0 &&
+    h4 === 0 && h5 === 0;
+  const isNat64Local = h0 === 0x0064 && h1 === 0xff9b && h2 === 0x0001;
+
+  if (isAllZeroPrefix6) return true; // ::/96 (unspecified, loopback ::1, IPv4-compatible)
+  if (isV4Mapped || isNat64 || isNat64Local) return true;
+  if ((h0 & 0xffc0) === 0xfe80) return true; // link-local fe80::/10
+  if ((h0 & 0xffc0) === 0xfec0) return true; // deprecated site-local fec0::/10
+  if ((h0 & 0xfe00) === 0xfc00) return true; // unique local fc00::/7
+  if ((h0 & 0xff00) === 0xff00) return true; // multicast ff00::/8
+  if (h0 === 0x0100 && h1 === 0 && h2 === 0 && h3 === 0) return true; // discard 100::/64
+  if (h0 === 0x2001 && h1 === 0x0db8) return true; // documentation 2001:db8::/32
+  if (h0 === 0x2001 && (h1 & 0xfe00) === 0) return true; // IETF protocol / Teredo / benchmarking 2001::/23
+  if (h0 === 0x2002) return true; // 6to4 2002::/16
+  if (
+    h0 === 0 && h1 === 0 && h2 === 0 && h3 === 0 && h4 === 0 && h5 === 0 &&
+    h6 === 0 && h7 <= 1
+  ) {
+    return true;
+  }
+  return false;
+};
+
+export const isPrivateOrReservedIp = (ip: string): boolean => {
+  const v4 = parseIpv4(ip.trim());
+  if (v4) return isPrivateIpv4(v4);
+  return isBlockedIpv6Literal(ip.trim());
+};
+
+const dohEndpoints = [
+  "https://cloudflare-dns.com/dns-query",
+  "https://dns.google/resolve",
+] as const;
+
+const queryDohRecord = async (
+  host: string,
+  recordType: "A" | "AAAA",
+): Promise<{ ok: boolean; ips: readonly string[] }> => {
+  const expectedType = recordType === "A" ? 1 : 28;
+  for (const endpoint of dohEndpoints) {
+    try {
+      const res = await fetch(
+        `${endpoint}?name=${encodeURIComponent(host)}&type=${recordType}`,
+        {
+          headers: { Accept: "application/dns-json" },
+          signal: AbortSignal.timeout(5_000),
+        },
+      );
+      if (!res.ok) continue;
+      const json = (await res.json()) as {
+        Status?: number;
+        Answer?: Array<{ type?: number; data?: unknown }>;
+      };
+      if (json.Status !== 0 && json.Status !== 3) continue;
+      const ips = (json.Answer ?? [])
+        .filter((a) => a.type === expectedType && typeof a.data === "string")
+        .map((a) => String(a.data));
+      return { ok: true, ips };
+    } catch {
+      continue;
+    }
+  }
+  return { ok: false, ips: [] };
+};
+
+export const isPublicWebhookHost = async (host: string): Promise<boolean> => {
+  const normalized = host.toLowerCase().replace(/^\[|\]$/g, "").replace(
+    /\.+$/,
+    "",
+  );
+  if (!normalized) return false;
+  if (parseIpv4(normalized) || normalized.includes(":")) {
+    return !isPrivateOrReservedIp(normalized);
+  }
+  const [aRes, aaaaRes] = await Promise.all([
+    queryDohRecord(normalized, "A"),
+    queryDohRecord(normalized, "AAAA"),
+  ]);
+  if (!aRes.ok || !aaaaRes.ok) return false;
+  const allIps = [...aRes.ips, ...aaaaRes.ips];
+  if (allIps.length === 0) return false;
+  return !allIps.some(isPrivateOrReservedIp);
 };
 
 export const validateWebhookTargetUrl = (rawUrl: string): string | null => {
@@ -107,6 +233,7 @@ export const validateWebhookTargetUrl = (rawUrl: string): string | null => {
   }
 
   if (parsed.protocol !== "https:") return null;
+  if (parsed.port && parsed.port !== "443") return null;
   if (
     !host ||
     host === "localhost" ||

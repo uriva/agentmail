@@ -38,6 +38,8 @@ const createCheckout = async (
   return Response.json({ data: { checkoutUrl } });
 };
 
+const validCheckoutSessionIdPattern = /^cs_(?:live|test)_[a-zA-Z0-9]+$/;
+
 const syncCheckout = async (
   req: Request,
   _params: Record<string, string>,
@@ -46,9 +48,12 @@ const syncCheckout = async (
   const { sessionId } = (await req.json().catch(() => ({}))) as {
     sessionId?: string;
   };
-  if (!sessionId) {
+  if (
+    typeof sessionId !== "string" ||
+    !validCheckoutSessionIdPattern.test(sessionId)
+  ) {
     return Response.json(
-      { error: "sessionId is required", code: "BAD_REQUEST" },
+      { error: "Valid sessionId is required", code: "BAD_REQUEST" },
       { status: 400 },
     );
   }

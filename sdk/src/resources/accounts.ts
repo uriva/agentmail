@@ -21,11 +21,15 @@ export const makeAccounts = (
   get: (accountId?) =>
     request<ApiResponse<Account>>(
       "GET",
-      accountId ? `/v1/accounts/${accountId}` : `/v1/account`,
+      accountId
+        ? `/v1/accounts/${encodeURIComponent(accountId)}`
+        : `/v1/account`,
     ).then((r) => r.data),
   delete: (accountId?) =>
     request<void>(
       "DELETE",
-      accountId ? `/v1/accounts/${accountId}` : `/v1/account`,
+      accountId
+        ? `/v1/accounts/${encodeURIComponent(accountId)}`
+        : `/v1/account`,
     ),
 });

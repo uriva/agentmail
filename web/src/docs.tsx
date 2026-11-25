@@ -524,12 +524,14 @@ const Docs = () => (
       <div class="mt-6 p-6 bg-slate-800/50 border border-slate-700 rounded-xl">
         <h4 class="text-white font-medium mb-3">Signature verification</h4>
         <p class="text-slate-400 text-sm mb-3">
-          Every webhook delivery includes two headers:
+          Every webhook delivery includes these headers:
         </p>
         <ul class="text-slate-400 text-sm mb-3 list-disc list-inside space-y-1">
           <li>
-            <code class="text-white">X-AgentMail-Signature</code>{" "}
-            — HMAC-SHA256 hex digest of the request body
+            <code class="text-white">X-AgentMail-Signature-256</code> —{" "}
+            <code class="text-white">v1=&lt;hex&gt;</code> HMAC-SHA256 digest of
+            {" "}
+            <code class="text-white">{`\${timestamp}.\${body}`}</code>
           </li>
           <li>
             <code class="text-white">X-AgentMail-Timestamp</code>{" "}
@@ -537,27 +539,38 @@ const Docs = () => (
           </li>
         </ul>
         <p class="text-slate-400 text-sm mb-3">
-          Verify the signature using your webhook secret, and reject requests
-          with timestamps older than 5 minutes to prevent replay attacks:
+          Verify the timestamp-bound signature in constant time using your
+          webhook secret, and reject requests outside a 5-minute window to
+          prevent replay attacks:
         </p>
         <CodeBlock
           lang="typescript"
-          code={`import { createHmac } from "crypto";
+          code={`import { createHmac, timingSafeEqual } from "crypto";
 
-const verifyWebhook = (body: string, signature: string, timestamp: string, secret: string) => {
-  const age = Date.now() - Number(timestamp);
-  if (age > 5 * 60 * 1000) return false;
+const verifyWebhook = (
+  body: string,
+  signature256: string | null,
+  timestamp: string | null,
+  secret: string,
+) => {
+  if (!signature256?.startsWith("v1=") || !timestamp) return false;
+  const ts = Number(timestamp);
+  if (!Number.isFinite(ts) || Math.abs(Date.now() - ts) > 5 * 60 * 1000) {
+    return false;
+  }
   const expected = createHmac("sha256", secret)
-    .update(body)
+    .update(\`\${timestamp}.\${body}\`)
     .digest("hex");
-  return signature === expected;
+  const provided = signature256.slice(3).toLowerCase();
+  if (provided.length !== expected.length) return false;
+  return timingSafeEqual(Buffer.from(provided, "utf8"), Buffer.from(expected, "utf8"));
 };
 
 // In your webhook handler:
 // const body = await req.text();
-// const sig = req.headers.get("x-agentmail-signature");
+// const sig = req.headers.get("x-agentmail-signature-256");
 // const ts = req.headers.get("x-agentmail-timestamp");
-// if (!verifyWebhook(body, sig, ts, YOUR_WEBHOOK_SECRET)) {
+// if (!verifyWebhook(body, sig, ts, process.env.AGENTMAIL_WEBHOOK_SECRET!)) {
 //   return new Response("Unauthorized", { status: 401 });
 // }`}
         />

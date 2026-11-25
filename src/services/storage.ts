@@ -44,7 +44,7 @@ const createGcpJwt = async (): Promise<string> => {
   const header = { alg: "RS256", typ: "JWT" };
   const payload = {
     iss: sa.client_email,
-    scope: "https://www.googleapis.com/auth/devstorage.full_control",
+    scope: "https://www.googleapis.com/auth/devstorage.read_write",
     aud: "https://oauth2.googleapis.com/token",
     iat: now,
     exp: now + 3600,
@@ -101,13 +101,29 @@ const getAccessToken = async (): Promise<string> => {
     body:
       `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`,
   });
+  if (!res.ok) {
+    const errBody = await res.text();
+    console.error("[storage] GCP OAuth token error:", res.status, errBody);
+    throw {
+      status: 502,
+      error: "Storage authentication failed",
+      code: "STORAGE_ERROR",
+    };
+  }
   const data = (await res.json()) as {
-    access_token: string;
-    expires_in: number;
+    access_token?: string;
+    expires_in?: number;
   };
+  if (!data.access_token) {
+    throw {
+      status: 502,
+      error: "Storage authentication failed",
+      code: "STORAGE_ERROR",
+    };
+  }
   tokenCache[0] = {
     token: data.access_token,
-    expiresAt: Date.now() + data.expires_in * 1000,
+    expiresAt: Date.now() + (data.expires_in ?? 3600) * 1000,
   };
   return data.access_token;
 };
@@ -134,9 +150,10 @@ const uploadFile = async (
   );
   if (!res.ok) {
     const body = await res.text();
+    console.error("[storage] GCP Storage upload failed:", res.status, body);
     throw {
-      status: 500,
-      error: `GCP Storage upload failed: ${body}`,
+      status: 502,
+      error: "Attachment storage upload failed",
       code: "STORAGE_ERROR",
     };
   }

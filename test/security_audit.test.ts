@@ -328,6 +328,83 @@ Deno.test("support bot endpoints: fail closed when secret unset or unsigned and 
   const data = await res.json();
   assertEquals(data.webhooks[0].host, "hooks.example.com");
   assertEquals("url" in data.webhooks[0], false);
+
+  // Pre-signature bad request with a target nonce must NOT poison that nonce for a subsequent valid request
+  const freshNonce = crypto.randomUUID();
+  const badPayload = {
+    meta: { timestamp: String(Date.now()), nonce: freshNonce },
+    params: { address: `redact-${accId}@theagentmail.net` },
+  };
+  const forgedRes = await handleLookupMailbox(
+    new Request("http://localhost/v1/support/tools/lookup-mailbox", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ payload: badPayload, signature: "00".repeat(32) }),
+    }),
+  );
+  assertEquals(forgedRes.status, 401);
+
+  const validSigAfterForged = await hmacSha256Hex(
+    "support-secret-abc",
+    JSON.stringify(badPayload),
+  );
+  const validResAfterForged = await handleLookupMailbox(
+    new Request("http://localhost/v1/support/tools/lookup-mailbox", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        payload: badPayload,
+        signature: validSigAfterForged,
+      }),
+    }),
+  );
+  assertEquals(validResAfterForged.status, 200);
+
+  // Missing nonce is rejected (fail closed)
+  const noNoncePayload = {
+    meta: { timestamp: String(Date.now()) },
+    params: {},
+  };
+  const noNonceSig = await hmacSha256Hex(
+    "support-secret-abc",
+    JSON.stringify(noNoncePayload),
+  );
+  const noNonceRes = await handleSupportPrompt(
+    new Request("http://localhost/v1/support/prompt", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ payload: noNoncePayload, signature: noNonceSig }),
+    }),
+  );
+  assertEquals(noNonceRes.status, 401);
+
+  // Non-admin email caller cannot query another user's mailbox or account
+  const crossTenantPayload = {
+    meta: {
+      timestamp: String(Date.now()),
+      nonce: crypto.randomUUID(),
+      network: "email",
+      userId: "stranger@example.com",
+    },
+    params: { address: `redact-${accId}@theagentmail.net` },
+  };
+  const crossTenantSig = await hmacSha256Hex(
+    "support-secret-abc",
+    JSON.stringify(crossTenantPayload),
+  );
+  const crossTenantRes = await handleLookupMailbox(
+    new Request("http://localhost/v1/support/tools/lookup-mailbox", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        payload: crossTenantPayload,
+        signature: crossTenantSig,
+      }),
+    }),
+  );
+  assertEquals(crossTenantRes.status, 200);
+  const crossTenantData = await crossTenantRes.json();
+  assertEquals(crossTenantData.found, false);
 });
 
 Deno.test("API key scoping: account-scoped keys blocked from org routes and org-scoped keys blocked from shortcut routes", async () => {
@@ -521,6 +598,13 @@ Deno.test("webhook SSRF guard, phone canonicalization, dual body scan, Stripe re
     );
     assertEquals(validateWebhookTargetUrl("https://10.0.0.5/wh"), null);
     assertEquals(validateWebhookTargetUrl("https://[::1]/wh"), null);
+    assertEquals(validateWebhookTargetUrl("https://[::7f00:1]/wh"), null);
+    assertEquals(validateWebhookTargetUrl("https://[fec0::1]/wh"), null);
+    assertEquals(validateWebhookTargetUrl("https://[2001::1]/wh"), null);
+    assertEquals(
+      validateWebhookTargetUrl("https://hooks.example.com:8443/wh"),
+      null,
+    );
     assertEquals(
       validateWebhookTargetUrl("https://api.theagentmail.net/inbound"),
       null,

@@ -1,4 +1,4 @@
-import { validateWebhookTargetUrl } from "../security.ts";
+import { isPublicWebhookHost, validateWebhookTargetUrl } from "../security.ts";
 import { captureEvent } from "./posthog.ts";
 
 const sign = async (secret: string, payload: string): Promise<string> => {
@@ -40,6 +40,15 @@ const deliverWebhook = async (
   }
 
   const host = getWebhookHost(safeUrl);
+  const isLocalTestHost = Deno.env.get("DENO_ENV") === "test" &&
+    (host === "localhost" || host === "127.0.0.1");
+  if (!isLocalTestHost && !await isPublicWebhookHost(host)) {
+    console.warn(
+      "[webhook] Blocked webhook host resolving to private/invalid IP:",
+      host,
+    );
+    return false;
+  }
   const body = JSON.stringify(payload);
   const timestamp = String(payload.timestamp);
   const [signature, timestampedSignature] = await Promise.all([

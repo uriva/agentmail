@@ -7,6 +7,7 @@ import {
   markWebhookEventSeen,
   sanitizeAttachmentFilename,
   timingSafeEqualStrings,
+  validateWebhookTargetUrl,
 } from "../security.ts";
 import { scanInboundEmail } from "../services/emailGuard.ts";
 import { notifyMessageBlocked } from "../services/blockNotifier.ts";
@@ -247,13 +248,58 @@ const fetchResendEmailData = async (apiKey: string, emailId: string) => {
   return inboundRes.ok ? inboundRes.json() : null;
 };
 
-const fetchAttachmentContent = async (att: { download_url?: string }) => {
-  if (!att.download_url) return att;
-  const dl = await fetch(att.download_url, { redirect: "follow" });
-  const buf = new Uint8Array(await dl.arrayBuffer());
-  if (buf.byteLength > maxTotalAttachmentBytes) {
+const readBoundedBytes = async (
+  res: Response,
+  maxBytes: number,
+): Promise<Uint8Array> => {
+  const declared = Number(res.headers.get("content-length"));
+  if (Number.isFinite(declared) && declared > maxBytes) {
+    await res.body?.cancel().catch(() => {});
     throw new Error("Inbound attachment exceeds maximum allowed size");
   }
+  if (!res.body) return new Uint8Array(0);
+  const reader = res.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+      total += value.byteLength;
+      if (total > maxBytes) {
+        await reader.cancel().catch(() => {});
+        throw new Error("Inbound attachment exceeds maximum allowed size");
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const combined = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    combined.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return combined;
+};
+
+const fetchAttachmentContent = async (att: { download_url?: string }) => {
+  if (!att.download_url) return att;
+  const safeUrl = validateWebhookTargetUrl(att.download_url);
+  if (!safeUrl) {
+    throw new Error("Blocked unsafe attachment download URL");
+  }
+  const dl = await fetch(safeUrl, {
+    redirect: "follow",
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!dl.ok) {
+    await dl.body?.cancel().catch(() => {});
+    throw new Error(`Failed to fetch attachment (${dl.status})`);
+  }
+  const buf = await readBoundedBytes(dl, maxTotalAttachmentBytes);
   return { ...att, content: encodeBase64(buf) };
 };
 
@@ -393,11 +439,13 @@ const countMessages = async (
           direction,
           timestamp: { $gte: since },
         },
-        fields: ["id"],
+        fields: ["id", "status"],
       },
     },
   });
-  return result.messages?.length ?? 0;
+  return (result.messages ?? []).filter(
+    (m) => m.status !== "spam" && m.status !== "blocked",
+  ).length;
 };
 
 export const handleInbound = async (
@@ -406,6 +454,15 @@ export const handleInbound = async (
   _orgId: string,
 ): Promise<Response> => {
   try {
+    if (
+      !req.headers.has("svix-signature") &&
+      !req.headers.has("x-webhook-signature")
+    ) {
+      return Response.json(
+        { error: "Invalid signature", code: "UNAUTHORIZED" },
+        { status: 401 },
+      );
+    }
     const body = await req.text();
 
     const valid = await verifyInboundSignature(req, body);
@@ -568,7 +625,14 @@ export const handleInbound = async (
         storageKey: string;
       }[] = [];
 
-      if (!isTrialVerificationBlocked && email.attachments) {
+      if (!isTrialVerificationBlocked && !isSpam && email.attachments) {
+        const prepared: {
+          attId: string;
+          safeFilename: string;
+          contentType: string;
+          data: Uint8Array;
+          storageKey: string;
+        }[] = [];
         let totalBytes = 0;
         for (const att of email.attachments.slice(0, maxAttachmentsCount)) {
           const safeFilename = sanitizeAttachmentFilename(att.filename);
@@ -581,14 +645,22 @@ export const handleInbound = async (
             );
           }
           const attId = id();
-          const storageKey = `${orgId}/${account.id}/${attId}/${safeFilename}`;
-          await uploadFile(storageKey, data, att.contentType);
-          attachmentRecords.push({
-            id: attId,
-            filename: safeFilename,
+          prepared.push({
+            attId,
+            safeFilename,
             contentType: att.contentType,
-            size: data.byteLength,
-            storageKey,
+            data,
+            storageKey: `${orgId}/${account.id}/${attId}/${safeFilename}`,
+          });
+        }
+        for (const item of prepared) {
+          await uploadFile(item.storageKey, item.data, item.contentType);
+          attachmentRecords.push({
+            id: item.attId,
+            filename: item.safeFilename,
+            contentType: item.contentType,
+            size: item.data.byteLength,
+            storageKey: item.storageKey,
           });
         }
       }

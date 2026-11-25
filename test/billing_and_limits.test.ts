@@ -200,7 +200,10 @@ Deno.test("Billing & account expiration flow", async (t) => {
 
   await t.step("Support bot prompt returns dynamic prompt text", async () => {
     Deno.env.set("SUPPORT_BOT_SECRET", "test-support-secret-12345");
-    const payload = { meta: { timestamp: String(Date.now()) }, params: {} };
+    const payload = {
+      meta: { timestamp: String(Date.now()), nonce: crypto.randomUUID() },
+      params: {},
+    };
     const signature = await hmacSha256Hex(
       "test-support-secret-12345",
       JSON.stringify(payload),

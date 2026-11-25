@@ -315,14 +315,25 @@ export const baseSecurityHeaders: Record<string, string> = {
   "X-Content-Type-Options": "nosniff",
   "X-Frame-Options": "DENY",
   "Referrer-Policy": "strict-origin-when-cross-origin",
+  "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
 };
 
-const allowedDashboardOrigins = new Set([
+const prodDashboardOrigins = new Set([
   "https://theagentmail.net",
   "https://www.theagentmail.net",
+]);
+
+const devDashboardOrigins = new Set([
   "http://localhost:3000",
   "http://localhost:8000",
 ]);
+
+const isAllowedDashboardOrigin = (origin: string): boolean => {
+  if (prodDashboardOrigins.has(origin)) return true;
+  const env = Deno.env.get("DENO_ENV");
+  return (env === "development" || env === "test") &&
+    devDashboardOrigins.has(origin);
+};
 
 const buildCorsHeaders = (
   req: Request,
@@ -330,9 +341,7 @@ const buildCorsHeaders = (
 ): Record<string, string> => {
   const origin = req.headers.get("origin") ?? "";
   const allowOrigin = isDashboardRoute
-    ? (allowedDashboardOrigins.has(origin)
-      ? origin
-      : "https://theagentmail.net")
+    ? (isAllowedDashboardOrigin(origin) ? origin : "https://theagentmail.net")
     : "*";
   return {
     ...baseSecurityHeaders,
@@ -513,7 +522,7 @@ const resolveAuth = async (
 const handleRequest = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     const origin = req.headers.get("origin") ?? "";
-    const isDashOrigin = allowedDashboardOrigins.has(origin);
+    const isDashOrigin = isAllowedDashboardOrigin(origin);
     return new Response(null, {
       status: 204,
       headers: buildCorsHeaders(req, isDashOrigin),

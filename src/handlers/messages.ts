@@ -78,11 +78,35 @@ const sendMessage = async (
     );
   }
 
-  const input = (await req.json()) as SendEmailInput;
-  if (!Array.isArray(input.to) || input.to.length === 0) {
+  const input = (await req.json().catch(() => null)) as SendEmailInput | null;
+  if (!input || !Array.isArray(input.to) || input.to.length === 0) {
     return Response.json(
       {
         error: "At least one recipient in 'to' is required",
+        code: "BAD_REQUEST",
+      },
+      { status: 400 },
+    );
+  }
+
+  const hasControlChars = (value: unknown): boolean =>
+    typeof value === "string" && /[\r\n\0]/.test(value);
+
+  const isStringArray = (value: unknown): value is readonly string[] =>
+    Array.isArray(value) &&
+    value.every((item) => typeof item === "string" && !hasControlChars(item));
+
+  if (
+    !isStringArray(input.to) ||
+    (input.cc !== undefined && !isStringArray(input.cc)) ||
+    (input.bcc !== undefined && !isStringArray(input.bcc)) ||
+    hasControlChars(input.subject) ||
+    hasControlChars(input.inReplyTo) ||
+    hasControlChars(input.references)
+  ) {
+    return Response.json(
+      {
+        error: "Invalid email header or recipient format",
         code: "BAD_REQUEST",
       },
       { status: 400 },
@@ -256,6 +280,13 @@ const sendMessage = async (
     }[] = [];
 
     if (input.attachments) {
+      const prepared: {
+        attId: string;
+        safeFilename: string;
+        contentType: string;
+        data: Uint8Array;
+        storageKey: string;
+      }[] = [];
       let totalBytes = 0;
       for (const att of input.attachments) {
         const safeFilename = sanitizeAttachmentFilename(att.filename);
@@ -271,14 +302,22 @@ const sendMessage = async (
           );
         }
         const attId = id();
-        const storageKey = `${orgId}/${accountId}/${attId}/${safeFilename}`;
-        await uploadFile(storageKey, data, att.contentType);
-        attachmentRecords.push({
-          id: attId,
-          filename: safeFilename,
+        prepared.push({
+          attId,
+          safeFilename,
           contentType: att.contentType,
-          size: data.byteLength,
-          storageKey,
+          data,
+          storageKey: `${orgId}/${accountId}/${attId}/${safeFilename}`,
+        });
+      }
+      for (const item of prepared) {
+        await uploadFile(item.storageKey, item.data, item.contentType);
+        attachmentRecords.push({
+          id: item.attId,
+          filename: item.safeFilename,
+          contentType: item.contentType,
+          size: item.data.byteLength,
+          storageKey: item.storageKey,
         });
       }
     }

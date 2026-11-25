@@ -13,8 +13,12 @@ export const makeAttachments = (
 ): AttachmentsResource => ({
   getUrl: (accountIdOrMessageId, messageIdOrAttachmentId, attachmentId?) => {
     const path = attachmentId
-      ? `/v1/accounts/${accountIdOrMessageId}/messages/${messageIdOrAttachmentId}/attachments/${attachmentId}`
-      : `/v1/messages/${accountIdOrMessageId}/attachments/${messageIdOrAttachmentId}`;
+      ? `/v1/accounts/${encodeURIComponent(accountIdOrMessageId)}/messages/${
+        encodeURIComponent(messageIdOrAttachmentId)
+      }/attachments/${encodeURIComponent(attachmentId)}`
+      : `/v1/messages/${encodeURIComponent(accountIdOrMessageId)}/attachments/${
+        encodeURIComponent(messageIdOrAttachmentId)
+      }`;
     return request<ApiResponse<AttachmentWithUrl>>("GET", path).then(
       (r) => r.data,
     );

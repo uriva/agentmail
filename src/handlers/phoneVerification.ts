@@ -26,15 +26,10 @@ const isPhoneUsedByAnotherUser = async (
   normalizedPhone: string,
   currentUserId: string,
 ): Promise<boolean> => {
-  const { $users: verifiedUsers } = await db.query({
-    $users: { $: { where: { phoneVerified: true } } },
+  const { $users: matchingUsers } = await db.query({
+    $users: { $: { where: { phone: normalizedPhone, phoneVerified: true } } },
   });
-  return verifiedUsers.some(
-    (u) =>
-      u.id !== currentUserId &&
-      typeof u.phone === "string" &&
-      normalizeE164Phone(u.phone) === normalizedPhone,
-  );
+  return matchingUsers.some((u) => u.id !== currentUserId);
 };
 
 const sendPhoneCode = async (req: Request): Promise<Response> => {
@@ -49,7 +44,8 @@ const sendPhoneCode = async (req: Request): Promise<Response> => {
   const { $users: callerRows } = await db.query({
     $users: { $: { where: { id: userId } } },
   });
-  const callerEmail = callerRows[0]?.email ?? "";
+  const caller = callerRows[0];
+  const callerEmail = caller?.email ?? "";
   if (!isAllowedSignupEmail(callerEmail)) {
     return Response.json(
       {
@@ -58,6 +54,16 @@ const sendPhoneCode = async (req: Request): Promise<Response> => {
         code: "EMAIL_PROVIDER_NOT_ALLOWED",
       },
       { status: 403 },
+    );
+  }
+
+  if (caller?.phoneVerified) {
+    return Response.json(
+      {
+        error: "Your account is already phone verified.",
+        code: "ALREADY_VERIFIED",
+      },
+      { status: 409 },
     );
   }
 
@@ -115,6 +121,31 @@ const verifyPhoneCode = async (req: Request): Promise<Response> => {
     return Response.json(
       { error: "Unauthorized", code: "UNAUTHORIZED" },
       { status: 401 },
+    );
+  }
+
+  const { $users: callerRows } = await db.query({
+    $users: { $: { where: { id: userId } } },
+  });
+  const caller = callerRows[0];
+  if (!isAllowedSignupEmail(caller?.email ?? "")) {
+    return Response.json(
+      {
+        error:
+          "Please sign in with a supported personal email provider before verifying a phone number.",
+        code: "EMAIL_PROVIDER_NOT_ALLOWED",
+      },
+      { status: 403 },
+    );
+  }
+
+  if (caller?.phoneVerified) {
+    return Response.json(
+      {
+        error: "Your account is already phone verified.",
+        code: "ALREADY_VERIFIED",
+      },
+      { status: 409 },
     );
   }
 
