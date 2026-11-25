@@ -68,7 +68,7 @@ const sendPhoneCode = async (req: Request): Promise<Response> => {
   }
 
   if (
-    !checkSlidingWindowLimit({
+    !await checkSlidingWindowLimit({
       key: `sms-send:${userId}`,
       maxRequests: 3,
       windowMs: 60 * 60 * 1000,
@@ -150,7 +150,7 @@ const verifyPhoneCode = async (req: Request): Promise<Response> => {
   }
 
   if (
-    !checkSlidingWindowLimit({
+    !await checkSlidingWindowLimit({
       key: `sms-verify:${userId}`,
       maxRequests: 5,
       windowMs: 15 * 60 * 1000,

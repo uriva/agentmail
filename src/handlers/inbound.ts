@@ -135,7 +135,7 @@ const verifySvixSignature = async (
   );
 
   if (!results.some(Boolean)) return false;
-  return markWebhookEventSeen(`svix:${svixId}`, replayTtlMs);
+  return await markWebhookEventSeen(`svix:${svixId}`, replayTtlMs);
 };
 
 const verifyForwardEmailSignature = async (

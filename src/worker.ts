@@ -1,6 +1,10 @@
 import { baseSecurityHeaders, handleRequest, isApiPath } from "./main.ts";
+import { setSecurityGuardNamespace } from "./security.ts";
+import { SecurityGuardDO } from "./securityDO.ts";
 import { runBillingRenewalCheck } from "./services/billingCron.ts";
 import { waitBackgroundTasks } from "./services/posthog.ts";
+
+export { SecurityGuardDO };
 
 // deno-lint-ignore no-explicit-any
 const syncEnv = (env: Record<string, any>) => {
@@ -14,6 +18,7 @@ const syncEnv = (env: Record<string, any>) => {
       g.process.env[k] = v;
     }
   }
+  setSecurityGuardNamespace(env.SECURITY_GUARD_DO);
 };
 
 const attachSecurityHeaders = (res: Response): Response => {

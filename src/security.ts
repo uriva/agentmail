@@ -1,4 +1,20 @@
+import type { SecurityGuardNamespace } from "./securityDO.ts";
+
 const encoder = new TextEncoder();
+
+const securityGuardCell: Array<SecurityGuardNamespace | null> = [null];
+
+export const setSecurityGuardNamespace = (
+  ns: SecurityGuardNamespace | null | undefined,
+): void => {
+  securityGuardCell[0] = ns ?? null;
+};
+
+const getSecurityGuardStub = (shardKey: string) => {
+  const ns = securityGuardCell[0];
+  if (!ns) return null;
+  return ns.get(ns.idFromName(shardKey));
+};
 
 export const bytesToHex = (bytes: Uint8Array): string =>
   Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
@@ -315,8 +331,13 @@ export const isAllowedSignupEmail = (email: string): boolean => {
 };
 
 const lockQueues = new Map<string, Promise<unknown>>();
+const distributedLockTtlMs = 30_000;
+const distributedLockMaxWaitMs = 20_000;
 
-export const withKeyedLock = <T>(
+const sleep = (ms: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, ms));
+
+const withLocalKeyedLock = <T>(
   key: string,
   fn: () => Promise<T>,
 ): Promise<T> => {
@@ -331,10 +352,54 @@ export const withKeyedLock = <T>(
   return current;
 };
 
+export const withKeyedLock = async <T>(
+  key: string,
+  fn: () => Promise<T>,
+): Promise<T> => {
+  const stub = getSecurityGuardStub(`lock:${key}`);
+  if (!stub) {
+    return withLocalKeyedLock(key, fn);
+  }
+  const owner = crypto.randomUUID();
+  const deadline = Date.now() + distributedLockMaxWaitMs;
+  let acquired = false;
+  while (Date.now() < deadline) {
+    const res = await stub.fetch("https://do/lock/acquire", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key, owner, ttlMs: distributedLockTtlMs }),
+    });
+    const data = (await res.json()) as { acquired?: boolean };
+    if (data.acquired) {
+      acquired = true;
+      break;
+    }
+    await sleep(40 + Math.floor(Math.random() * 60));
+  }
+  if (!acquired) {
+    throw {
+      status: 503,
+      error: "Resource busy, please retry shortly",
+      code: "RESOURCE_BUSY",
+    };
+  }
+  try {
+    return await fn();
+  } finally {
+    await stub
+      .fetch("https://do/lock/release", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key, owner }),
+      })
+      .catch(() => {});
+  }
+};
+
 type RateBucket = { readonly timestamps: readonly number[] };
 const rateBuckets = new Map<string, RateBucket>();
 
-export const checkSlidingWindowLimit = ({
+export const checkSlidingWindowLimit = async ({
   key,
   maxRequests,
   windowMs,
@@ -342,7 +407,17 @@ export const checkSlidingWindowLimit = ({
   key: string;
   maxRequests: number;
   windowMs: number;
-}): boolean => {
+}): Promise<boolean> => {
+  const stub = getSecurityGuardStub(`rate:${key}`);
+  if (stub) {
+    const res = await stub.fetch("https://do/rate/check", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key, maxRequests, windowMs }),
+    });
+    const data = (await res.json()) as { allowed?: boolean };
+    return Boolean(data.allowed);
+  }
   const now = Date.now();
   const cutoff = now - windowMs;
   const existing = (rateBuckets.get(key)?.timestamps ?? []).filter(
@@ -362,10 +437,20 @@ export const checkSlidingWindowLimit = ({
 
 const replayIds = new Map<string, number>();
 
-export const markWebhookEventSeen = (
+export const markWebhookEventSeen = async (
   eventKey: string,
   ttlMs: number,
-): boolean => {
+): Promise<boolean> => {
+  const stub = getSecurityGuardStub(`replay:${eventKey}`);
+  if (stub) {
+    const res = await stub.fetch("https://do/replay/mark", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ eventKey, ttlMs }),
+    });
+    const data = (await res.json()) as { fresh?: boolean };
+    return Boolean(data.fresh);
+  }
   const now = Date.now();
   const existingExpiry = replayIds.get(eventKey);
   if (existingExpiry !== undefined && existingExpiry > now) {

@@ -13,11 +13,16 @@ import {
 } from "../src/handlers/supportBot.ts";
 import { handleRequest } from "../src/main.ts";
 import {
+  checkSlidingWindowLimit,
   hmacSha256Hex,
+  markWebhookEventSeen,
   normalizeE164Phone,
   sanitizeAttachmentFilename,
+  setSecurityGuardNamespace,
   validateWebhookTargetUrl,
+  withKeyedLock,
 } from "../src/security.ts";
+import type { SecurityGuardNamespace } from "../src/securityDO.ts";
 import { combineScanBody } from "../src/services/emailGuard.ts";
 import { resolveAllowedCheckoutReturnUrl } from "../src/services/stripe.ts";
 import { checkTwilioVerification } from "../src/services/twilio.ts";
@@ -743,5 +748,111 @@ Deno.test("webhook delivery uses Cloudflare Workers-compatible redirect:manual a
     assertEquals(secretHits, 0);
   } finally {
     await server.shutdown();
+  }
+});
+
+Deno.test("SecurityGuardDO namespace delegates locks, sliding-window rate limits, and replay dedup across isolates", async () => {
+  const locks = new Map<string, { owner: string; expiresAt: number }>();
+  const rateEvents = new Map<string, number[]>();
+  const replays = new Map<string, number>();
+
+  const mockNamespace: SecurityGuardNamespace = {
+    idFromName: (name) => name,
+    get: () => ({
+      fetch: async (input, init) => {
+        const url = new URL(String(input));
+        const body = JSON.parse(String(init?.body ?? "{}")) as Record<
+          string,
+          unknown
+        >;
+        const now = Date.now();
+        if (url.pathname === "/lock/acquire") {
+          const key = String(body.key);
+          const owner = String(body.owner);
+          const cur = locks.get(key);
+          if (cur && cur.expiresAt > now && cur.owner !== owner) {
+            return Response.json({ acquired: false });
+          }
+          locks.set(key, { owner, expiresAt: now + Number(body.ttlMs) });
+          return Response.json({ acquired: true });
+        }
+        if (url.pathname === "/lock/release") {
+          const key = String(body.key);
+          if (locks.get(key)?.owner === String(body.owner)) locks.delete(key);
+          return Response.json({ released: true });
+        }
+        if (url.pathname === "/rate/check") {
+          const key = String(body.key);
+          const cutoff = now - Number(body.windowMs);
+          const fresh = (rateEvents.get(key) ?? []).filter((t) => t > cutoff);
+          if (fresh.length >= Number(body.maxRequests)) {
+            rateEvents.set(key, fresh);
+            return Response.json({ allowed: false });
+          }
+          rateEvents.set(key, [...fresh, now]);
+          return Response.json({ allowed: true });
+        }
+        if (url.pathname === "/replay/mark") {
+          const key = String(body.eventKey);
+          const exp = replays.get(key);
+          if (exp !== undefined && exp > now) {
+            return Response.json({ fresh: false });
+          }
+          replays.set(key, now + Number(body.ttlMs));
+          return Response.json({ fresh: true });
+        }
+        return new Response("Not found", { status: 404 });
+      },
+    }),
+  };
+
+  setSecurityGuardNamespace(mockNamespace);
+  try {
+    // Distributed lock serializes concurrent critical sections
+    const order: string[] = [];
+    await Promise.all([
+      withKeyedLock("org:do-test", async () => {
+        order.push("start-1");
+        await new Promise((r) => setTimeout(r, 30));
+        order.push("end-1");
+      }),
+      withKeyedLock("org:do-test", async () => {
+        order.push("start-2");
+        order.push("end-2");
+      }),
+    ]);
+    assertEquals(order, ["start-1", "end-1", "start-2", "end-2"]);
+
+    // Distributed sliding window rate limit
+    assertEquals(
+      await checkSlidingWindowLimit({
+        key: "sms:do-user",
+        maxRequests: 2,
+        windowMs: 60_000,
+      }),
+      true,
+    );
+    assertEquals(
+      await checkSlidingWindowLimit({
+        key: "sms:do-user",
+        maxRequests: 2,
+        windowMs: 60_000,
+      }),
+      true,
+    );
+    assertEquals(
+      await checkSlidingWindowLimit({
+        key: "sms:do-user",
+        maxRequests: 2,
+        windowMs: 60_000,
+      }),
+      false,
+    );
+
+    // Distributed replay dedup
+    assertEquals(await markWebhookEventSeen("svix:do-evt-1", 60_000), true);
+    assertEquals(await markWebhookEventSeen("svix:do-evt-1", 60_000), false);
+  } finally {
+    setSecurityGuardNamespace(null);
   }
 });

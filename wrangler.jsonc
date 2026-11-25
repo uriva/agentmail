@@ -38,6 +38,20 @@
   "triggers": {
     "crons": ["0 * * * *"]
   },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "SECURITY_GUARD_DO",
+        "class_name": "SecurityGuardDO"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["SecurityGuardDO"]
+    }
+  ],
   "observability": {
     "enabled": true
   }

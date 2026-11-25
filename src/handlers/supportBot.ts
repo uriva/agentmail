@@ -67,7 +67,7 @@ export const verifySupportBotSignature = async (
   if (typeof meta?.nonce !== "string" || meta.nonce.length === 0) {
     return false;
   }
-  return markWebhookEventSeen(`support:${meta.nonce}`, maxSkewMs);
+  return await markWebhookEventSeen(`support:${meta.nonce}`, maxSkewMs);
 };
 
 const extractSupportEmailCaller = (
