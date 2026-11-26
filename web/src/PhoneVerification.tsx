@@ -78,11 +78,18 @@ export const PhoneVerification = ({
             📱
           </div>
           <div>
-            <h1 class="text-xl font-bold text-white">Phone Verification</h1>
+            <h1 class="text-xl font-bold text-white">Unlock Your Free Inbox</h1>
             <p class="text-xs text-slate-400">
-              Required to secure your account
+              One-time SMS check (~15 seconds, no card required)
             </p>
           </div>
+        </div>
+
+        <div class="mb-4 p-3 bg-slate-900/70 border border-slate-700/80 rounded-lg text-xs text-slate-300 leading-relaxed">
+          We verify one real mobile number per account to keep{" "}
+          <span class="font-mono text-white">@theagentmail.net</span>{" "}
+          spam-free and deliverable for every agent. Never used for marketing or
+          shared.
         </div>
 
         {error && (
@@ -114,7 +121,7 @@ export const PhoneVerification = ({
                 disabled={loading || !phone}
                 class="w-full py-2 px-4 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-600 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors"
               >
-                {loading ? "Sending SMS..." : "Send Verification Code"}
+                {loading ? "Sending SMS..." : "Send One-Time Code"}
               </button>
               <p class="text-xs text-slate-400 mt-4 leading-relaxed">
                 One-time SMS verification code via Twilio; standard message
@@ -158,7 +165,7 @@ export const PhoneVerification = ({
                 disabled={loading || !code}
                 class="w-full py-2 px-4 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-600 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors"
               >
-                {loading ? "Verifying..." : "Verify Phone Number"}
+                {loading ? "Verifying..." : "Unlock Free 30-Day Inbox"}
               </button>
               <button
                 onClick={() => {

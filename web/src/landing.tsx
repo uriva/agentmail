@@ -472,9 +472,7 @@ const Landing = () => {
                 View source
               </a>
               <a
-                href={`${githubUrl}/blob/main/README.md`}
-                target="_blank"
-                rel="noopener noreferrer"
+                href="/self-host"
                 class="px-6 py-3 border border-slate-600 hover:border-slate-400 text-slate-200 rounded-lg transition-colors font-mono text-sm"
               >
                 Self-host guide
@@ -607,6 +605,13 @@ deno task dev:web    # UI on :3000`}
           <span class="text-slate-700">|</span>
           <a href="/guides/mcp" class="hover:text-white transition-colors">
             MCP Guide
+          </a>
+          <span class="text-slate-700">|</span>
+          <a
+            href="/blog/shared-email-domain-for-ai-agents"
+            class="hover:text-white transition-colors"
+          >
+            Engineering
           </a>
           <span class="text-slate-700">|</span>
           <a
