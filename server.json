@@ -1,0 +1,26 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "net.theagentmail/agentmail",
+  "title": "AgentMail",
+  "description": "Open-source (MIT) email inboxes for AI agents with scoped keys, webhooks & AI spam guard.",
+  "repository": {
+    "url": "https://github.com/uriva/agentmail",
+    "source": "github"
+  },
+  "websiteUrl": "https://theagentmail.net",
+  "version": "0.2.0",
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://api.theagentmail.net/mcp",
+      "headers": [
+        {
+          "name": "Authorization",
+          "description": "Bearer API key from https://theagentmail.net/app (format: Bearer am_...)",
+          "isRequired": true,
+          "isSecret": true
+        }
+      ]
+    }
+  ]
+}
