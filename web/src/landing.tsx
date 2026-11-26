@@ -609,6 +609,13 @@ deno task dev:web    # UI on :3000`}
             MCP Guide
           </a>
           <span class="text-slate-700">|</span>
+          <a
+            href="/guides/hermes-openclaw"
+            class="hover:text-white transition-colors"
+          >
+            Hermes / OpenClaw
+          </a>
+          <span class="text-slate-700">|</span>
           <a href="/self-host" class="hover:text-white transition-colors">
             Self-Host
           </a>

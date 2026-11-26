@@ -23,6 +23,7 @@ export default defineConfig({
           "/pricing",
           "/compare",
           "/guides/mcp",
+          "/guides/hermes-openclaw",
           "/self-host",
           "/privacy",
           "/terms",

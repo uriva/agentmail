@@ -9,6 +9,7 @@ import { Terms } from "./terms.tsx";
 import { Pricing } from "./pricing.tsx";
 import { Compare } from "./compare.tsx";
 import { GuideMcp } from "./guideMcp.tsx";
+import { GuideHermesOpenclaw } from "./guideHermesOpenclaw.tsx";
 import { SelfHost } from "./selfHost.tsx";
 import { Header } from "./header.tsx";
 import { useAuth } from "./db.ts";
@@ -71,6 +72,7 @@ const App = () => (
           <Route path="/pricing" component={Pricing} />
           <Route path="/compare" component={Compare} />
           <Route path="/guides/mcp" component={GuideMcp} />
+          <Route path="/guides/hermes-openclaw" component={GuideHermesOpenclaw} />
           <Route path="/self-host" component={SelfHost} />
           <Route default component={NotFound} />
         </Router>

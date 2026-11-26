@@ -26,14 +26,22 @@ attachments, and a real-time AI spam/phishing guard — **$1/month per mailbox**
 | Outbound spam guard | **Real-time AI spam & phishing filter** | Account-level | None |
 | Agent integration | REST API, webhooks, `/llms.txt`, OpenCode skill | SDK + REST API | IMAP/SMTP boilerplate |
 
-## Connect via Remote MCP (Claude Code / Cursor / OpenCode)
+## Connect via Remote MCP or AgentSkill (Claude Code / Hermes / OpenClaw / Cursor)
 
 Zero npm packages or local bridge required — connect any Streamable HTTP MCP
-client directly to `https://api.theagentmail.net/mcp`:
+client directly to `https://api.theagentmail.net/mcp` (published in the Official
+MCP Registry as `net.theagentmail/agentmail`):
 
 ```bash
 claude mcp add --transport http agentmail https://api.theagentmail.net/mcp \
   --header "Authorization: Bearer $AGENTMAIL_KEY"
+```
+
+Or install the standard AgentSkill for Hermes Agent, OpenClaw, Claude Code,
+Cursor, or OpenCode:
+
+```bash
+npx skills add uriva/agentmail --skill theagentmail
 ```
 
 ## 30-Second Quickstart

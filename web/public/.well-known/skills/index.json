@@ -1,0 +1,11 @@
+{
+  "skills": [
+    {
+      "name": "theagentmail",
+      "description": "Give an AI agent its own real @theagentmail.net email inbox via REST API, HMAC-signed webhooks, or Streamable HTTP remote MCP (MIT open source, $1/mo).",
+      "files": [
+        "SKILL.md"
+      ]
+    }
+  ]
+}
