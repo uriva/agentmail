@@ -1,6 +1,6 @@
 name: theagentmail
 label: AgentMail (theagentmail.net)
-version: 0.1.0
+version: 0.1.1
 manifest_version: 2
 api_version: 1
 author: uriva
@@ -23,7 +23,8 @@ provides_tools:
   - theagentmail_list_webhooks
   - theagentmail_create_webhook
   - theagentmail_delete_webhook
-provides_hooks: []
+provides_hooks:
+  - pre_tool_call
 requires_env:
   - name: AGENTMAIL_API_KEY
     description: "Account-scoped (am_...) or org-scoped (am_org_...) AgentMail API key from https://theagentmail.net/app"

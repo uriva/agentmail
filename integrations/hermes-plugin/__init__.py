@@ -18,6 +18,20 @@ _TOOLS = (
 )
 
 
+def _require_webhook_approval(tool_name: str = "", args: dict | None = None, **kwargs):
+    if tool_name != "theagentmail_create_webhook":
+        return None
+    url = args.get("url") if isinstance(args, dict) else None
+    target = url.strip() if isinstance(url, str) and url.strip() else "<missing url>"
+    return {
+        "action": "approve",
+        "message": (
+            f"Register persistent AgentMail inbound email webhook to {target}? "
+            "Future emails sent to this inbox will be forwarded to this URL even after this session ends."
+        ),
+    }
+
+
 def register(ctx) -> None:
     for schema, handler in _TOOLS:
         ctx.register_tool(
@@ -28,3 +42,4 @@ def register(ctx) -> None:
             check_fn=tools.is_configured,
             emoji="✉️",
         )
+    ctx.register_hook("pre_tool_call", _require_webhook_approval)

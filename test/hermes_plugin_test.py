@@ -64,30 +64,55 @@ class TestAgentMailHermesPlugin(unittest.TestCase):
         _SECRET_STORE.clear()
         _SECRET_STORE["AGENTMAIL_API_KEY"] = "am_test_secret_key"
 
-    def test_register_matches_plugin_yaml_provides_tools(self):
+    def test_register_matches_plugin_yaml_provides_tools_and_hooks(self):
         registered = []
+        hooks = []
 
         class _Ctx:
             def register_tool(self, **kwargs):
                 registered.append(kwargs)
 
+            def register_hook(self, name, callback, **kwargs):
+                hooks.append((name, callback))
+
         plugin.register(_Ctx())
         reg_names = [item["name"] for item in registered]
+        reg_hooks = [name for name, _ in hooks]
         yaml_text = (_PLUGIN_DIR / "plugin.yaml").read_text(encoding="utf-8")
         yaml_tools = []
-        in_tools = False
+        yaml_hooks = []
+        section = None
         for line in yaml_text.splitlines():
             if line.startswith("provides_tools:"):
-                in_tools = True
+                section = "tools"
                 continue
-            if in_tools:
-                if line.startswith("  - "):
-                    yaml_tools.append(line.split("  - ", 1)[1].strip())
-                else:
-                    in_tools = False
+            if line.startswith("provides_hooks:"):
+                section = "hooks"
+                continue
+            if line.startswith("  - "):
+                val = line.split("  - ", 1)[1].strip()
+                if section == "tools":
+                    yaml_tools.append(val)
+                elif section == "hooks":
+                    yaml_hooks.append(val)
+            else:
+                section = None
 
         self.assertEqual(reg_names, yaml_tools)
         self.assertEqual(len(reg_names), 8)
+        self.assertEqual(reg_hooks, yaml_hooks)
+        self.assertEqual(reg_hooks, ["pre_tool_call"])
+
+        hook_fn = hooks[0][1]
+        approve = hook_fn(
+            tool_name="theagentmail_create_webhook",
+            args={"url": "https://hooks.example.com/inbox"},
+            task_id="t1",
+            extra_future_field=True,
+        )
+        self.assertEqual(approve["action"], "approve")
+        self.assertIn("https://hooks.example.com/inbox", approve["message"])
+        self.assertIsNone(hook_fn(tool_name="theagentmail_list_messages", args={}, task_id="t1"))
 
     def test_is_configured(self):
         self.assertTrue(tools.is_configured())

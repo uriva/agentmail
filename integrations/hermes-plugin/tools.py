@@ -131,7 +131,7 @@ def _request(method: str, path: str, body: Optional[Dict[str, Any]] = None) -> A
     headers = {
         "Accept": "application/json",
         "Authorization": f"Bearer {_api_key()}",
-        "User-Agent": "hermes-theagentmail/0.1.0",
+        "User-Agent": "hermes-theagentmail/0.1.1",
     }
     data = None
     if body is not None:
