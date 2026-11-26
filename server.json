@@ -3,12 +3,19 @@
   "name": "net.theagentmail/agentmail",
   "title": "AgentMail",
   "description": "Open-source (MIT) email inboxes for AI agents with scoped keys, webhooks & AI spam guard.",
+  "icons": [
+    {
+      "src": "https://theagentmail.net/icon.png",
+      "mimeType": "image/png",
+      "sizes": ["256x256"]
+    }
+  ],
   "repository": {
     "url": "https://github.com/uriva/agentmail",
     "source": "github"
   },
   "websiteUrl": "https://theagentmail.net",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "remotes": [
     {
       "type": "streamable-http",

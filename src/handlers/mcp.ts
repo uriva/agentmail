@@ -13,10 +13,20 @@ type JsonRpcRequest = {
   readonly params?: Record<string, unknown>;
 };
 
+type McpToolAnnotations = {
+  readonly title?: string;
+  readonly readOnlyHint?: boolean;
+  readonly destructiveHint?: boolean;
+  readonly idempotentHint?: boolean;
+  readonly openWorldHint?: boolean;
+};
+
 type McpToolDef = {
   readonly name: string;
+  readonly title: string;
   readonly description: string;
   readonly inputSchema: Record<string, unknown>;
+  readonly annotations: McpToolAnnotations;
 };
 
 const supportedProtocolVersions = new Set([
@@ -26,7 +36,7 @@ const supportedProtocolVersions = new Set([
   "2024-11-05",
 ]);
 const defaultProtocolVersion = "2025-03-26";
-const serverInfo = { name: "agentmail", version: "0.2.0" };
+const serverInfo = { name: "agentmail", version: "0.2.1" };
 
 const negotiateProtocolVersion = (params?: Record<string, unknown>): string => {
   const requested = typeof params?.protocolVersion === "string"
@@ -71,12 +81,21 @@ const buildToolList = (scoped: boolean): readonly McpToolDef[] => [
     : [
       {
         name: "list_mailboxes",
+        title: "List Mailboxes",
         description:
           "List all @theagentmail.net mailboxes in your organization.",
         inputSchema: { type: "object", properties: {} },
+        annotations: {
+          title: "List Mailboxes",
+          readOnlyHint: true,
+          destructiveHint: false,
+          idempotentHint: true,
+          openWorldHint: false,
+        },
       },
       {
         name: "create_mailbox",
+        title: "Create Mailbox",
         description:
           "Create a new @theagentmail.net mailbox (first mailbox free 30d after phone verification; additional $1/mo from balance).",
         inputSchema: {
@@ -93,25 +112,49 @@ const buildToolList = (scoped: boolean): readonly McpToolDef[] => [
           },
           required: ["address"],
         },
+        annotations: {
+          title: "Create Mailbox",
+          readOnlyHint: false,
+          destructiveHint: false,
+          idempotentHint: false,
+          openWorldHint: false,
+        },
       },
       {
         name: "get_balance",
+        title: "Get Prepaid Balance",
         description:
           "Check your organization's prepaid AgentMail wallet balance.",
         inputSchema: { type: "object", properties: {} },
+        annotations: {
+          title: "Get Prepaid Balance",
+          readOnlyHint: true,
+          destructiveHint: false,
+          idempotentHint: true,
+          openWorldHint: false,
+        },
       },
     ]),
   {
     name: "get_mailbox",
+    title: "Get Mailbox Info",
     description: "Get mailbox address, status, expiration, and send count.",
     inputSchema: {
       type: "object",
       properties: { ...accountIdProp(scoped) },
       required: requiredWithAccount(scoped, []),
     },
+    annotations: {
+      title: "Get Mailbox Info",
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
+    },
   },
   {
     name: "list_messages",
+    title: "List Inbox Messages",
     description:
       "List recent inbound and outbound messages for the mailbox, newest first.",
     inputSchema: {
@@ -119,9 +162,17 @@ const buildToolList = (scoped: boolean): readonly McpToolDef[] => [
       properties: { ...accountIdProp(scoped) },
       required: requiredWithAccount(scoped, []),
     },
+    annotations: {
+      title: "List Inbox Messages",
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
+    },
   },
   {
     name: "get_message",
+    title: "Read Email Message",
     description:
       "Read a single email message including full text/HTML body and attachment metadata.",
     inputSchema: {
@@ -130,14 +181,22 @@ const buildToolList = (scoped: boolean): readonly McpToolDef[] => [
         ...accountIdProp(scoped),
         messageId: {
           type: "string",
-          description: "Message ID from list_messages.",
+          description: "Unique message ID returned by list_messages.",
         },
       },
       required: requiredWithAccount(scoped, ["messageId"]),
     },
+    annotations: {
+      title: "Read Email Message",
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
+    },
   },
   {
     name: "send_email",
+    title: "Send Email",
     description:
       "Send an email from the agent mailbox (outbound mail is scanned in real time for spam/phishing).",
     inputSchema: {
@@ -147,13 +206,22 @@ const buildToolList = (scoped: boolean): readonly McpToolDef[] => [
         to: {
           type: "array",
           items: { type: "string" },
-          description: "Recipient email addresses.",
+          description: "Primary recipient email addresses.",
         },
         subject: { type: "string", description: "Email subject line." },
-        text: { type: "string", description: "Plain text body." },
-        html: { type: "string", description: "Optional HTML body." },
-        cc: { type: "array", items: { type: "string" } },
-        bcc: { type: "array", items: { type: "string" } },
+        text: { type: "string", description: "Plain text message body." },
+        html: { type: "string", description: "Optional HTML message body." },
+        cc: {
+          type: "array",
+          items: { type: "string" },
+          description: "Optional carbon-copy (CC) recipient email addresses.",
+        },
+        bcc: {
+          type: "array",
+          items: { type: "string" },
+          description:
+            "Optional blind carbon-copy (BCC) recipient email addresses.",
+        },
         inReplyTo: {
           type: "string",
           description: "Optional Message-ID header for threading replies.",
@@ -165,52 +233,103 @@ const buildToolList = (scoped: boolean): readonly McpToolDef[] => [
       },
       required: requiredWithAccount(scoped, ["to", "subject", "text"]),
     },
+    annotations: {
+      title: "Send Email",
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: true,
+    },
   },
   {
     name: "get_attachment_url",
+    title: "Get Attachment Download URL",
     description: "Get a 1-hour signed download URL for a message attachment.",
     inputSchema: {
       type: "object",
       properties: {
         ...accountIdProp(scoped),
-        messageId: { type: "string" },
-        attachmentId: { type: "string" },
+        messageId: {
+          type: "string",
+          description: "Message ID containing the attachment.",
+        },
+        attachmentId: {
+          type: "string",
+          description: "Attachment ID from get_message metadata.",
+        },
       },
       required: requiredWithAccount(scoped, ["messageId", "attachmentId"]),
+    },
+    annotations: {
+      title: "Get Attachment Download URL",
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
     },
   },
   {
     name: "list_webhooks",
+    title: "List Webhooks",
     description: "List inbound email webhook subscriptions for the mailbox.",
     inputSchema: {
       type: "object",
       properties: { ...accountIdProp(scoped) },
       required: requiredWithAccount(scoped, []),
     },
+    annotations: {
+      title: "List Webhooks",
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
+    },
   },
   {
     name: "create_webhook",
+    title: "Create Inbound Webhook",
     description:
       "Register an HTTPS webhook URL for real-time email.received events.",
     inputSchema: {
       type: "object",
       properties: {
         ...accountIdProp(scoped),
-        url: { type: "string", description: "HTTPS webhook endpoint URL." },
+        url: {
+          type: "string",
+          description: "HTTPS webhook endpoint URL that receives POST events.",
+        },
       },
       required: requiredWithAccount(scoped, ["url"]),
+    },
+    annotations: {
+      title: "Create Inbound Webhook",
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: true,
     },
   },
   {
     name: "delete_webhook",
+    title: "Delete Inbound Webhook",
     description: "Delete a webhook subscription by ID.",
     inputSchema: {
       type: "object",
       properties: {
         ...accountIdProp(scoped),
-        webhookId: { type: "string" },
+        webhookId: {
+          type: "string",
+          description: "Webhook subscription ID from list_webhooks.",
+        },
       },
       required: requiredWithAccount(scoped, ["webhookId"]),
+    },
+    annotations: {
+      title: "Delete Inbound Webhook",
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: true,
+      openWorldHint: false,
     },
   },
 ];
