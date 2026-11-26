@@ -85,14 +85,53 @@ Deno.test("POST /mcp supports Streamable HTTP MCP initialize, tools/list, tools/
       .link({ account: acc1Id }),
   ]);
 
-  const unauthRes = await handleRequest(
+  const unauthInitRes = await handleRequest(
     new Request("https://api.theagentmail.net/mcp", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize" }),
     }),
   );
-  assertEquals(unauthRes.status, 401);
+  assertEquals(unauthInitRes.status, 200);
+
+  const unauthListRes = await handleRequest(
+    new Request("https://api.theagentmail.net/mcp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }),
+    }),
+  );
+  assertEquals(unauthListRes.status, 200);
+  const unauthTools = (await unauthListRes.json()).result.tools.map(
+    (t: { name: string }) => t.name,
+  );
+  assert(unauthTools.includes("send_email"));
+
+  const unauthCallRes = await handleRequest(
+    new Request("https://api.theagentmail.net/mcp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "tools/call",
+        params: { name: "list_messages", arguments: {} },
+      }),
+    }),
+  );
+  assertEquals(unauthCallRes.status, 401);
+
+  const badTokenRes = await handleRequest(
+    new Request("https://api.theagentmail.net/mcp", {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer am_invalid_key",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize" }),
+    }),
+  );
+  assertEquals(badTokenRes.status, 401);
 
   const infoRes = await handleRequest(
     new Request("https://api.theagentmail.net/mcp", {

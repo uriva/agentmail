@@ -8,6 +8,8 @@ import { Privacy } from "./privacy.tsx";
 import { Terms } from "./terms.tsx";
 import { Pricing } from "./pricing.tsx";
 import { Compare } from "./compare.tsx";
+import { GuideMcp } from "./guideMcp.tsx";
+import { SelfHost } from "./selfHost.tsx";
 import { Header } from "./header.tsx";
 import { useAuth } from "./db.ts";
 import "./app.css";
@@ -68,6 +70,8 @@ const App = () => (
           <Route path="/terms" component={Terms} />
           <Route path="/pricing" component={Pricing} />
           <Route path="/compare" component={Compare} />
+          <Route path="/guides/mcp" component={GuideMcp} />
+          <Route path="/self-host" component={SelfHost} />
           <Route default component={NotFound} />
         </Router>
       </main>

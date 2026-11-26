@@ -50,6 +50,7 @@ import type { ApiError } from "./types.ts";
 type AuthType =
   | "accountApiKey"
   | "apiKeyOrUserToken"
+  | "optionalApiKeyOrUserToken"
   | "orgApiKeyOrUserToken"
   | "userToken"
   | "userTokenOptionalOrg"
@@ -305,7 +306,7 @@ const routes: readonly Route[] = [
 
   // MCP (Streamable HTTP JSON-RPC 2.0)
   route("GET", "/mcp", handleMcpInfo, "none"),
-  route("POST", "/mcp", handleMcp, "apiKeyOrUserToken"),
+  route("POST", "/mcp", handleMcp, "optionalApiKeyOrUserToken"),
   route("DELETE", "/mcp", handleMcpDelete, "none"),
 
   // Health
@@ -446,6 +447,32 @@ const resolveAuth = async (
         };
       }
       return { orgId: apiKeyResult.orgId, accountId: null, error: null };
+    }
+    const orgId = await authenticateUserToken(req);
+    return orgId ? { orgId, accountId: null, error: null } : {
+      orgId: null,
+      accountId: null,
+      error: jsonError(
+        req,
+        401,
+        "Invalid or missing credentials",
+        "UNAUTHORIZED",
+      ),
+    };
+  }
+
+  if (authType === "optionalApiKeyOrUserToken") {
+    const authHeader = req.headers.get("authorization");
+    if (!authHeader) {
+      return { orgId: "", accountId: null, error: null };
+    }
+    const apiKeyResult = await authenticateApiKey(req);
+    if (apiKeyResult) {
+      return {
+        orgId: apiKeyResult.orgId,
+        accountId: apiKeyResult.accountId,
+        error: null,
+      };
     }
     const orgId = await authenticateUserToken(req);
     return orgId ? { orgId, accountId: null, error: null } : {

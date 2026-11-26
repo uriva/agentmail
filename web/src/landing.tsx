@@ -605,6 +605,14 @@ deno task dev:web    # UI on :3000`}
             Compare
           </a>
           <span class="text-slate-700">|</span>
+          <a href="/guides/mcp" class="hover:text-white transition-colors">
+            MCP Guide
+          </a>
+          <span class="text-slate-700">|</span>
+          <a href="/self-host" class="hover:text-white transition-colors">
+            Self-Host
+          </a>
+          <span class="text-slate-700">|</span>
           <a
             href="https://theagentmail.net/llms.txt"
             class="hover:text-white transition-colors"

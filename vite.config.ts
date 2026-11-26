@@ -22,6 +22,8 @@ export default defineConfig({
           "/docs",
           "/pricing",
           "/compare",
+          "/guides/mcp",
+          "/self-host",
           "/privacy",
           "/terms",
         ],

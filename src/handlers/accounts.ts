@@ -1,7 +1,7 @@
 import { db, id } from "../db.ts";
 import { getUtcDayStart, planDetails } from "../planData.ts";
 import { withKeyedLock } from "../security.ts";
-import { captureEvent } from "../services/posthog.ts";
+import { captureEvent, trackBackgroundTask } from "../services/posthog.ts";
 import { emailDomain, sendEmail } from "../services/resend.ts";
 import { deleteFile } from "../services/storage.ts";
 import type { ApiResponse, CreateAccountInput } from "../types.ts";
@@ -98,6 +98,42 @@ Created At: ${new Date().toISOString()}`,
       console.error("[notifyOverseer] Failed to send notification email:", err)
     );
 };
+
+const sendTrialWelcomeEmail = (
+  billingEmail: string | undefined,
+  address: string,
+): Promise<unknown> =>
+  Deno.env.get("DENO_ENV") === "test" ||
+    !billingEmail ||
+    billingEmail.endsWith("@example.com")
+    ? Promise.resolve()
+    : sendEmail({
+      from: `AgentMail <support@${emailDomain}>`,
+      to: [billingEmail],
+      subject: `Your agent inbox ${address} is live`,
+      text: `Hi,
+
+Your new AgentMail inbox ${address} is live for 30 days.
+
+Fastest ways to connect your agent:
+
+1. Remote MCP (Claude Code, Cursor, OpenCode — no local install):
+   Generate an account-scoped API key in your dashboard, then run:
+   claude mcp add --transport http agentmail https://api.theagentmail.net/mcp --header "Authorization: Bearer am_..."
+
+2. Direct REST / Coding Agent:
+   Hand your agent its scoped API key and https://theagentmail.net/llms.txt so it can send, read, and verify signed webhooks immediately.
+
+Note on OTP & signup verification emails:
+Free trial mailboxes include normal send/receive and webhooks, while inbound signup/OTP verification emails unlock immediately when you add a $5 prepaid deposit (5 mailbox-months, never expires, 1,000 sends & receives/mo):
+https://theagentmail.net/app
+
+Reply directly to this email if you run into anything.
+
+AgentMail (https://theagentmail.net)`,
+    }).catch((err) =>
+      console.error("[sendTrialWelcomeEmail] Failed to send welcome email:", err)
+    );
 
 const isReservedOrSuspicious = (
   localPart: string,
@@ -245,6 +281,11 @@ const createAccount = async (
 
     captureEvent(orgId, "account_created", { accountId, isTrial });
     await notifyOverseer(address, input.displayName, orgId);
+    if (isTrial) {
+      trackBackgroundTask(
+        sendTrialWelcomeEmail(org.billingUser?.email, address),
+      );
+    }
 
     return Response.json(
       {

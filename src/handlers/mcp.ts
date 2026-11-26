@@ -389,9 +389,21 @@ const processRpcMessage = async (
     });
   }
   if (rpc.method === "tools/list") {
-    return jsonRpcResultBody(id, { tools: buildToolList(Boolean(accountId)) });
+    return jsonRpcResultBody(id, {
+      tools: buildToolList(Boolean(accountId) || !orgId),
+    });
   }
   if (rpc.method === "tools/call") {
+    if (!orgId) {
+      return {
+        __unauthorized: true,
+        ...jsonRpcErrorBody(
+          id,
+          -32001,
+          "Authentication required: pass Authorization: Bearer am_...",
+        ),
+      };
+    }
     const params = rpc.params ?? {};
     const name = str(params.name);
     const args = params.arguments && typeof params.arguments === "object"
@@ -472,7 +484,15 @@ export const handleMcp = async (
   }
 
   const result = await processRpcMessage(payload, orgId, accountId);
-  return result === null
-    ? new Response(null, { status: 202 })
-    : Response.json(result);
+  if (result === null) {
+    return new Response(null, { status: 202 });
+  }
+  if ("__unauthorized" in result) {
+    const { __unauthorized: _, ...body } = result;
+    return Response.json(body, {
+      status: 401,
+      headers: { "WWW-Authenticate": 'Bearer realm="agentmail"' },
+    });
+  }
+  return Response.json(result);
 };
