@@ -5,3 +5,6 @@ gcp-sa-key.json
 web/dist/
 dist/
 .wrangler/
+
+__pycache__/
+*.pyc
