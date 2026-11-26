@@ -21,7 +21,7 @@ import {
   syncCheckout,
 } from "./handlers/billing.ts";
 import { handleInbound } from "./handlers/inbound.ts";
-import { handleMcp } from "./handlers/mcp.ts";
+import { handleMcp, handleMcpDelete, handleMcpInfo } from "./handlers/mcp.ts";
 import { inviteMember, listMembers, removeMember } from "./handlers/members.ts";
 import { getMessage, listMessages, sendMessage } from "./handlers/messages.ts";
 import {
@@ -304,7 +304,9 @@ const routes: readonly Route[] = [
   ),
 
   // MCP (Streamable HTTP JSON-RPC 2.0)
+  route("GET", "/mcp", handleMcpInfo, "none"),
   route("POST", "/mcp", handleMcp, "apiKeyOrUserToken"),
+  route("DELETE", "/mcp", handleMcpDelete, "none"),
 
   // Health
   route(
@@ -351,7 +353,9 @@ const buildCorsHeaders = (
     ...baseSecurityHeaders,
     "Access-Control-Allow-Origin": allowOrigin,
     "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Org-Id",
+    "Access-Control-Allow-Headers":
+      "Content-Type, Authorization, X-Org-Id, Mcp-Session-Id, MCP-Protocol-Version",
+    "Access-Control-Expose-Headers": "Mcp-Session-Id",
     ...(isDashboardRoute ? { Vary: "Origin" } : {}),
   };
 };

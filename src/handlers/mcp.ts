@@ -19,19 +19,35 @@ type McpToolDef = {
   readonly inputSchema: Record<string, unknown>;
 };
 
-const mcpProtocolVersion = "2025-03-26";
+const supportedProtocolVersions = new Set([
+  "2025-11-25",
+  "2025-06-18",
+  "2025-03-26",
+  "2024-11-05",
+]);
+const defaultProtocolVersion = "2025-03-26";
 const serverInfo = { name: "agentmail", version: "0.2.0" };
 
-const jsonRpcResult = (id: JsonRpcId, result: unknown): Response =>
-  Response.json({ jsonrpc: "2.0", id, result });
+const negotiateProtocolVersion = (params?: Record<string, unknown>): string => {
+  const requested = typeof params?.protocolVersion === "string"
+    ? params.protocolVersion
+    : "";
+  return supportedProtocolVersions.has(requested)
+    ? requested
+    : defaultProtocolVersion;
+};
 
-const jsonRpcError = (
-  id: JsonRpcId,
-  code: number,
-  message: string,
-  status = 200,
-): Response =>
-  Response.json({ jsonrpc: "2.0", id, error: { code, message } }, { status });
+const jsonRpcResultBody = (id: JsonRpcId, result: unknown) => ({
+  jsonrpc: "2.0",
+  id,
+  result,
+});
+
+const jsonRpcErrorBody = (id: JsonRpcId, code: number, message: string) => ({
+  jsonrpc: "2.0",
+  id,
+  error: { code, message },
+});
 
 const accountIdProp = (scoped: boolean): Record<string, unknown> =>
   scoped
@@ -55,7 +71,8 @@ const buildToolList = (scoped: boolean): readonly McpToolDef[] => [
     : [
       {
         name: "list_mailboxes",
-        description: "List all @theagentmail.net mailboxes in your organization.",
+        description:
+          "List all @theagentmail.net mailboxes in your organization.",
         inputSchema: { type: "object", properties: {} },
       },
       {
@@ -79,7 +96,8 @@ const buildToolList = (scoped: boolean): readonly McpToolDef[] => [
       },
       {
         name: "get_balance",
-        description: "Check your organization's prepaid AgentMail wallet balance.",
+        description:
+          "Check your organization's prepaid AgentMail wallet balance.",
         inputSchema: { type: "object", properties: {} },
       },
     ]),
@@ -110,7 +128,10 @@ const buildToolList = (scoped: boolean): readonly McpToolDef[] => [
       type: "object",
       properties: {
         ...accountIdProp(scoped),
-        messageId: { type: "string", description: "Message ID from list_messages." },
+        messageId: {
+          type: "string",
+          description: "Message ID from list_messages.",
+        },
       },
       required: requiredWithAccount(scoped, ["messageId"]),
     },
@@ -169,7 +190,8 @@ const buildToolList = (scoped: boolean): readonly McpToolDef[] => [
   },
   {
     name: "create_webhook",
-    description: "Register an HTTPS webhook URL for real-time email.received events.",
+    description:
+      "Register an HTTPS webhook URL for real-time email.received events.",
     inputSchema: {
       type: "object",
       properties: {
@@ -340,49 +362,117 @@ const toToolResult = async (res: Response) => {
   };
 };
 
+const processRpcMessage = async (
+  rpc: JsonRpcRequest,
+  orgId: string,
+  accountId?: string,
+): Promise<Record<string, unknown> | null> => {
+  if (!rpc || rpc.jsonrpc !== "2.0" || typeof rpc.method !== "string") {
+    return jsonRpcErrorBody(null, -32600, "Invalid JSON-RPC request");
+  }
+
+  const hasId = Object.prototype.hasOwnProperty.call(rpc, "id") &&
+    rpc.id !== undefined;
+  const id = rpc.id ?? null;
+
+  if (!hasId || rpc.method.startsWith("notifications/")) {
+    return null;
+  }
+  if (rpc.method === "ping") {
+    return jsonRpcResultBody(id, {});
+  }
+  if (rpc.method === "initialize") {
+    return jsonRpcResultBody(id, {
+      protocolVersion: negotiateProtocolVersion(rpc.params),
+      capabilities: { tools: { listChanged: false } },
+      serverInfo,
+    });
+  }
+  if (rpc.method === "tools/list") {
+    return jsonRpcResultBody(id, { tools: buildToolList(Boolean(accountId)) });
+  }
+  if (rpc.method === "tools/call") {
+    const params = rpc.params ?? {};
+    const name = str(params.name);
+    const args = params.arguments && typeof params.arguments === "object"
+      ? (params.arguments as Record<string, unknown>)
+      : {};
+    const pending = callToolHandler(name, args, orgId, accountId);
+    if (!pending) {
+      return jsonRpcErrorBody(id, -32601, `Unknown tool: ${name}`);
+    }
+    const res = await pending;
+    return jsonRpcResultBody(id, await toToolResult(res));
+  }
+
+  return jsonRpcErrorBody(id, -32601, `Method not found: ${rpc.method}`);
+};
+
+export const handleMcpInfo = (req: Request): Promise<Response> => {
+  const accept = (req.headers.get("accept") ?? "").toLowerCase();
+  if (accept.includes("text/event-stream")) {
+    return Promise.resolve(
+      new Response(null, {
+        status: 405,
+        headers: { Allow: "POST, DELETE, OPTIONS" },
+      }),
+    );
+  }
+  return Promise.resolve(
+    Response.json({
+      name: serverInfo.name,
+      version: serverInfo.version,
+      transport: "streamable-http",
+      endpoint: "https://api.theagentmail.net/mcp",
+      authentication: "Authorization: Bearer am_...",
+      docs: "https://theagentmail.net/docs#mcp",
+      llmsTxt: "https://theagentmail.net/llms.txt",
+      quickStart:
+        'claude mcp add --transport http agentmail https://api.theagentmail.net/mcp --header "Authorization: Bearer am_..."',
+    }),
+  );
+};
+
+export const handleMcpDelete = (): Promise<Response> =>
+  Promise.resolve(new Response(null, { status: 204 }));
+
 export const handleMcp = async (
   req: Request,
   _params: Record<string, string>,
   orgId: string,
   accountId?: string,
 ): Promise<Response> => {
-  const rpc = (await req.json().catch(() => null)) as JsonRpcRequest | null;
-  if (!rpc || rpc.jsonrpc !== "2.0" || typeof rpc.method !== "string") {
-    return jsonRpcError(null, -32600, "Invalid JSON-RPC request", 400);
+  const payload = (await req.json().catch(() => null)) as
+    | JsonRpcRequest
+    | JsonRpcRequest[]
+    | null;
+
+  if (!payload || typeof payload !== "object") {
+    return Response.json(
+      jsonRpcErrorBody(null, -32700, "Parse error"),
+      { status: 400 },
+    );
   }
 
-  const id = rpc.id ?? null;
-
-  if (rpc.method === "notifications/initialized") {
-    return new Response(null, { status: 202 });
-  }
-  if (rpc.method === "ping") {
-    return jsonRpcResult(id, {});
-  }
-  if (rpc.method === "initialize") {
-    return jsonRpcResult(id, {
-      protocolVersion: mcpProtocolVersion,
-      capabilities: { tools: {} },
-      serverInfo,
-    });
-  }
-  if (rpc.method === "tools/list") {
-    return jsonRpcResult(id, { tools: buildToolList(Boolean(accountId)) });
-  }
-  if (rpc.method === "tools/call") {
-    const params = rpc.params ?? {};
-    const name = str(params.name);
-    const args =
-      params.arguments && typeof params.arguments === "object"
-        ? (params.arguments as Record<string, unknown>)
-        : {};
-    const pending = callToolHandler(name, args, orgId, accountId);
-    if (!pending) {
-      return jsonRpcError(id, -32601, `Unknown tool: ${name}`);
+  if (Array.isArray(payload)) {
+    if (payload.length === 0) {
+      return Response.json(
+        jsonRpcErrorBody(null, -32600, "Empty batch"),
+        { status: 400 },
+      );
     }
-    const res = await pending;
-    return jsonRpcResult(id, await toToolResult(res));
+    const results = (
+      await Promise.all(
+        payload.map((msg) => processRpcMessage(msg, orgId, accountId)),
+      )
+    ).filter((r): r is Record<string, unknown> => r !== null);
+    return results.length === 0
+      ? new Response(null, { status: 202 })
+      : Response.json(results);
   }
 
-  return jsonRpcError(id, -32601, `Method not found: ${rpc.method}`);
+  const result = await processRpcMessage(payload, orgId, accountId);
+  return result === null
+    ? new Response(null, { status: 202 })
+    : Response.json(result);
 };

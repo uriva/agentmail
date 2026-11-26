@@ -94,14 +94,45 @@ Deno.test("POST /mcp supports Streamable HTTP MCP initialize, tools/list, tools/
   );
   assertEquals(unauthRes.status, 401);
 
+  const infoRes = await handleRequest(
+    new Request("https://api.theagentmail.net/mcp", {
+      method: "GET",
+      headers: { Accept: "text/html,application/json" },
+    }),
+  );
+  assertEquals(infoRes.status, 200);
+  const infoJson = await infoRes.json();
+  assertEquals(infoJson.transport, "streamable-http");
+
+  const sseProbeRes = await handleRequest(
+    new Request("https://api.theagentmail.net/mcp", {
+      method: "GET",
+      headers: { Accept: "text/event-stream" },
+    }),
+  );
+  assertEquals(sseProbeRes.status, 405);
+
+  const deleteRes = await handleRequest(
+    new Request("https://api.theagentmail.net/mcp", { method: "DELETE" }),
+  );
+  assertEquals(deleteRes.status, 204);
+
   const initRes = await mcpPost(acc1Key, {
     jsonrpc: "2.0",
     id: 1,
     method: "initialize",
+    params: { protocolVersion: "2025-06-18" },
   });
   assertEquals(initRes.status, 200);
   const initJson = await initRes.json();
   assertEquals(initJson.result.serverInfo.name, "agentmail");
+  assertEquals(initJson.result.protocolVersion, "2025-06-18");
+
+  const notifRes = await mcpPost(acc1Key, {
+    jsonrpc: "2.0",
+    method: "notifications/initialized",
+  });
+  assertEquals(notifRes.status, 202);
 
   const scopedToolsRes = await mcpPost(acc1Key, {
     jsonrpc: "2.0",
