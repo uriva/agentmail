@@ -5,9 +5,13 @@ import { buildEmailIframeSrcDoc } from "./sanitizeHtml.ts";
 export const AccountMessagesList = ({
   accountId,
   accountAddress,
+  onTopup,
+  topupLoading,
 }: {
   accountId: string;
   accountAddress: string;
+  onTopup?: () => void;
+  topupLoading?: boolean;
 }) => {
   const [expandedMessageId, setExpandedMessageId] = useState<string | null>(
     null,
@@ -182,9 +186,23 @@ export const AccountMessagesList = ({
                       <div class="border-t border-slate-700 pt-3">
                         {isBlocked
                           ? (
-                            <div class="p-3 rounded-lg bg-amber-950/40 border border-amber-500/30 text-amber-200 text-sm">
-                              {msg.bodyText ||
-                                "Verification, OTP, and account activation emails are blocked on free trial mailboxes. Top up $5 in your dashboard to unlock them."}
+                            <div class="p-3 rounded-lg bg-amber-950/40 border border-amber-500/30 text-amber-200 text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                              <span>
+                                {msg.bodyText ||
+                                  "Verification, OTP, and account activation emails are blocked on free trial mailboxes. Top up $5 in your dashboard to unlock them."}
+                              </span>
+                              {onTopup && (
+                                <button
+                                  type="button"
+                                  onClick={onTopup}
+                                  disabled={topupLoading}
+                                  class="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 text-white text-xs font-medium rounded-lg transition-colors flex-shrink-0"
+                                >
+                                  {topupLoading
+                                    ? "Opening Stripe..."
+                                    : "Unlock OTP emails ($5.00) →"}
+                                </button>
+                              )}
                             </div>
                           )
                           : isSpam

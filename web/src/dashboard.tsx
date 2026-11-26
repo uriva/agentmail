@@ -13,6 +13,23 @@ const apiHeaders = (userToken: string, orgId: string) => ({
   "X-Org-Id": orgId,
 });
 
+const requestTopupCheckoutUrl = async (userToken: string, orgId: string) => {
+  const res = await fetch(`${API_BASE}/v1/billing/checkout`, {
+    method: "POST",
+    headers: apiHeaders(userToken, orgId),
+    body: JSON.stringify({
+      successUrl:
+        `${window.location.origin}/app?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancelUrl: `${window.location.origin}/app`,
+    }),
+  });
+  const json = await res.json();
+  if (!res.ok || !json.data?.checkoutUrl) {
+    throw new Error(json.error || "Failed to start checkout");
+  }
+  return json.data.checkoutUrl as string;
+};
+
 const Spinner = ({ class: className = "w-4 h-4" }: { class?: string }) => (
   <svg
     class={`animate-spin ${className}`}
@@ -146,20 +163,7 @@ const BillingSection = ({
   const handleTopup = async () => {
     setIsTopupLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/v1/billing/checkout`, {
-        method: "POST",
-        headers: apiHeaders(userToken, orgId),
-        body: JSON.stringify({
-          successUrl:
-            `${window.location.origin}/app?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
-          cancelUrl: `${window.location.origin}/app`,
-        }),
-      });
-      const json = await res.json();
-      if (!res.ok || !json.data?.checkoutUrl) {
-        throw new Error(json.error || "Failed to start checkout");
-      }
-      window.location.href = json.data.checkoutUrl;
+      window.location.href = await requestTopupCheckoutUrl(userToken, orgId);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Checkout failed");
       setIsTopupLoading(false);
@@ -373,6 +377,17 @@ const AccountsList = ({
   const [messagesFor, setMessagesFor] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [topupLoading, setTopupLoading] = useState(false);
+
+  const handleQuickTopup = async () => {
+    setTopupLoading(true);
+    try {
+      window.location.href = await requestTopupCheckoutUrl(userToken, orgId);
+    } catch (e: unknown) {
+      setCreateError(e instanceof Error ? e.message : "Checkout failed");
+      setTopupLoading(false);
+    }
+  };
 
   const handleDeleteAccount = async (accountId: string) => {
     setDeletingId(accountId);
@@ -527,8 +542,21 @@ const AccountsList = ({
           ? "🎉 1 mailbox free for 30 days (20 sends & 50 receives/day, up to 100 sends & 200 receives/mo). Additional mailboxes cost $1.00/month."
           : "Mailboxes cost $1.00/month from your prepaid balance (includes 1,000 sends & 1,000 receives/mo, 200/day cap)."}
       </p>
-      {createError && <div class="mb-4 text-red-400 text-sm">{createError}
-      </div>}
+      {createError && (
+        <div class="mb-4 text-red-400 text-sm flex items-center justify-between gap-3 flex-wrap">
+          <span>{createError}</span>
+          {!isAdmin && /balance|top up/i.test(createError) && (
+            <button
+              type="button"
+              onClick={handleQuickTopup}
+              disabled={topupLoading}
+              class="px-3 py-1 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 text-white text-xs font-medium rounded-lg transition-colors flex-shrink-0"
+            >
+              {topupLoading ? "Opening Stripe..." : "Add $5.00 Balance →"}
+            </button>
+          )}
+        </div>
+      )}
 
       {accounts.length === 0
         ? (
@@ -587,8 +615,22 @@ const AccountsList = ({
                           )}
                           {account.isFrozen
                             ? (
-                              <span class="text-xs px-2 py-0.5 bg-red-900/60 text-red-300 rounded border border-red-700">
-                                Paused (Balance Empty)
+                              <span class="inline-flex items-center gap-2">
+                                <span class="text-xs px-2 py-0.5 bg-red-900/60 text-red-300 rounded border border-red-700">
+                                  Paused (Balance Empty)
+                                </span>
+                                {!isAdmin && (
+                                  <button
+                                    type="button"
+                                    onClick={handleQuickTopup}
+                                    disabled={topupLoading}
+                                    class="text-xs px-2 py-0.5 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 text-white font-medium rounded transition-colors"
+                                  >
+                                    {topupLoading
+                                      ? "Opening..."
+                                      : "Unfreeze ($5.00) →"}
+                                  </button>
+                                )}
                               </span>
                             )
                             : account.expiresAt && account.expiresAt > 0
@@ -779,6 +821,8 @@ const AccountsList = ({
                       <AccountMessagesList
                         accountId={account.id}
                         accountAddress={account.address}
+                        onTopup={isAdmin ? undefined : handleQuickTopup}
+                        topupLoading={topupLoading}
                       />
                     )}
                   </div>
@@ -1047,7 +1091,7 @@ const AccountApiKey = ({
           </div>
           <div class="pt-1 border-t border-emerald-800/60 flex items-center justify-between gap-2 flex-wrap">
             <span class="text-xs text-slate-300">
-              Connect Claude Code, OpenCode, Cursor, or OpenClaw:
+              Connect Claude Code, Hermes Agent, OpenClaw, Cursor, or OpenCode:
             </span>
             <div class="flex items-center gap-2">
               <button
