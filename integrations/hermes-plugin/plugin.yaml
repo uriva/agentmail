@@ -1,0 +1,37 @@
+name: theagentmail
+label: AgentMail (theagentmail.net)
+version: 0.1.0
+manifest_version: 2
+api_version: 1
+author: uriva
+license: MIT
+homepage: https://theagentmail.net
+tags: [email, inbox, webhooks, agentmail]
+description: >
+  Give a Hermes agent its own @theagentmail.net (or self-hosted AgentMail)
+  email inbox using a scoped per-mailbox API key. Read mailbox status, list
+  and read messages, send email with threading headers, fetch signed attachment
+  URLs, and manage real-time inbound HTTPS webhooks. Pure Python standard
+  library, zero external dependencies, no background processes, no telemetry.
+requires_hermes: ">=0.22.6"
+provides_tools:
+  - theagentmail_get_mailbox
+  - theagentmail_list_messages
+  - theagentmail_get_message
+  - theagentmail_send_email
+  - theagentmail_get_attachment_url
+  - theagentmail_list_webhooks
+  - theagentmail_create_webhook
+  - theagentmail_delete_webhook
+provides_hooks: []
+requires_env:
+  - name: AGENTMAIL_API_KEY
+    description: "Account-scoped (am_...) or org-scoped (am_org_...) AgentMail API key from https://theagentmail.net/app"
+    url: "https://theagentmail.net/app"
+    secret: true
+config_schema:
+  api_url:
+    type: string
+    env: AGENTMAIL_API_URL
+    label: "API Base URL"
+    description: "Optional AgentMail API base URL for self-hosted deployments. Defaults to https://api.theagentmail.net."

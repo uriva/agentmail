@@ -1,5 +1,7 @@
 # AgentMail (`theagentmail.net`)
 
+[![mcptry](https://mcptry.com/badge/net.theagentmail/agentmail)](https://mcptry.com/servers/net.theagentmail/agentmail)
+
 Open-source (MIT) email infrastructure for AI agents. Give every agent its own
 `@theagentmail.net` mailbox with sending, receiving, real-time webhooks,
 attachments, and a real-time AI spam/phishing guard — **$1/month per mailbox**
