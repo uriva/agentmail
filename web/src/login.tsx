@@ -50,16 +50,18 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
 
   const sendCode = async () => {
-    if (!isAllowedEmail(email)) {
+    const trimmedEmail = email.trim();
+    if (!isAllowedEmail(trimmedEmail)) {
       setError(
         "Please use a personal email (Gmail, Outlook, Yahoo, ProtonMail, iCloud, etc.)",
       );
       return;
     }
+    setEmail(trimmedEmail);
     setLoading(true);
     setError("");
     try {
-      await auth.sendMagicCode({ email });
+      await auth.sendMagicCode({ email: trimmedEmail });
       setStep("code");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to send code");
@@ -71,7 +73,10 @@ const Login = () => {
     setLoading(true);
     setError("");
     try {
-      await auth.signInWithMagicCode({ email, code });
+      await auth.signInWithMagicCode({
+        email: email.trim(),
+        code: code.trim(),
+      });
       window.location.href = "/app";
     } catch (e) {
       setError(e instanceof Error ? e.message : "Invalid code");
