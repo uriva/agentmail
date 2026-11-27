@@ -19,6 +19,8 @@ const getDb = (): ClientDb =>
       appId: INSTANT_APP_ID || "00000000-0000-0000-0000-000000000000",
       schema,
       devtool: false,
+      apiURI: "https://api.instantdb.uriv.me",
+      websocketURI: "wss://api.instantdb.uriv.me/runtime/session",
     }));
 
 const transientPatterns = [

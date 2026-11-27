@@ -33,6 +33,7 @@ jobs:
       - name: Push InstantDB permissions
         run: npx instant-cli@latest push perms --app "$INSTANT_APP_ID" --token "$INSTANT_CLI_AUTH_TOKEN" --yes
         env:
+          INSTANT_CLI_API_URI: https://api.instantdb.uriv.me
           INSTANT_APP_ID: ${{ secrets.INSTANT_APP_ID }}
           INSTANT_CLI_AUTH_TOKEN: ${{ secrets.INSTANT_CLI_AUTH_TOKEN }}
 

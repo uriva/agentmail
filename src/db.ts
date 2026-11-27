@@ -16,7 +16,12 @@ const createDbInstance = (): DbInstance => {
       "INSTANT_APP_ID and INSTANT_ADMIN_TOKEN must be configured",
     );
   }
-  return init({ appId, adminToken, schema });
+  return init({
+    appId,
+    adminToken,
+    schema,
+    apiURI: "https://api.instantdb.uriv.me",
+  });
 };
 
 const getDb = (): DbInstance => dbCell[0] ?? (dbCell[0] = createDbInstance());
