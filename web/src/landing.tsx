@@ -607,6 +607,10 @@ deno task dev:web    # UI on :3000`}
             MCP Guide
           </a>
           <span class="text-slate-700">|</span>
+          <a href="/guides/python" class="hover:text-white transition-colors">
+            Python / LangGraph
+          </a>
+          <span class="text-slate-700">|</span>
           <a
             href="/blog/shared-email-domain-for-ai-agents"
             class="hover:text-white transition-colors"

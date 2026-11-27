@@ -40,6 +40,11 @@ const routeMeta: Record<string, RouteMeta> = {
     description:
       "Connect Hermes Agent or OpenClaw to an isolated @theagentmail.net mailbox via remote MCP, AgentSkill, or native plugin.",
   },
+  "/guides/python": {
+    title: "Give a Python, LangGraph, or CrewAI Agent an Email Inbox — AgentMail",
+    description:
+      "Send, read, thread replies, and handle HMAC-signed webhooks in Python using plain requests, LangGraph tools, or FastAPI. MIT open source, $1/mo.",
+  },
   "/self-host": {
     title: "Self-Host Open-Source Email for AI Agents — AgentMail (MIT)",
     description:

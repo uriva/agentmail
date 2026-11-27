@@ -24,6 +24,7 @@ export default defineConfig({
           "/compare",
           "/guides/mcp",
           "/guides/hermes-openclaw",
+          "/guides/python",
           "/self-host",
           "/blog/shared-email-domain-for-ai-agents",
           "/privacy",

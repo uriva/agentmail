@@ -10,6 +10,7 @@ import { Pricing } from "./pricing.tsx";
 import { Compare } from "./compare.tsx";
 import { GuideMcp } from "./guideMcp.tsx";
 import { GuideHermesOpenclaw } from "./guideHermesOpenclaw.tsx";
+import { GuidePython } from "./guidePython.tsx";
 import { SelfHost } from "./selfHost.tsx";
 import { BlogSharedDomain } from "./blogSharedDomain.tsx";
 import { Header } from "./header.tsx";
@@ -74,6 +75,7 @@ const App = () => (
           <Route path="/compare" component={Compare} />
           <Route path="/guides/mcp" component={GuideMcp} />
           <Route path="/guides/hermes-openclaw" component={GuideHermesOpenclaw} />
+          <Route path="/guides/python" component={GuidePython} />
           <Route path="/self-host" component={SelfHost} />
           <Route
             path="/blog/shared-email-domain-for-ai-agents"
