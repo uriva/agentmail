@@ -1,38 +1,72 @@
 import { useState } from "preact/hooks";
 import { auth, useAuth } from "./db.ts";
 
-const ALLOWED_DOMAINS = new Set([
-  "gmail.com",
-  "googlemail.com",
-  "outlook.com",
-  "hotmail.com",
-  "live.com",
-  "yahoo.com",
-  "ymail.com",
-  "protonmail.com",
-  "proton.me",
-  "icloud.com",
-  "me.com",
-  "mac.com",
-  "aol.com",
-  "zoho.com",
-  "fastmail.com",
-  "hey.com",
-  "pm.me",
-  "tutanota.com",
-  "tuta.com",
-  "gmx.com",
-  "gmx.net",
-  "mail.com",
-  "yandex.com",
-  "qq.com",
-  "163.com",
-  "126.com",
+const BLOCKED_DOMAINS = new Set([
+  "theagentmail.net",
+  "mailinator.com",
+  "guerrillamail.com",
+  "guerrillamail.net",
+  "guerrillamail.org",
+  "guerrillamail.de",
+  "guerrillamail.biz",
+  "grr.la",
+  "sharklasers.com",
+  "spam4.me",
+  "pokemail.net",
+  "yopmail.com",
+  "yopmail.fr",
+  "yopmail.net",
+  "10minutemail.com",
+  "10minutemail.net",
+  "temp-mail.org",
+  "temp-mail.io",
+  "tempmail.com",
+  "tempmail.net",
+  "tempmailo.com",
+  "throwaway.email",
+  "throwawaymail.com",
+  "trashmail.com",
+  "trashmail.net",
+  "trashmail.me",
+  "dispostable.com",
+  "maildrop.cc",
+  "getnada.com",
+  "nada.email",
+  "mohmal.com",
+  "mailnesia.com",
+  "burnermail.io",
+  "mintemail.com",
+  "fakeinbox.com",
+  "emailondeck.com",
+  "getairmail.com",
+  "inboxbear.com",
+  "moakt.com",
+  "mytemp.email",
+  "tempr.email",
+  "discard.email",
+  "tempail.com",
+  "harakirimail.com",
+  "dropmail.me",
+  "mailsac.com",
+  "example.com",
+  "example.org",
+  "example.net",
 ]);
 
-const isAllowedEmail = (email: string): boolean => {
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+const validateLoginEmail = (email: string): string | null => {
+  if (!emailPattern.test(email)) {
+    return "Please enter a valid email address";
+  }
   const domain = email.split("@")[1]?.toLowerCase() ?? "";
-  return ALLOWED_DOMAINS.has(domain);
+  if (domain === "theagentmail.net" || domain.endsWith(".theagentmail.net")) {
+    return "Please sign in with an external email, not an @theagentmail.net address";
+  }
+  if (BLOCKED_DOMAINS.has(domain)) {
+    return "Disposable email addresses aren't supported. Use your work or personal email.";
+  }
+  return null;
 };
 
 const Login = () => {
@@ -51,10 +85,9 @@ const Login = () => {
 
   const sendCode = async () => {
     const trimmedEmail = email.trim();
-    if (!isAllowedEmail(trimmedEmail)) {
-      setError(
-        "Please use a personal email (Gmail, Outlook, Yahoo, ProtonMail, iCloud, etc.)",
-      );
+    const validationError = validateLoginEmail(trimmedEmail);
+    if (validationError) {
+      setError(validationError);
       return;
     }
     setEmail(trimmedEmail);
@@ -106,13 +139,13 @@ const Login = () => {
                 type="email"
                 value={email}
                 onInput={(e) => setEmail((e.target as HTMLInputElement).value)}
-                placeholder="you@gmail.com"
+                placeholder="you@company.com"
                 class="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500 mb-2"
                 onKeyDown={(e) => e.key === "Enter" && sendCode()}
               />
               <p class="text-xs text-slate-500 mb-4">
-                Use a personal email (Gmail, Outlook, Proton, iCloud, etc.) —
-                helps keep @theagentmail.net spam-free.
+                Work or personal email (disposable burner domains aren't
+                supported).
               </p>
               <button
                 onClick={sendCode}
