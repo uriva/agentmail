@@ -24,7 +24,7 @@ if (typeof window !== "undefined") {
     import("posthog-js").then(({ default: posthog }) => {
       posthog.init(posthogKey, {
         api_host: "https://us.i.posthog.com",
-        capture_pageview: true,
+        capture_pageview: "history_change",
         capture_pageleave: true,
         autocapture: false,
         disable_session_recording: true,
