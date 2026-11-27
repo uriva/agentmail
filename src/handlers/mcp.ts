@@ -285,53 +285,59 @@ const buildToolList = (scoped: boolean): readonly McpToolDef[] => [
       openWorldHint: false,
     },
   },
-  {
-    name: "create_webhook",
-    title: "Create Inbound Webhook",
-    description:
-      "Register an HTTPS webhook URL for real-time email.received events.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        ...accountIdProp(scoped),
-        url: {
-          type: "string",
-          description: "HTTPS webhook endpoint URL that receives POST events.",
+  ...(scoped
+    ? []
+    : [
+      {
+        name: "create_webhook",
+        title: "Create Inbound Webhook",
+        description:
+          "Register an HTTPS webhook URL for real-time email.received events (org-scoped key required to prevent prompt-injected inbox forwarding).",
+        inputSchema: {
+          type: "object",
+          properties: {
+            ...accountIdProp(false),
+            url: {
+              type: "string",
+              description:
+                "HTTPS webhook endpoint URL that receives POST events.",
+            },
+          },
+          required: requiredWithAccount(false, ["url"]),
+        },
+        annotations: {
+          title: "Create Inbound Webhook",
+          readOnlyHint: false,
+          destructiveHint: false,
+          idempotentHint: false,
+          openWorldHint: true,
         },
       },
-      required: requiredWithAccount(scoped, ["url"]),
-    },
-    annotations: {
-      title: "Create Inbound Webhook",
-      readOnlyHint: false,
-      destructiveHint: false,
-      idempotentHint: false,
-      openWorldHint: true,
-    },
-  },
-  {
-    name: "delete_webhook",
-    title: "Delete Inbound Webhook",
-    description: "Delete a webhook subscription by ID.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        ...accountIdProp(scoped),
-        webhookId: {
-          type: "string",
-          description: "Webhook subscription ID from list_webhooks.",
+      {
+        name: "delete_webhook",
+        title: "Delete Inbound Webhook",
+        description:
+          "Delete a webhook subscription by ID (org-scoped key required).",
+        inputSchema: {
+          type: "object",
+          properties: {
+            ...accountIdProp(false),
+            webhookId: {
+              type: "string",
+              description: "Webhook subscription ID from list_webhooks.",
+            },
+          },
+          required: requiredWithAccount(false, ["webhookId"]),
+        },
+        annotations: {
+          title: "Delete Inbound Webhook",
+          readOnlyHint: false,
+          destructiveHint: true,
+          idempotentHint: true,
+          openWorldHint: false,
         },
       },
-      required: requiredWithAccount(scoped, ["webhookId"]),
-    },
-    annotations: {
-      title: "Delete Inbound Webhook",
-      readOnlyHint: false,
-      destructiveHint: true,
-      idempotentHint: true,
-      openWorldHint: false,
-    },
-  },
+    ]),
 ];
 
 const jsonReq = (method: string, body?: unknown): Request =>
@@ -457,18 +463,40 @@ const callToolHandler = (
     return listWebhooks(jsonReq("GET"), { accountId }, orgId);
   }
   if (name === "create_webhook") {
-    return createWebhook(
-      jsonReq("POST", { url: args.url }),
-      { accountId },
-      orgId,
-    );
+    return isOrg
+      ? createWebhook(
+        jsonReq("POST", { url: args.url }),
+        { accountId },
+        orgId,
+      )
+      : Promise.resolve(
+        Response.json(
+          {
+            error:
+              "Org-scoped API key or dashboard required to create webhooks over MCP",
+            code: "FORBIDDEN",
+          },
+          { status: 403 },
+        ),
+      );
   }
   if (name === "delete_webhook") {
-    return deleteWebhook(
-      jsonReq("DELETE"),
-      { accountId, webhookId: str(args.webhookId) },
-      orgId,
-    );
+    return isOrg
+      ? deleteWebhook(
+        jsonReq("DELETE"),
+        { accountId, webhookId: str(args.webhookId) },
+        orgId,
+      )
+      : Promise.resolve(
+        Response.json(
+          {
+            error:
+              "Org-scoped API key or dashboard required to delete webhooks over MCP",
+            code: "FORBIDDEN",
+          },
+          { status: 403 },
+        ),
+      );
   }
   return null;
 };

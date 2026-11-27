@@ -52,7 +52,7 @@ MCP JSON config:
 }
 ```
 
-Tools exposed for account-scoped keys: `get_mailbox`, `list_messages`, `get_message`, `send_email`, `get_attachment_url`, `list_webhooks`, `create_webhook`, `delete_webhook`. Org-scoped keys also expose `list_mailboxes`, `create_mailbox`, and `get_balance`.
+Tools exposed for account-scoped keys: `get_mailbox`, `list_messages`, `get_message`, `send_email`, `get_attachment_url`, `list_webhooks`. Org-scoped keys also expose `list_mailboxes`, `create_mailbox`, `get_balance`, `create_webhook`, and `delete_webhook` (webhook writes are excluded from account-scoped MCP keys to prevent prompt-injected persistent inbox forwarding).
 
 ## Quickstart (REST API)
 

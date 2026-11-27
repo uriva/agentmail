@@ -183,7 +183,10 @@ Deno.test("POST /mcp supports Streamable HTTP MCP initialize, tools/list, tools/
   );
   assert(scopedTools.includes("send_email"));
   assert(scopedTools.includes("list_messages"));
+  assert(scopedTools.includes("list_webhooks"));
   assert(!scopedTools.includes("list_mailboxes"));
+  assert(!scopedTools.includes("create_webhook"));
+  assert(!scopedTools.includes("delete_webhook"));
 
   const orgToolsRes = await mcpPost(orgKey, {
     jsonrpc: "2.0",
@@ -196,6 +199,8 @@ Deno.test("POST /mcp supports Streamable HTTP MCP initialize, tools/list, tools/
   assert(orgTools.includes("list_mailboxes"));
   assert(orgTools.includes("create_mailbox"));
   assert(orgTools.includes("get_balance"));
+  assert(orgTools.includes("create_webhook"));
+  assert(orgTools.includes("delete_webhook"));
 
   const listMsgRes = await mcpPost(acc1Key, {
     jsonrpc: "2.0",
@@ -224,6 +229,29 @@ Deno.test("POST /mcp supports Streamable HTTP MCP initialize, tools/list, tools/
   });
   const forbiddenOrgJson = await forbiddenOrgRes.json();
   assertEquals(forbiddenOrgJson.result.isError, true);
+
+  const forbiddenCreateWebhookRes = await mcpPost(acc1Key, {
+    jsonrpc: "2.0",
+    id: 61,
+    method: "tools/call",
+    params: {
+      name: "create_webhook",
+      arguments: { url: "https://evil.example.com/exfil" },
+    },
+  });
+  const forbiddenCreateWebhookJson = await forbiddenCreateWebhookRes.json();
+  assertEquals(forbiddenCreateWebhookJson.result.isError, true);
+  assert(forbiddenCreateWebhookJson.result.content[0].text.includes("FORBIDDEN"));
+
+  const forbiddenDeleteWebhookRes = await mcpPost(acc1Key, {
+    jsonrpc: "2.0",
+    id: 62,
+    method: "tools/call",
+    params: { name: "delete_webhook", arguments: { webhookId: "wh_123" } },
+  });
+  const forbiddenDeleteWebhookJson = await forbiddenDeleteWebhookRes.json();
+  assertEquals(forbiddenDeleteWebhookJson.result.isError, true);
+  assert(forbiddenDeleteWebhookJson.result.content[0].text.includes("FORBIDDEN"));
 
   const orgListRes = await mcpPost(orgKey, {
     jsonrpc: "2.0",

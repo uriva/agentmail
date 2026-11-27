@@ -20,7 +20,8 @@ const toolsList = [
   ["get_message", "Account or Org", "Read full plain-text/HTML body, threading headers, and attachment metadata."],
   ["send_email", "Account or Org", "Send email with threading headers (scanned in real time for spam/phishing)."],
   ["get_attachment_url", "Account or Org", "Generate a 1-hour signed download URL for an attachment."],
-  ["list_webhooks / create_webhook / delete_webhook", "Account or Org", "Manage real-time HMAC-signed email.received webhooks."],
+  ["list_webhooks", "Account or Org", "List active inbound email.received webhook subscriptions (read-only)."],
+  ["create_webhook / delete_webhook", "Org key only", "Manage inbound HTTPS webhooks (restricted from account-scoped keys to prevent prompt-injected inbox forwarding)."],
   ["list_mailboxes / create_mailbox / get_balance", "Org key only", "Provision mailboxes and check prepaid balance."],
 ] as const;
 
